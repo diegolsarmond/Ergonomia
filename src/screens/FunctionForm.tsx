@@ -4,7 +4,7 @@ import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { FormGroup, Input, Textarea, Select } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { AETFunction } from '../types';
 
 const TABS = [
@@ -28,6 +28,7 @@ export const FunctionForm = () => {
   
   const initialData = project?.functions.find(f => f.id === funcId) || {} as AETFunction;
   const [formData, setFormData] = useState<AETFunction>(initialData);
+  const [error, setError] = useState<string | null>(null);
 
   if (!project || !initialData.id) return <div className="p-8">Função não encontrada.</div>;
 
@@ -36,6 +37,17 @@ export const FunctionForm = () => {
   };
 
   const handleSave = async () => {
+    if (!formData.name?.trim()) {
+      setError('O Nome da Função é obrigatório.');
+      setActiveTab(0);
+      return;
+    }
+    if (!formData.numEmployees?.trim()) {
+      setError('O Número de colaboradores é obrigatório.');
+      setActiveTab(0);
+      return;
+    }
+    setError(null);
     await updateFunction(id!, funcId!, formData);
     navigate(`/project/${id}`);
   };
@@ -47,10 +59,13 @@ export const FunctionForm = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={handleSave}>
-          <Save className="w-4 h-4 mr-2" />
-          Salvar Alterações
-        </Button>
+        <div className="flex items-center gap-4">
+          {error && <div className="text-red-500 font-medium flex items-center text-sm"><AlertCircle className="w-4 h-4 mr-1" />{error}</div>}
+          <Button onClick={handleSave}>
+            <Save className="w-4 h-4 mr-2" />
+            Salvar Alterações
+          </Button>
+        </div>
       </div>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
@@ -78,10 +93,10 @@ export const FunctionForm = () => {
           {activeTab === 0 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Nome da Função">
+                <FormGroup label="Nome da Função" required>
                   <Input value={formData.name} onChange={e => handleChange('name', e.target.value)} />
                 </FormGroup>
-                <FormGroup label="Nº de colaboradores">
+                <FormGroup label="Nº de colaboradores" required>
                   <Input value={formData.numEmployees} onChange={e => handleChange('numEmployees', e.target.value)} />
                 </FormGroup>
               </div>

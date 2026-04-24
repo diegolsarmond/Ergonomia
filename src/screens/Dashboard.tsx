@@ -93,10 +93,14 @@ export const Dashboard = () => {
                   />
                 </FormGroup>
                 <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="CNPJ">
+                  <FormGroup label="CNPJ" required>
                     <Input 
                       value={formData.cnpj} 
                       onChange={e => setFormData({...formData, cnpj: e.target.value})} 
+                      required
+                      placeholder="00.000.000/0000-00"
+                      pattern="\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}"
+                      title="Digite um CNPJ válido no formato 00.000.000/0000-00"
                     />
                   </FormGroup>
                   <FormGroup label="Grau de Risco">
@@ -106,37 +110,42 @@ export const Dashboard = () => {
                     />
                   </FormGroup>
                 </div>
-                <FormGroup label="Endereço">
+                <FormGroup label="Endereço" required>
                   <Input 
                     value={formData.address} 
                     onChange={e => setFormData({...formData, address: e.target.value})} 
+                    required
                   />
                 </FormGroup>
                 <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="Produto">
+                  <FormGroup label="Produto" required>
                     <Input 
                       value={formData.product} 
                       onChange={e => setFormData({...formData, product: e.target.value})} 
+                      required
                     />
                   </FormGroup>
-                  <FormGroup label="Local de Produção">
+                  <FormGroup label="Local de Produção" required>
                     <Input 
                       value={formData.location} 
                       onChange={e => setFormData({...formData, location: e.target.value})} 
+                      required
                     />
                   </FormGroup>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="Avaliador (Nome)">
+                  <FormGroup label="Avaliador (Nome)" required>
                     <Input 
                       value={formData.evaluatorName} 
                       onChange={e => setFormData({...formData, evaluatorName: e.target.value})} 
+                      required
                     />
                   </FormGroup>
-                  <FormGroup label="CREFITO / Registro">
+                  <FormGroup label="CREFITO / Registro" required>
                     <Input 
                       value={formData.evaluatorCrefito} 
                       onChange={e => setFormData({...formData, evaluatorCrefito: e.target.value})} 
+                      required
                     />
                   </FormGroup>
                 </div>
