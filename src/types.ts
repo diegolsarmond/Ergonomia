@@ -1,27 +1,84 @@
+export interface AETImage {
+  id: string;
+  dataUrl: string;
+  caption: string;
+  category: 'workplace' | 'bathroom' | 'equipment' | 'posture' | 'method' | 'risk_evidence' | 'other';
+}
+
+export interface IlluminationChecklistItem {
+  id: string;
+  description: string;
+  compliant: 'sim' | 'nao' | '';
+  recommendedAction: string;
+  deadline: string;
+  responsible: string;
+  observations: string;
+}
+
+export interface AETIllumination {
+  location: string;
+  date: string;
+  introduction: string;
+  objective: string;
+  justification: string;
+  environmentDescription: string;
+  lightingSystem: string;
+  activities: string;
+  criteria: string;
+  measuredValues: string;
+  resultLux: string;
+  interpretation: string;
+  checklist: IlluminationChecklistItem[];
+}
+
+export interface AETScientificMethod {
+  id: string;
+  methodName: string;
+  description: string;
+  result: string;
+  riskClassification: string;
+  interpretation: string;
+  imageDataUrl: string;
+  recommendations: string;
+}
+
 export interface AETImprovement {
   id: string;
+  photoDataUrl: string;
   hazard: string;
-  riskEvaluation: string;
   probability: string;
+  severity: string;
+  grossRiskLevel: string;
+  riskClassification: string;
+  riskEvaluation: string;
   actions: string;
+  attenuationProbability: string;
+  deadline: string;
+  responsible: string;
+  observations: string;
 }
 
 export interface AETFunction {
   id: string;
   name: string;
+  unit: string;
+  sector: string;
+  analysisDate: string;
   numEmployees: string;
   demandOrigin: string;
   objective: string;
   demandFound: string;
-  
-  // Turnos & Pausas
+  marketSituation: string;
+  product: string;
+  productionLocation: string;
+  productionDimension: string;
+  qualityAnalysis: string;
   shifts: string;
   overtime: string;
   pauses: string;
   taskRotation: string;
+  hierarchyOrganogram: string;
   workspaceDescription: string;
-  
-  // Colaborador
   collabFormation: string;
   collabTurn: string;
   opinionGender: string;
@@ -29,6 +86,7 @@ export interface AETFunction {
   opinionTime: string;
   opinionObjective: string;
   opinionThermal: string;
+  opinionVentilation: string;
   opinionLightingSens: string;
   opinionLightingDesc: string;
   opinionAcoustics: string;
@@ -42,59 +100,66 @@ export interface AETFunction {
   opinionLeadership: string;
   opinionMaintenanceInfluence: string;
   opinionMaintenanceDelay: string;
-
-  // Exigências
+  opinionIntercurrences: string;
   effortDynamic: string;
   effortStatic: string;
   timeAnalysis: string;
   loadCarrying: string;
   displacement: string;
-
-  // Processo
   maintenanceDesc: string;
   logisticsInfluence: string;
   logisticsDelay: string;
   reworkDesc: string;
   reworkWeek: string;
-
-  // Equipamentos
   equipments: string;
   equipPrinciple: string;
   equipProblems: string;
-
-  // Modo Operatório
   cyclePrescribed: string;
   cycleReal: string;
   postureSittingPct: number;
   postureStandingPct: number;
-
-  // Iluminação (NHO11)
-  illuminationLux: string;
-  illuminationComplies: boolean;
-  
-  // RULA
-  rulaScore: string;
-  rulaInterpretation: string;
-
-  // Diagnóstico
+  postureOtherPct: number;
+  postureOtherDescription: string;
+  illumination: AETIllumination;
+  scientificMethods: AETScientificMethod[];
+  images: AETImage[];
   diagnosis: string;
-
-  // Matriz de Risco (resumo)
-  riskLevel: string; 
-
+  riskLevel: string;
   improvements: AETImprovement[];
 }
 
 export interface AETProject {
   id: string;
   companyName: string;
+  fantasyName: string;
   cnpj: string;
   address: string;
+  unit: string;
   product: string;
   riskDegree: string;
   location: string;
+  companyLogoDataUrl: string;
+  responsibleLogoDataUrl: string;
   evaluatorName: string;
   evaluatorCrefito: string;
+  evaluatorSignatureDataUrl: string;
   date: string;
   functions: AETFunction[];
 }
+
+export const EMPTY_ILLUMINATION: AETIllumination = {
+  location: '', date: '', introduction: 'A medição de iluminância foi realizada conforme os procedimentos técnicos da NHO 11 – Norma de Higiene Ocupacional, da Fundacentro, que estabelece critérios para avaliação dos níveis de iluminamento nos ambientes de trabalho.',
+  objective: '', justification: '', environmentDescription: '', lightingSystem: '', activities: '', criteria: '', measuredValues: '', resultLux: '', interpretation: '', checklist: []
+};
+
+export const EMPTY_FUNCTION: AETFunction = {
+  id: '', name: '', unit: '', sector: '', analysisDate: '', numEmployees: '', demandOrigin: '', objective: '', demandFound: '', marketSituation: '', product: '', productionLocation: '', productionDimension: '', qualityAnalysis: '',
+  shifts: '', overtime: '', pauses: '', taskRotation: '', hierarchyOrganogram: '', workspaceDescription: '',
+  collabFormation: '', collabTurn: '', opinionGender: '', opinionAge: '', opinionTime: '', opinionObjective: '', opinionThermal: '', opinionVentilation: '', opinionLightingSens: '', opinionLightingDesc: '', opinionAcoustics: '', opinionEPI: '', opinionEquip: '', opinionCycle: '', opinionLayout: '', opinionDifficulties: '', opinionPressure: '', opinionRelationship: '', opinionLeadership: '', opinionMaintenanceInfluence: '', opinionMaintenanceDelay: '', opinionIntercurrences: '',
+  effortDynamic: '', effortStatic: '', timeAnalysis: '', loadCarrying: '', displacement: '',
+  maintenanceDesc: '', logisticsInfluence: '', logisticsDelay: '', reworkDesc: '', reworkWeek: '',
+  equipments: '', equipPrinciple: '', equipProblems: '',
+  cyclePrescribed: '', cycleReal: '', postureSittingPct: 50, postureStandingPct: 50, postureOtherPct: 0, postureOtherDescription: '',
+  illumination: { ...EMPTY_ILLUMINATION },
+  scientificMethods: [], images: [], diagnosis: '', riskLevel: '', improvements: []
+};
