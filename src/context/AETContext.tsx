@@ -1,8 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import localforage from 'localforage';
 import { v4 as uuidv4 } from 'uuid';
-import { AETProject, AETFunction, EMPTY_FUNCTION, ChecklistQuestion } from '../types';
+import {
+  AETProject, AETFunction, EMPTY_FUNCTION, ChecklistQuestion, ScientificMethodTemplate,
+  Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
+  SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate,
+} from '../types';
 import { createMockProject } from '../utils/mockData';
+import { Client, MOCK_CLIENTS } from '../data/mockClients';
 
 interface AETContextType {
   projects: AETProject[];
@@ -17,17 +22,94 @@ interface AETContextType {
   duplicateFunction: (projectId: string, functionId: string) => Promise<string>;
   exportProjectJSON: (projectId: string) => string | null;
   importProjectJSON: (json: string) => Promise<string | null>;
+  clients: Client[];
+  addClient: (client: Omit<Client, 'id'>) => Promise<string>;
+  updateClient: (id: string, client: Partial<Client>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
   checklistQuestions: ChecklistQuestion[];
   addChecklistQuestion: (question: Omit<ChecklistQuestion, 'id'>) => Promise<void>;
   updateChecklistQuestion: (id: string, question: Partial<ChecklistQuestion>) => Promise<void>;
   deleteChecklistQuestion: (id: string) => Promise<void>;
+  scientificMethodTemplates: ScientificMethodTemplate[];
+  addScientificMethodTemplate: (template: Omit<ScientificMethodTemplate, 'id'>) => Promise<void>;
+  updateScientificMethodTemplate: (id: string, template: Partial<ScientificMethodTemplate>) => Promise<void>;
+  deleteScientificMethodTemplate: (id: string) => Promise<void>;
+  // New parameter entities
+  companies: Company[];
+  addCompany: (c: Omit<Company, 'id'>) => Promise<void>;
+  updateCompany: (id: string, c: Partial<Company>) => Promise<void>;
+  deleteCompany: (id: string) => Promise<void>;
+  units: Unit[];
+  addUnit: (u: Omit<Unit, 'id'>) => Promise<void>;
+  updateUnit: (id: string, u: Partial<Unit>) => Promise<void>;
+  deleteUnit: (id: string) => Promise<void>;
+  sectors: Sector[];
+  addSector: (s: Omit<Sector, 'id'>) => Promise<void>;
+  updateSector: (id: string, s: Partial<Sector>) => Promise<void>;
+  deleteSector: (id: string) => Promise<void>;
+  jobRoles: StandardJobRole[];
+  addJobRole: (r: Omit<StandardJobRole, 'id'>) => Promise<void>;
+  updateJobRole: (id: string, r: Partial<StandardJobRole>) => Promise<void>;
+  deleteJobRole: (id: string) => Promise<void>;
+  epis: EPI[];
+  addEPI: (e: Omit<EPI, 'id'>) => Promise<void>;
+  updateEPI: (id: string, e: Partial<EPI>) => Promise<void>;
+  deleteEPI: (id: string) => Promise<void>;
+  equipment: StandardEquipment[];
+  addEquipment: (e: Omit<StandardEquipment, 'id'>) => Promise<void>;
+  updateEquipment: (id: string, e: Partial<StandardEquipment>) => Promise<void>;
+  deleteEquipment: (id: string) => Promise<void>;
+  surveyQuestions: SurveyQuestion[];
+  addSurveyQuestion: (q: Omit<SurveyQuestion, 'id'>) => Promise<void>;
+  updateSurveyQuestion: (id: string, q: Partial<SurveyQuestion>) => Promise<void>;
+  deleteSurveyQuestion: (id: string) => Promise<void>;
+  pauses: StandardPause[];
+  addPause: (p: Omit<StandardPause, 'id'>) => Promise<void>;
+  updatePause: (id: string, p: Partial<StandardPause>) => Promise<void>;
+  deletePause: (id: string) => Promise<void>;
+  riskClassifications: RiskClassification[];
+  addRiskClassification: (r: Omit<RiskClassification, 'id'>) => Promise<void>;
+  updateRiskClassification: (id: string, r: Partial<RiskClassification>) => Promise<void>;
+  deleteRiskClassification: (id: string) => Promise<void>;
+  reportTexts: ReportTextTemplate[];
+  addReportText: (t: Omit<ReportTextTemplate, 'id'>) => Promise<void>;
+  updateReportText: (id: string, t: Partial<ReportTextTemplate>) => Promise<void>;
+  deleteReportText: (id: string) => Promise<void>;
 }
 
 const AETContext = createContext<AETContextType | undefined>(undefined);
 
+function makeCRUD<T extends { id: string }>(
+  key: string,
+  state: T[],
+  setState: React.Dispatch<React.SetStateAction<T[]>>
+) {
+  const save = async (next: T[]) => {
+    await localforage.setItem(key, next);
+    setState(next);
+  };
+  return {
+    add: async (item: Omit<T, 'id'>) => { await save([...state, { ...item, id: uuidv4() } as T]); },
+    update: async (id: string, item: Partial<T>) => { await save(state.map(x => x.id === id ? { ...x, ...item } : x)); },
+    remove: async (id: string) => { await save(state.filter(x => x.id !== id)); },
+  };
+}
+
 export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<AETProject[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [checklistQuestions, setChecklistQuestions] = useState<ChecklistQuestion[]>([]);
+  const [scientificMethodTemplates, setScientificMethodTemplates] = useState<ScientificMethodTemplate[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [jobRoles, setJobRoles] = useState<StandardJobRole[]>([]);
+  const [epis, setEPIs] = useState<EPI[]>([]);
+  const [equipment, setEquipment] = useState<StandardEquipment[]>([]);
+  const [surveyQuestions, setSurveyQuestions] = useState<SurveyQuestion[]>([]);
+  const [pauses, setPauses] = useState<StandardPause[]>([]);
+  const [riskClassifications, setRiskClassifications] = useState<RiskClassification[]>([]);
+  const [reportTexts, setReportTexts] = useState<ReportTextTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,12 +121,46 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setProjects(stored);
 
-      let storedQuestions = await localforage.getItem<ChecklistQuestion[]>('aet_checklist_questions');
-      if (!storedQuestions) {
-        storedQuestions = [];
-        await localforage.setItem('aet_checklist_questions', storedQuestions);
+      let storedClients = await localforage.getItem<Client[]>('aet_clients');
+      if (!storedClients || storedClients.length === 0) {
+        storedClients = MOCK_CLIENTS;
+        await localforage.setItem('aet_clients', storedClients);
       }
+      setClients(storedClients);
+
+      let storedQuestions = await localforage.getItem<ChecklistQuestion[]>('aet_checklist_questions');
+      if (!storedQuestions) storedQuestions = [];
       setChecklistQuestions(storedQuestions);
+
+      let storedMethodTemplates = await localforage.getItem<ScientificMethodTemplate[]>('aet_scientific_method_templates');
+      if (!storedMethodTemplates) storedMethodTemplates = [];
+      let migrated = false;
+      storedMethodTemplates = storedMethodTemplates.map((t: any) => {
+        if (typeof t.imageDataUrl === 'string' && !t.imageDataUrls) {
+          migrated = true;
+          const { imageDataUrl, ...rest } = t;
+          return { ...rest, imageDataUrls: imageDataUrl ? [imageDataUrl] : [] };
+        }
+        if (!t.imageDataUrls) { migrated = true; return { ...t, imageDataUrls: [] }; }
+        return t;
+      });
+      if (migrated) await localforage.setItem('aet_scientific_method_templates', storedMethodTemplates);
+      setScientificMethodTemplates(storedMethodTemplates);
+
+      const loadSimple = async <T,>(key: string, setter: React.Dispatch<React.SetStateAction<T[]>>) => {
+        const data = await localforage.getItem<T[]>(key);
+        setter(data ?? []);
+      };
+      await loadSimple<Company>('aet_companies', setCompanies);
+      await loadSimple<Unit>('aet_units', setUnits);
+      await loadSimple<Sector>('aet_sectors', setSectors);
+      await loadSimple<StandardJobRole>('aet_job_roles', setJobRoles);
+      await loadSimple<EPI>('aet_epis', setEPIs);
+      await loadSimple<StandardEquipment>('aet_equipment', setEquipment);
+      await loadSimple<SurveyQuestion>('aet_survey_questions', setSurveyQuestions);
+      await loadSimple<StandardPause>('aet_pauses', setPauses);
+      await loadSimple<RiskClassification>('aet_risk_classifications', setRiskClassifications);
+      await loadSimple<ReportTextTemplate>('aet_report_texts', setReportTexts);
 
       setLoading(false);
     };
@@ -61,62 +177,40 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await saveToStorage([...projects, newProject]);
     return newProject.id;
   };
-
   const updateProject = async (id: string, projectData: Partial<AETProject>) => {
     await saveToStorage(projects.map(p => p.id === id ? { ...p, ...projectData } : p));
   };
-
-  const deleteProject = async (id: string) => {
-    await saveToStorage(projects.filter(p => p.id !== id));
-  };
-
+  const deleteProject = async (id: string) => { await saveToStorage(projects.filter(p => p.id !== id)); };
   const getProject = (id: string) => projects.find(p => p.id === id);
 
   const addFunction = async (projectId: string, funcData: Partial<AETFunction>) => {
     const newFunc: AETFunction = { ...EMPTY_FUNCTION, id: uuidv4(), ...funcData };
-    const newProjects = projects.map(p =>
-      p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p
-    );
+    const newProjects = projects.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
     await saveToStorage(newProjects);
     return newFunc.id;
   };
-
   const updateFunction = async (projectId: string, functionId: string, funcData: Partial<AETFunction>) => {
     const newProjects = projects.map(p =>
-      p.id === projectId
-        ? { ...p, functions: p.functions.map(f => f.id === functionId ? { ...f, ...funcData } : f) }
-        : p
+      p.id === projectId ? { ...p, functions: p.functions.map(f => f.id === functionId ? { ...f, ...funcData } : f) } : p
     );
     await saveToStorage(newProjects);
   };
-
   const deleteFunction = async (projectId: string, functionId: string) => {
     const newProjects = projects.map(p =>
-      p.id === projectId
-        ? { ...p, functions: p.functions.filter(f => f.id !== functionId) }
-        : p
+      p.id === projectId ? { ...p, functions: p.functions.filter(f => f.id !== functionId) } : p
     );
     await saveToStorage(newProjects);
   };
-
   const duplicateFunction = async (projectId: string, functionId: string) => {
     const project = projects.find(p => p.id === projectId);
     const func = project?.functions.find(f => f.id === functionId);
     if (!func) return '';
-    const newFunc: AETFunction = {
-      ...JSON.parse(JSON.stringify(func)),
-      id: uuidv4(),
-      name: `${func.name} (Cópia)`,
-    };
-    // Regenerate IDs for nested items
+    const newFunc: AETFunction = { ...JSON.parse(JSON.stringify(func)), id: uuidv4(), name: `${func.name} (Cópia)` };
     newFunc.improvements = newFunc.improvements.map((imp: any) => ({ ...imp, id: uuidv4() }));
     newFunc.scientificMethods = newFunc.scientificMethods.map((m: any) => ({ ...m, id: uuidv4() }));
     newFunc.images = newFunc.images.map((img: any) => ({ ...img, id: uuidv4() }));
     newFunc.illumination.checklist = newFunc.illumination.checklist.map((c: any) => ({ ...c, id: uuidv4() }));
-
-    const newProjects = projects.map(p =>
-      p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p
-    );
+    const newProjects = projects.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
     await saveToStorage(newProjects);
     return newFunc.id;
   };
@@ -126,7 +220,6 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!project) return null;
     return JSON.stringify(project, null, 2);
   };
-
   const importProjectJSON = async (json: string): Promise<string | null> => {
     try {
       const parsed = JSON.parse(json) as AETProject;
@@ -134,36 +227,87 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       parsed.companyName = `${parsed.companyName} (Importado)`;
       await saveToStorage([...projects, parsed]);
       return parsed.id;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   };
+
+  const saveClientsToStorage = async (newClients: Client[]) => {
+    await localforage.setItem('aet_clients', newClients);
+    setClients(newClients);
+  };
+  const addClient = async (clientData: Omit<Client, 'id'>) => {
+    const newClient: Client = { ...clientData, id: uuidv4() };
+    await saveClientsToStorage([...clients, newClient]);
+    return newClient.id;
+  };
+  const updateClient = async (id: string, clientData: Partial<Client>) => {
+    await saveClientsToStorage(clients.map(c => c.id === id ? { ...c, ...clientData } : c));
+  };
+  const deleteClient = async (id: string) => { await saveClientsToStorage(clients.filter(c => c.id !== id)); };
 
   const addChecklistQuestion = async (questionData: Omit<ChecklistQuestion, 'id'>) => {
-    const newQuestion: ChecklistQuestion = { ...questionData, id: uuidv4() };
-    const newQuestions = [...checklistQuestions, newQuestion];
-    await localforage.setItem('aet_checklist_questions', newQuestions);
-    setChecklistQuestions(newQuestions);
+    const newQ: ChecklistQuestion = { ...questionData, id: uuidv4() };
+    const next = [...checklistQuestions, newQ];
+    await localforage.setItem('aet_checklist_questions', next);
+    setChecklistQuestions(next);
   };
-
   const updateChecklistQuestion = async (id: string, questionData: Partial<ChecklistQuestion>) => {
-    const newQuestions = checklistQuestions.map(q => q.id === id ? { ...q, ...questionData } : q);
-    await localforage.setItem('aet_checklist_questions', newQuestions);
-    setChecklistQuestions(newQuestions);
+    const next = checklistQuestions.map(q => q.id === id ? { ...q, ...questionData } : q);
+    await localforage.setItem('aet_checklist_questions', next);
+    setChecklistQuestions(next);
+  };
+  const deleteChecklistQuestion = async (id: string) => {
+    const next = checklistQuestions.filter(q => q.id !== id);
+    await localforage.setItem('aet_checklist_questions', next);
+    setChecklistQuestions(next);
   };
 
-  const deleteChecklistQuestion = async (id: string) => {
-    const newQuestions = checklistQuestions.filter(q => q.id !== id);
-    await localforage.setItem('aet_checklist_questions', newQuestions);
-    setChecklistQuestions(newQuestions);
+  const addScientificMethodTemplate = async (templateData: Omit<ScientificMethodTemplate, 'id'>) => {
+    const newT: ScientificMethodTemplate = { ...templateData, id: uuidv4() };
+    const updated = [...scientificMethodTemplates, newT];
+    await localforage.setItem('aet_scientific_method_templates', updated);
+    setScientificMethodTemplates(updated);
   };
+  const updateScientificMethodTemplate = async (id: string, templateData: Partial<ScientificMethodTemplate>) => {
+    const updated = scientificMethodTemplates.map((t: ScientificMethodTemplate) => t.id === id ? { ...t, ...templateData } : t);
+    await localforage.setItem('aet_scientific_method_templates', updated);
+    setScientificMethodTemplates(updated);
+  };
+  const deleteScientificMethodTemplate = async (id: string) => {
+    const updated = scientificMethodTemplates.filter((t: ScientificMethodTemplate) => t.id !== id);
+    await localforage.setItem('aet_scientific_method_templates', updated);
+    setScientificMethodTemplates(updated);
+  };
+
+  // Generic CRUD helpers for new parameter entities
+  const companyCRUD = makeCRUD('aet_companies', companies, setCompanies);
+  const unitCRUD = makeCRUD('aet_units', units, setUnits);
+  const sectorCRUD = makeCRUD('aet_sectors', sectors, setSectors);
+  const jobRoleCRUD = makeCRUD('aet_job_roles', jobRoles, setJobRoles);
+  const epiCRUD = makeCRUD('aet_epis', epis, setEPIs);
+  const equipmentCRUD = makeCRUD('aet_equipment', equipment, setEquipment);
+  const surveyQuestionCRUD = makeCRUD('aet_survey_questions', surveyQuestions, setSurveyQuestions);
+  const pauseCRUD = makeCRUD('aet_pauses', pauses, setPauses);
+  const riskClassificationCRUD = makeCRUD('aet_risk_classifications', riskClassifications, setRiskClassifications);
+  const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
 
   return (
     <AETContext.Provider value={{
       projects, loading, addProject, updateProject, deleteProject, getProject,
       addFunction, updateFunction, deleteFunction, duplicateFunction,
       exportProjectJSON, importProjectJSON,
-      checklistQuestions, addChecklistQuestion, updateChecklistQuestion, deleteChecklistQuestion
+      clients, addClient, updateClient, deleteClient,
+      checklistQuestions, addChecklistQuestion, updateChecklistQuestion, deleteChecklistQuestion,
+      scientificMethodTemplates, addScientificMethodTemplate, updateScientificMethodTemplate, deleteScientificMethodTemplate,
+      companies, addCompany: companyCRUD.add, updateCompany: companyCRUD.update, deleteCompany: companyCRUD.remove,
+      units, addUnit: unitCRUD.add, updateUnit: unitCRUD.update, deleteUnit: unitCRUD.remove,
+      sectors, addSector: sectorCRUD.add, updateSector: sectorCRUD.update, deleteSector: sectorCRUD.remove,
+      jobRoles, addJobRole: jobRoleCRUD.add, updateJobRole: jobRoleCRUD.update, deleteJobRole: jobRoleCRUD.remove,
+      epis, addEPI: epiCRUD.add, updateEPI: epiCRUD.update, deleteEPI: epiCRUD.remove,
+      equipment, addEquipment: equipmentCRUD.add, updateEquipment: equipmentCRUD.update, deleteEquipment: equipmentCRUD.remove,
+      surveyQuestions, addSurveyQuestion: surveyQuestionCRUD.add, updateSurveyQuestion: surveyQuestionCRUD.update, deleteSurveyQuestion: surveyQuestionCRUD.remove,
+      pauses, addPause: pauseCRUD.add, updatePause: pauseCRUD.update, deletePause: pauseCRUD.remove,
+      riskClassifications, addRiskClassification: riskClassificationCRUD.add, updateRiskClassification: riskClassificationCRUD.update, deleteRiskClassification: riskClassificationCRUD.remove,
+      reportTexts, addReportText: reportTextCRUD.add, updateReportText: reportTextCRUD.update, deleteReportText: reportTextCRUD.remove,
     }}>
       {children}
     </AETContext.Provider>

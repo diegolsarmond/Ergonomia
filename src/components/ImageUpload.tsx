@@ -25,7 +25,7 @@ export const ImageUpload: React.FC<Props> = ({ images, onChange, category }) => 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    Array.from(files).forEach(file => {
+    Array.from(files as unknown as File[]).forEach(file => {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const newImg: AETImage = {

@@ -1,19 +1,19 @@
 import React from 'react';
 
 export const Card = ({ children, className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`} {...props}>
+  <div className={`card-modern ${className}`} {...props}>
     {children}
   </div>
 );
 
 export const CardHeader = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center ${className}`}>
+  <div className={`px-6 py-4 border-b border-gray-100 flex justify-between items-center ${className}`}>
     {children}
   </div>
 );
 
 export const CardTitle = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <h3 className={`text-lg font-semibold text-gray-900 ${className}`}>
+  <h3 className={`text-base font-semibold text-slate-800 ${className}`}>
     {children}
   </h3>
 );

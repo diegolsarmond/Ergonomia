@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download } from 'lucide-react';
+import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer } from 'lucide-react';
 
 export const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,11 +11,23 @@ export const ProjectView = () => {
   const { getProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON } = useAET();
   const project = getProject(id!);
 
-  if (!project) return <div className="p-8 text-center">Projeto não encontrado</div>;
+  if (!project) return (
+    <div className="flex items-center justify-center h-full">
+      <p className="text-slate-400 text-lg">Projeto não encontrado</p>
+    </div>
+  );
+
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const handleAddFunction = async () => {
     const newFuncId = await addFunction(project.id, { name: 'Nova Função' });
     navigate(`/project/${project.id}/function/${newFuncId}`);
+  };
+
+  const handlePrintDirectly = () => {
+    setIsPrinting(true);
+    // Hide iframe after a reasonable timeout assuming print dialog will be opened by the iframe content
+    setTimeout(() => setIsPrinting(false), 5000);
   };
 
   const handleDuplicate = async (funcId: string) => {
@@ -35,80 +47,123 @@ export const ProjectView = () => {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <Button variant="ghost" className="mb-6" onClick={() => navigate('/')}>
-        <ArrowLeft className="w-4 h-4 mr-2" />Voltar aos Projetos
-      </Button>
+    <div className="p-6 lg:p-8 xl:p-10">
+      {/* ── Breadcrumb ──────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 mb-6 text-sm text-slate-400">
+        <button onClick={() => navigate('/')} className="hover:text-teal-600 transition-colors cursor-pointer">Projetos</button>
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-slate-600 font-medium truncate">{project.companyName}</span>
+      </div>
 
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">{project.companyName}</h1>
-          {project.fantasyName && <p className="text-teal-600 font-medium text-sm mb-1">{project.fantasyName}</p>}
-          <p className="text-gray-500 text-sm">AET — {project.unit || project.location} — {project.date ? new Date(project.date).toLocaleDateString('pt-BR') : ''}</p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleExportJSON}>
-            <Download className="w-4 h-4 mr-2" />Exportar JSON
-          </Button>
-          <Button variant="secondary" onClick={() => navigate(`/project/${project.id}/preview`)}>
-            <Eye className="w-4 h-4 mr-2" />Visualizar PDF
-          </Button>
-          <Button onClick={handleAddFunction}>
-            <Plus className="w-4 h-4 mr-2" />Adicionar Função
-          </Button>
+      {/* ── Page Header ────────────────────────────────────────────── */}
+      <div className="page-header mb-8">
+        <div className="flex justify-between items-start relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold">
+              {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight mb-0.5">{project.companyName}</h1>
+              {project.fantasyName && <p className="text-teal-200 text-sm font-medium">{project.fantasyName}</p>}
+              <p className="text-teal-300/70 text-xs mt-1">
+                AET — {project.unit || project.location} — {project.date ? new Date(project.date).toLocaleDateString('pt-BR') : ''}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportJSON} className="hidden !bg-white/10 !border-white/20 !text-white hover:!bg-white/20" size="sm">
+              <Download className="w-4 h-4" />Exportar
+            </Button>
+            <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50" size="sm" disabled={isPrinting}>
+              <Printer className="w-4 h-4" />{isPrinting ? 'Preparando...' : 'Imprimir / PDF'}
+            </Button>
+            <Button onClick={handleAddFunction} size="sm">
+              <Plus className="w-4 h-4" />Adicionar Função
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      {/* ── Info Cards ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
         <Card>
-          <CardHeader><CardTitle>Dados da Empresa</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p><strong>CNPJ:</strong> {project.cnpj}</p>
-            <p><strong>Endereço:</strong> {project.address}</p>
-            <p><strong>Unidade:</strong> {project.unit}</p>
-            <p><strong>Produto:</strong> {project.product}</p>
-            <p><strong>Grau de Risco:</strong> {project.riskDegree}</p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-teal-600" />
+              Dados da Empresa
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <InfoItem label="CNPJ" value={project.cnpj} />
+              <InfoItem label="Grau de Risco" value={project.riskDegree} />
+            </div>
+            <InfoItem label="Endereço" value={project.address} />
+            <div className="grid grid-cols-2 gap-3">
+              <InfoItem label="Unidade" value={project.unit} />
+              <InfoItem label="Produto" value={project.product} />
+            </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Responsável Técnico</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p><strong>Nome:</strong> {project.evaluatorName}</p>
-            <p><strong>Registro:</strong> {project.evaluatorCrefito}</p>
-            <p><strong>Data:</strong> {project.date ? new Date(project.date).toLocaleDateString('pt-BR') : '-'}</p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-4 h-4 text-teal-600" />
+              Responsável Técnico
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <InfoItem label="Nome" value={project.evaluatorName} />
+            <InfoItem label="Registro" value={project.evaluatorCrefito} />
+            <InfoItem label="Data" value={project.date ? new Date(project.date).toLocaleDateString('pt-BR') : '-'} />
           </CardContent>
         </Card>
       </div>
 
+      {/* ── Functions ──────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Funções Analisadas ({project.functions.length})</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-800">
+            Funções Analisadas
+            <span className="ml-2 stat-badge">{project.functions.length}</span>
+          </h2>
+        </div>
+
         {project.functions.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-dashed border-gray-300">
-            <p className="text-gray-500 mb-4">Nenhuma função cadastrada.</p>
-            <Button onClick={handleAddFunction} variant="outline">Cadastrar Função</Button>
+          <div className="empty-state">
+            <p className="text-slate-500 text-lg font-medium mb-2">Nenhuma função cadastrada</p>
+            <p className="text-slate-400 text-sm mb-6">Adicione funções para iniciar a análise ergonômica</p>
+            <Button onClick={handleAddFunction} variant="outline">
+              <Plus className="w-4 h-4" /> Cadastrar Função
+            </Button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {project.functions.map((func) => (
-              <Card key={func.id} className="hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-center px-6 py-4">
-                  <div className="cursor-pointer flex-1" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
-                    <h3 className="font-semibold text-lg text-teal-700">{func.name || 'Sem nome'}</h3>
-                    <p className="text-sm text-gray-500">
-                      {func.sector && `Setor: ${func.sector} • `}
-                      {func.numEmployees} colaboradores
-                      {func.improvements?.length > 0 && ` • ${func.improvements.length} riscos`}
-                    </p>
+          <div className="space-y-2">
+            {project.functions.map((func, idx) => (
+              <Card key={func.id} className="function-row !rounded-xl">
+                <div className="flex justify-between items-center px-5 py-4">
+                  <div className="cursor-pointer flex-1 flex items-center gap-4" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-sm font-bold text-teal-600 shrink-0">
+                      {String(idx + 1).padStart(2, '0')}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-slate-800 text-[15px]">{func.name || 'Sem nome'}</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {func.sector && `Setor: ${func.sector} • `}
+                        {func.numEmployees} colaboradores
+                        {func.improvements?.length > 0 && ` • ${func.improvements.length} riscos`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar">
-                      <Copy className="w-4 h-4 text-blue-500" />
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg">
+                      <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
-                      <Edit2 className="w-4 h-4 text-gray-500" />
+                    <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg">
+                      <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)}>
-                      <Trash2 className="w-4 h-4 text-red-500" />
+                    <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg">
+                      <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
                     </Button>
                   </div>
                 </div>
@@ -117,6 +172,22 @@ export const ProjectView = () => {
           </div>
         )}
       </div>
+
+      {/* Hidden iframe for direct printing */}
+      {isPrinting && (
+        <iframe
+          src={`/project/${project.id}/preview?print=true`}
+          style={{ position: 'absolute', width: '0', height: '0', border: 'none' }}
+          title="Print Preview"
+        />
+      )}
     </div>
   );
 };
+
+const InfoItem = ({ label, value }: { label: string; value: string }) => (
+  <div>
+    <p className="text-[11px] uppercase tracking-wide text-slate-400 font-medium mb-0.5">{label}</p>
+    <p className="text-slate-700 font-medium">{value || '-'}</p>
+  </div>
+);

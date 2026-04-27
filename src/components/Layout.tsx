@@ -1,46 +1,149 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { FileText, Home, BookOpen } from 'lucide-react';
+import {
+  FileText, Home, BookOpen, ChevronDown, ChevronRight, Settings,
+  List, FlaskConical, Building2, MapPin, Layers, Briefcase,
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle,
+} from 'lucide-react';
 
-const NAV_ITEMS = [
-  { to: '/', icon: Home, label: 'Projetos' },
-  { to: '/clients', icon: BookOpen, label: 'Clientes' },
-  { to: '/parameters/checklist', icon: FileText, label: 'Parâmetros (Checklist)' },
+const PARAM_GROUPS = [
+  {
+    label: 'Cadastros',
+    items: [
+      { to: '/parameters/companies', icon: Building2, label: 'Empresas' },
+      { to: '/parameters/units', icon: MapPin, label: 'Unidades' },
+      { to: '/parameters/sectors', icon: Layers, label: 'Setores' },
+      { to: '/parameters/job-roles', icon: Briefcase, label: 'Funções Padrão' },
+    ],
+  },
+  {
+    label: 'Segurança',
+    items: [
+      { to: '/parameters/epis', icon: HardHat, label: 'EPIs' },
+      { to: '/parameters/equipment', icon: Wrench, label: 'Equipamentos' },
+      { to: '/parameters/pauses', icon: Coffee, label: 'Pausas Padrão' },
+    ],
+  },
+  {
+    label: 'Análise Ergonômica',
+    items: [
+      { to: '/parameters/survey-questions', icon: MessageSquare, label: 'Perguntas' },
+      { to: '/parameters/checklist', icon: List, label: 'Checklist NHO 11' },
+      { to: '/parameters/scientific-methods', icon: FlaskConical, label: 'Métodos Científicos' },
+      { to: '/parameters/risk-classifications', icon: AlertTriangle, label: 'Classificação de Risco' },
+      { to: '/parameters/report-texts', icon: FileText, label: 'Textos Padrão' },
+    ],
+  },
 ];
 
 export const Layout = () => {
   const location = useLocation();
+  const isParametros = location.pathname.startsWith('/parameters');
+  const [parametrosOpen, setParametrosOpen] = useState(isParametros);
+
   return (
-    <div className="flex h-screen bg-gray-50 print:block print:h-auto print:bg-white">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col print:hidden shrink-0">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-700 to-teal-600">
-          <h1 className="text-xl font-bold flex items-center gap-2 text-white">
-            <FileText className="w-6 h-6" />
-            AET System
-          </h1>
-          <p className="text-teal-200 text-xs mt-1">Análise Ergonômica do Trabalho</p>
+    <div className="flex h-screen bg-[var(--color-surface)] print:block print:h-auto print:bg-white">
+      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      <aside className="sidebar w-[260px] flex flex-col print:hidden shrink-0 shadow-xl">
+        {/* Brand */}
+        <div className="px-6 py-5 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-[15px] font-bold text-white tracking-tight">AET System</h1>
+              <p className="text-[11px] text-slate-400 font-medium">Análise Ergonômica</p>
+            </div>
+          </div>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
-          {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
-            const active = location.pathname === to;
-            return (
-              <Link key={to} to={to} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium ${active ? 'bg-teal-50 text-teal-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>
-                <Icon className="w-5 h-5" />
-                {label}
-              </Link>
-            );
-          })}
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+          <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Menu</p>
+          <div className="space-y-0.5">
+            <NavLink to="/" icon={Home} label="Projetos" active={location.pathname === '/'} />
+            <NavLink to="/clients" icon={BookOpen} label="Clientes" active={location.pathname === '/clients'} />
+          </div>
+
+          {/* Parâmetros com submenu agrupado */}
+          <div className="mt-5">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Configurações</p>
+            <button
+              onClick={() => setParametrosOpen((o: boolean) => !o)}
+              className={`sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${isParametros ? 'active text-teal-300' : 'text-slate-300 hover:text-white'}`}
+            >
+              <Settings className="w-[18px] h-[18px]" />
+              <span className="flex-1 text-left">Parâmetros</span>
+              {parametrosOpen ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
+            </button>
+
+            <div
+              className="overflow-hidden transition-all duration-200"
+              style={{ maxHeight: parametrosOpen ? '600px' : '0px', opacity: parametrosOpen ? 1 : 0 }}
+            >
+              <div className="ml-4 mt-1 border-l border-slate-700 pl-3 space-y-3">
+                {PARAM_GROUPS.map(group => (
+                  <div key={group.label}>
+                    <p className="px-3 text-[9px] font-semibold uppercase tracking-widest text-slate-600 mb-0.5 mt-2">
+                      {group.label}
+                    </p>
+                    {group.items.map(item => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        icon={item.icon}
+                        label={item.label}
+                        active={location.pathname === item.to}
+                        small
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </nav>
-        <div className="p-4 border-t border-gray-100">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <BookOpen className="w-4 h-4" />
-            <span>v2.0 — NR-17</span>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-white/5">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] text-slate-500 font-medium">v2.0 — NR-17</span>
           </div>
         </div>
       </aside>
+
+      {/* ── Content ─────────────────────────────────────────────────────── */}
       <main className="flex-1 overflow-auto print:overflow-visible">
-        <Outlet />
+        <div className="page-enter">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
 };
+
+interface NavLinkProps {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  small?: boolean;
+}
+
+const NavLink: React.FC<NavLinkProps> = ({ to, icon: Icon, label, active, small }) => (
+  <Link
+    to={to}
+    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium ${
+      small ? 'text-[13px]' : 'text-sm'
+    } ${
+      active
+        ? 'active text-teal-300'
+        : 'text-slate-400 hover:text-white'
+    }`}
+  >
+    <Icon className={small ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
+    {label}
+  </Link>
+);
