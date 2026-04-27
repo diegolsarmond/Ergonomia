@@ -73,159 +73,209 @@ export const PDFPreview = () => {
       <div className="w-full overflow-x-auto print:overflow-visible bg-gray-100 print:bg-transparent">
         <div ref={previewRef} className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none shadow-lg print:shadow-none">
 
-        {/* ═══════════════════════════════════════════════════════════════
+          {/* ═══════════════════════════════════════════════════════════════
             CAPA
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="pdf-page flex flex-col items-center justify-between text-center px-16 py-12 print:break-after-page min-h-[250mm] print:min-h-[240mm]">
-          {/* Logos topo */}
-          <div className="flex justify-between items-start w-full mb-8">
-            {project.consultoriaLogoDataUrl
-              ? <img src={project.consultoriaLogoDataUrl} alt="Logo consultoria" className="max-h-20 object-contain" />
-              : <div className="h-20 w-40 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">Logo Consultoria</div>
-            }
-            {project.companyLogoDataUrl
-              ? <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-20 object-contain" />
-              : <div className="h-20 w-40 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">Logo Empresa</div>
-            }
-          </div>
-
-          {/* Título central */}
-          <div className="flex-1 flex flex-col items-center justify-center gap-4">
-            <div className="w-16 h-1 bg-teal-600 rounded-full" />
-            <p className="text-sm font-semibold tracking-widest text-teal-700 uppercase">Análise Ergonômica do Trabalho</p>
-            <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">AET</h1>
-            <div className="w-16 h-1 bg-teal-600 rounded-full" />
-            <div className="mt-6 space-y-1">
-              <p className="text-xl font-bold text-gray-800">{project.companyName}</p>
-              {project.fantasyName && <p className="text-base text-gray-500">{project.fantasyName}</p>}
-              {project.unit && <p className="text-sm text-gray-500">Unidade: {project.unit}</p>}
-              {project.location && <p className="text-sm text-gray-500">{project.location}</p>}
+          <section className="pdf-page flex flex-col items-center justify-between text-center px-16 py-12 print:break-after-page min-h-[250mm] print:min-h-[240mm]">
+            {/* Logos topo */}
+            <div className="flex justify-between items-start w-full mb-8">
+              {project.consultoriaLogoDataUrl
+                ? <img src={project.consultoriaLogoDataUrl} alt="Logo consultoria" className="max-h-20 object-contain" />
+                : <div className="h-20 w-40 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">Logo Consultoria</div>
+              }
+              {project.companyLogoDataUrl
+                ? <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-20 object-contain" />
+                : <div className="h-20 w-40 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">Logo Empresa</div>
+              }
             </div>
-          </div>
 
-          {/* Rodapé da capa */}
-          <div className="w-full border-t border-gray-200 pt-6 flex justify-between items-end text-sm text-gray-500">
-            <div className="text-left">
-              {project.evaluatorName && <p className="font-semibold text-gray-700">{project.evaluatorName}</p>}
-              {project.evaluatorFormation && <p>{project.evaluatorFormation}</p>}
-              {project.evaluatorCrefito && <p>{project.evaluatorCrefito}</p>}
-              {project.evaluatorCompany && <p>{project.evaluatorCompany}</p>}
+            {/* Título central */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-4">
+              <div className="w-16 h-1 bg-teal-600 rounded-full" />
+              <p className="text-sm font-semibold tracking-widest text-teal-700 uppercase">Análise Ergonômica do Trabalho</p>
+              <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">AET</h1>
+              <div className="w-16 h-1 bg-teal-600 rounded-full" />
+              <div className="mt-6 space-y-1">
+                <p className="text-xl font-bold text-gray-800">{project.companyName}</p>
+                {project.fantasyName && <p className="text-base text-gray-500">{project.fantasyName}</p>}
+                {project.unit && <p className="text-sm text-gray-500">Unidade: {project.unit}</p>}
+                {project.location && <p className="text-sm text-gray-500">{project.location}</p>}
+              </div>
             </div>
-            <div className="text-right">
-              {project.evaluatorSignatureDataUrl && (
-                <img src={project.evaluatorSignatureDataUrl} alt="Assinatura" className="max-h-14 mb-2 ml-auto object-contain" />
-              )}
-              {monthYear && <p className="capitalize">{monthYear}</p>}
-            </div>
-          </div>
-        </section>
 
-        {/* ═══════════════════════════════════════════════════════════════
+            {/* Rodapé da capa */}
+            <div className="w-full border-t border-gray-200 pt-6 flex justify-between items-end text-sm text-gray-500">
+              <div className="text-left">
+                {project.evaluatorName && <p className="font-semibold text-gray-700">{project.evaluatorName}</p>}
+                {project.evaluatorFormation && <p>{project.evaluatorFormation}</p>}
+                {project.evaluatorCrefito && <p>{project.evaluatorCrefito}</p>}
+                {project.evaluatorCompany && <p>{project.evaluatorCompany}</p>}
+              </div>
+              <div className="text-right">
+                {project.evaluatorSignatureDataUrl && (
+                  <img src={project.evaluatorSignatureDataUrl} alt="Assinatura" className="max-h-14 mb-2 ml-auto object-contain" />
+                )}
+                {monthYear && <p className="capitalize">{monthYear}</p>}
+              </div>
+            </div>
+          </section>
+
+          {/* ═══════════════════════════════════════════════════════════════
             SUMÁRIO
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="pdf-page px-12 py-16 print:break-after-page">
-          <h2>Sumário</h2>
-          <div className="space-y-2 mt-4">
-            <TocLine num="1" title="Introdução" />
-            <TocLine num="1.1" title="Ergonomia" indent />
-            <TocLine num="1.2" title="Análise Global da Empresa" indent />
-            <TocLine num="1.3" title="Objetivo" indent />
-            <TocLine num="1.4" title="Metodologia" indent />
-            <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" />
-            {project.functions.map((func, idx) => (
-              <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent />
-            ))}
-            <TocLine num="3" title="Responsabilidade Técnica" />
-            <TocLine num="4" title="Anexos" />
-          </div>
-        </section>
+          <section className="pdf-page px-12 py-16 print:break-after-page">
+            <h2>Sumário</h2>
+            <div className="space-y-2 mt-4">
+              <TocLine num="1" title="Introdução" />
+              <TocLine num="1.1" title="Ergonomia" indent />
+              <TocLine num="1.2" title="Análise Global da Empresa" indent />
+              <TocLine num="1.3" title="Objetivo" indent />
+              <TocLine num="1.4" title="Metodologia" indent />
+              <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" />
+              {project.functions.map((func, idx) => (
+                <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent />
+              ))}
+              <TocLine num="3" title="Responsabilidade Técnica" />
+              <TocLine num="4" title="Anexos" />
+            </div>
+          </section>
 
-        {/* ═══════════════════════════════════════════════════════════════
-            1. INTRODUÇÃO
+          {/* ═══════════════════════════════════════════════════════════════
+            CONTEÚDO (Tabela para Cabeçalho e Rodapé Repetidos)
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="pdf-page px-12 py-14 print:break-after-page">
-          <h2>1. Introdução</h2>
+          <table className="w-full">
+            <thead>
+              <tr>
+                <td>
+                  <div className="flex justify-end mb-4 px-12">
+                    {project.companyLogoDataUrl ? (
+                      <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-12 object-contain" />
+                    ) : (
+                      <span className="text-xs text-gray-400 font-medium tracking-wide">Logo Cliente</span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            </thead>
+            <tfoot>
+              <tr>
+                <td>
+                  <div className="flex justify-between items-center mt-4 px-12">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold"></span>
+                    <span className="text-[10px] text-gray-500">
+                      {/* O Chrome Print não numera via CSS nativamente, sugerimos as opções do Chrome para n° de pág */}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+            <tbody>
+              <tr>
+                <td className="p-0">
 
-          <h3>1.1 Ergonomia</h3>
-          <p className="field-value">{introErgonomia}</p>
+                  {/* ═══════════════════════════════════════════════════════════════
+                      1. INTRODUÇÃO
+                  ═══════════════════════════════════════════════════════════════ */}
+                  <section className="pdf-page px-12 py-8 print:break-after-page">
+                    <h2>1. Introdução</h2>
 
-          <h3>1.2 Análise Global da Empresa</h3>
-          <div className="grid grid-cols-2 gap-x-8 mt-2">
-            <Field label="Razão Social" value={project.companyName} />
-            <Field label="Nome Fantasia" value={project.fantasyName} />
-            <Field label="CNPJ" value={project.cnpj} />
-            <Field label="Grau de Risco" value={project.riskDegree} />
-            <Field label="Endereço" value={project.address} />
-            <Field label="Unidade" value={project.unit} />
-            <Field label="Produto / Atividade" value={project.product} />
-            <Field label="Local de Produção" value={project.location} />
-          </div>
+                    <h3>1.1 Ergonomia</h3>
+                    <p className="field-value">{introErgonomia}</p>
 
-          <h3>1.3 Objetivo</h3>
-          <p className="field-value">{introObjetivo}</p>
+                    <h3>1.2 Análise Global da Empresa</h3>
+                    <div className="grid grid-cols-2 gap-x-8 mt-2">
+                      <Field label="Razão Social" value={project.companyName} />
+                      <Field label="Nome Fantasia" value={project.fantasyName} />
+                      <Field label="CNPJ" value={project.cnpj} />
+                      <Field label="Grau de Risco" value={project.riskDegree} />
+                      <Field label="Endereço" value={project.address} />
+                      <Field label="Unidade" value={project.unit} />
+                      <Field label="Produto / Atividade" value={project.product} />
+                      <Field label="Local de Produção" value={project.location} />
+                    </div>
 
-          <h3>1.4 Metodologia</h3>
-          <p className="field-value">{introMetodologia}</p>
-        </section>
+                    <h3>1.3 Objetivo</h3>
+                    <p className="field-value">{introObjetivo}</p>
 
-        {/* ═══════════════════════════════════════════════════════════════
+                    <h3>1.4 Metodologia</h3>
+                    <p className="field-value">{introMetodologia}</p>
+                  </section>
+
+                  {/* ═══════════════════════════════════════════════════════════════
             SEÇÕES DE FUNÇÃO
         ═══════════════════════════════════════════════════════════════ */}
-        {project.functions.map((func, fIdx) => (
-          <FunctionSection
-            key={func.id}
-            func={func}
-            index={fIdx}
-            sectionNum={`2.${fIdx + 1}`}
-            riskColor={riskColor}
-          />
-        ))}
+                  {project.functions.map((func, fIdx) => (
+                    <FunctionSection
+                      key={func.id}
+                      func={func}
+                      index={fIdx}
+                      sectionNum={`2.${fIdx + 1}`}
+                      riskColor={riskColor}
+                    />
+                  ))}
 
-        {/* ═══════════════════════════════════════════════════════════════
+                  {/* ═══════════════════════════════════════════════════════════════
             RESPONSABILIDADE TÉCNICA
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="pdf-page px-12 py-14 print:break-before-page">
-          <h2>3. Responsabilidade Técnica</h2>
-          <div className="mt-6 border rounded-lg p-8 bg-gray-50 max-w-md">
-            <Field label="Nome" value={project.evaluatorName} />
-            <Field label="Formação" value={project.evaluatorFormation} />
-            <Field label="Registro Profissional" value={project.evaluatorCrefito} />
-            <Field label="Empresa" value={project.evaluatorCompany} />
-            <Field label="Data" value={project.date ? new Date(project.date + 'T12:00:00').toLocaleDateString('pt-BR') : ''} />
-            {project.evaluatorSignatureDataUrl && (
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <p className="field-label">Assinatura</p>
-                <img src={project.evaluatorSignatureDataUrl} alt="Assinatura" className="max-h-20 mt-2 object-contain" />
-              </div>
-            )}
-          </div>
-        </section>
+                  <section className="pdf-page px-12 py-14 print:break-before-page">
+                    <h2>3. Responsabilidade Técnica</h2>
 
-        {/* ═══════════════════════════════════════════════════════════════
+                    <div className="mt-16 flex flex-col items-center justify-center space-y-24">
+
+                      {/* Primeira Assinatura */}
+                      <div className="flex flex-col items-center w-full max-w-sm text-center">
+                        <div className="h-24 mb-2" />
+                        <div className="w-full border-t border-black mb-3" />
+                        <p className="font-medium text-gray-900 mb-1">Responsável técnico pela avaliação</p>
+                        <p className="text-gray-800 mb-1">Ana Paula Lopes Guimarães</p>
+                        <p className="text-gray-800 mb-1">Fisioterapeuta e ergonomista</p>
+                        <p className="text-gray-800">CREFITO 4 -184809F</p>
+                      </div>
+
+                      {/* Segunda Assinatura (Luís Henrique) */}
+                      <div className="flex flex-col items-center w-full max-w-sm text-center">
+
+                        <div className="w-full border-t border-black mb-3" />
+                        <p className="font-medium text-gray-900 mb-1">Responsável técnico</p>
+                        <p className="text-gray-800 mb-1">Luís Henrique Rocha Santos</p>
+                        <p className="text-gray-800 mb-1">Fisioterapeuta e ergonomista sênior</p>
+                        <p className="text-gray-800 mb-1">Certificado ABERGO</p>
+                        <p className="text-gray-800">CREFITO 162685F</p>
+                      </div>
+
+                    </div>
+                  </section>
+
+                  {/* ═══════════════════════════════════════════════════════════════
             ANEXOS
         ═══════════════════════════════════════════════════════════════ */}
-        {project.functions.some((f) => f.images?.length > 0) && (
-          <section className="pdf-page px-12 py-14 print:break-before-page">
-            <h2>4. Anexos – Registros Fotográficos</h2>
-            {project.functions.map((func) => {
-              if (!func.images?.length) return null;
-              return (
-                <div key={func.id} className="mt-6">
-                  <h3>{func.name}</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {func.images.map((img) => (
-                      <div key={img.id} className="text-center">
-                        <img src={img.dataUrl} alt={img.caption} className="w-full h-auto rounded border border-gray-200" />
-                        {img.caption && <p className="text-xs text-gray-500 mt-1">{img.caption}</p>}
-                        <p className="text-xs text-gray-400 italic">{img.category}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-        )}
+                  {project.functions.some((f) => f.images?.length > 0) && (
+                    <section className="pdf-page px-12 py-14 print:break-before-page">
+                      <h2>4. Anexos – Registros Fotográficos</h2>
+                      {project.functions.map((func) => {
+                        if (!func.images?.length) return null;
+                        return (
+                          <div key={func.id} className="mt-6">
+                            <h3>{func.name}</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              {func.images.map((img) => (
+                                <div key={img.id} className="text-center">
+                                  <img src={img.dataUrl} alt={img.caption} className="w-full h-auto rounded border border-gray-200" />
+                                  {img.caption && <p className="text-xs text-gray-500 mt-1">{img.caption}</p>}
+                                  <p className="text-xs text-gray-400 italic">{img.category}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </section>
+                  )}
+
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -240,7 +290,7 @@ export const PDFPreview = () => {
           .pdf-page { page-break-inside: avoid; }
         }
         .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1f2937; line-height: 1.6; }
-        .pdf-preview h2 { font-size: 1.25rem; font-weight: 700; color: #0d9488; border-bottom: 2px solid #e5e7eb; padding-bottom: .5rem; margin-bottom: 1.5rem; padding-top: 2rem; margin-top: 0; }
+        .pdf-preview h2 { font-size: 1.25rem; font-weight: 700; color: #0d9488; border-bottom: 2px solid #e5e7eb; padding-bottom: .5rem; margin-bottom: 1.5rem; margin-top: 1.5rem; }
         .pdf-preview h3 { font-size: 1rem; font-weight: 600; color: #374151; padding-top: 1.5rem; margin-top: 0; margin-bottom: .35rem; }
         .pdf-preview h4 { font-size: .9rem; font-weight: 600; color: #6b7280; padding-top: 1rem; margin-top: 0; margin-bottom: .25rem; text-transform: uppercase; letter-spacing: .03em; }
         .pdf-preview .field { margin-bottom: .6rem; }
@@ -268,24 +318,59 @@ const Field = ({ label, value }: { label: string; value: string | number | undef
   );
 };
 
-const TocLine = ({ num, title, indent }: { num: string; title: string; indent?: boolean; [key: string]: any }) => (
+const TocLine = ({ num, title, indent }: { num: string; title: string; indent?: boolean;[key: string]: any }) => (
   <div className={`toc-line text-sm ${indent ? 'pl-6 text-gray-500' : 'font-medium text-gray-700'}`}>
     <span className="shrink-0">{num}. {title}</span>
     <span className="toc-dots" />
   </div>
 );
 
-const PostureBar = ({ label, pct, color }: { label: string; pct: number; color: string }) => (
-  <div className="flex-1">
-    <div className="flex justify-between text-xs mb-1">
-      <span className="font-medium text-gray-600">{label}</span>
-      <span className="font-semibold" style={{ color }}>{pct}%</span>
+const PieChart = ({ data }: { data: { label: string; pct: number; color: string }[] }) => {
+  let currentAngle = 0;
+  const filteredData = data.filter(d => d.pct > 0);
+
+  if (filteredData.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-10">
+      <svg viewBox="-1 -1 2 2" className="w-40 h-40 transform -rotate-90">
+        {filteredData.map((d, i) => {
+          if (d.pct === 100) {
+            return <circle key={i} r="1" cx="0" cy="0" fill={d.color} />;
+          }
+          const startAngle = currentAngle;
+          const angle = (d.pct / 100) * Math.PI * 2;
+          currentAngle += angle;
+
+          const x1 = Math.cos(startAngle);
+          const y1 = Math.sin(startAngle);
+          const x2 = Math.cos(currentAngle);
+          const y2 = Math.sin(currentAngle);
+
+          const largeArcFlag = d.pct > 50 ? 1 : 0;
+
+          const pathData = [
+            `M 0 0`,
+            `L ${x1} ${y1}`,
+            `A 1 1 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+            `Z`
+          ].join(' ');
+
+          return <path key={i} d={pathData} fill={d.color} />;
+        })}
+      </svg>
+      <div className="flex flex-col gap-3">
+        {filteredData.map((d, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: d.color }} />
+            <span className="text-sm font-medium text-gray-700">{d.label}</span>
+            <span className="text-sm font-bold text-gray-900">{d.pct}%</span>
+          </div>
+        ))}
+      </div>
     </div>
-    <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
-      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-    </div>
-  </div>
-);
+  );
+};
 
 // ── Function Section ─────────────────────────────────────────────────────────
 
@@ -555,12 +640,14 @@ const FunctionSection: React.FC<FunctionSectionProps> = ({ func, sectionNum, ris
     {(func.postureSittingPct > 0 || func.postureStandingPct > 0 || func.postureWalkingPct > 0) && (
       <>
         <h3>4.19 Predominância Postural</h3>
-        <div className="flex gap-4 my-3 flex-wrap">
-          {func.postureSittingPct > 0 && <PostureBar label="Sentado" pct={func.postureSittingPct} color="#0d9488" />}
-          {func.postureStandingPct > 0 && <PostureBar label="Em pé" pct={func.postureStandingPct} color="#f59e0b" />}
-          {func.postureWalkingPct > 0 && <PostureBar label="Andando" pct={func.postureWalkingPct} color="#6366f1" />}
-          {func.postureCrouchingPct > 0 && <PostureBar label="Agachado" pct={func.postureCrouchingPct} color="#ec4899" />}
-          {func.postureOtherPct > 0 && <PostureBar label={func.postureOtherDescription || 'Outro'} pct={func.postureOtherPct} color="#64748b" />}
+        <div className="my-6">
+          <PieChart data={[
+            { label: 'Sentado', pct: func.postureSittingPct || 0, color: '#0d9488' },
+            { label: 'Em pé', pct: func.postureStandingPct || 0, color: '#f59e0b' },
+            { label: 'Andando', pct: func.postureWalkingPct || 0, color: '#6366f1' },
+            { label: 'Agachado', pct: func.postureCrouchingPct || 0, color: '#ec4899' },
+            { label: func.postureOtherDescription || 'Outro', pct: func.postureOtherPct || 0, color: '#64748b' }
+          ]} />
         </div>
       </>
     )}

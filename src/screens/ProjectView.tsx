@@ -11,13 +11,13 @@ export const ProjectView = () => {
   const { getProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON } = useAET();
   const project = getProject(id!);
 
+  const [isPrinting, setIsPrinting] = useState(false);
+
   if (!project) return (
     <div className="flex items-center justify-center h-full">
       <p className="text-slate-400 text-lg">Projeto não encontrado</p>
     </div>
   );
-
-  const [isPrinting, setIsPrinting] = useState(false);
 
   const handleAddFunction = async () => {
     const newFuncId = await addFunction(project.id, { name: 'Nova Função' });
