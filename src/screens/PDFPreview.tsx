@@ -51,26 +51,27 @@ export const PDFPreview = () => {
   return (
     <>
       {/* ── Toolbar ── */}
-      <div className="print:hidden sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+      <div className="print:hidden sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
         <button
           onClick={() => navigate(`/project/${project.id}`)}
-          className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors self-start sm:self-auto"
         >
-          <ArrowLeft className="w-4 h-4" /> Voltar ao Projeto
+          <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">Voltar ao Projeto</span><span className="sm:hidden">Voltar</span>
         </button>
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full sm:w-auto justify-end">
 
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors w-full sm:w-auto justify-center"
           >
-            <Printer className="w-4 h-4" /> Imprimir / PDF
+            <Printer className="w-4 h-4" /> <span className="hidden sm:inline">Imprimir / PDF</span><span className="sm:hidden">Imprimir</span>
           </button>
         </div>
       </div>
 
       {/* ── Document ── */}
-      <div ref={previewRef} className="pdf-preview bg-white max-w-[210mm] mx-auto my-8 print:my-0 print:max-w-none shadow-lg print:shadow-none">
+      <div className="w-full overflow-x-auto print:overflow-visible bg-gray-100 print:bg-transparent">
+        <div ref={previewRef} className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none shadow-lg print:shadow-none">
 
         {/* ═══════════════════════════════════════════════════════════════
             CAPA
@@ -225,6 +226,7 @@ export const PDFPreview = () => {
             })}
           </section>
         )}
+        </div>
       </div>
 
       {/* ── Print styles ── */}

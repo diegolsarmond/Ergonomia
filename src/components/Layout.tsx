@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   FileText, Home, BookOpen, ChevronDown, ChevronRight, Settings,
   List, FlaskConical, Building2, MapPin, Layers, Briefcase,
-  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle,
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X
 } from 'lucide-react';
 
 const PARAM_GROUPS = [
@@ -40,11 +40,41 @@ export const Layout = () => {
   const location = useLocation();
   const isParametros = location.pathname.startsWith('/parameters');
   const [parametrosOpen, setParametrosOpen] = useState(isParametros);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile menu on route change
+  React.useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   return (
-    <div className="flex h-screen bg-[var(--color-surface)] print:block print:h-auto print:bg-white">
+    <div className="flex flex-col md:flex-row h-screen bg-[var(--color-surface)] print:block print:h-auto print:bg-white overflow-hidden">
+      
+      {/* ── Mobile Header ──────────────────────────────────────────────── */}
+      <div className="md:hidden flex items-center justify-between px-5 py-4 bg-slate-900 text-white shadow-md z-40 print:hidden shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+            <FileText className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-[14px] font-bold text-white tracking-tight">AET System</h1>
+          </div>
+        </div>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1 rounded-md hover:bg-slate-800 transition-colors">
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </div>
+
+      {/* ── Mobile Overlay ─────────────────────────────────────────────── */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <aside className="sidebar w-[260px] flex flex-col print:hidden shrink-0 shadow-xl">
+      <aside className={`sidebar fixed md:relative z-50 w-[260px] h-full flex flex-col print:hidden shrink-0 shadow-xl transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         {/* Brand */}
         <div className="px-6 py-5 border-b border-white/5">
           <div className="flex items-center gap-3">

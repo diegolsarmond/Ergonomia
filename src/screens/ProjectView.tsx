@@ -57,28 +57,28 @@ export const ProjectView = () => {
 
       {/* ── Page Header ────────────────────────────────────────────── */}
       <div className="page-header mb-8">
-        <div className="flex justify-between items-start relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center relative z-10 gap-4">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold shrink-0">
               {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight mb-0.5">{project.companyName}</h1>
-              {project.fantasyName && <p className="text-teal-200 text-sm font-medium">{project.fantasyName}</p>}
-              <p className="text-teal-300/70 text-xs mt-1">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5 truncate">{project.companyName}</h1>
+              {project.fantasyName && <p className="text-teal-200 text-sm font-medium truncate">{project.fantasyName}</p>}
+              <p className="text-teal-300/70 text-xs mt-1 truncate">
                 AET — {project.unit || project.location} — {project.date ? new Date(project.date).toLocaleDateString('pt-BR') : ''}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportJSON} className="hidden !bg-white/10 !border-white/20 !text-white hover:!bg-white/20" size="sm">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={handleExportJSON} className="hidden !bg-white/10 !border-white/20 !text-white hover:!bg-white/20 flex-1 sm:flex-none" size="sm">
               <Download className="w-4 h-4" />Exportar
             </Button>
-            <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50" size="sm" disabled={isPrinting}>
-              <Printer className="w-4 h-4" />{isPrinting ? 'Preparando...' : 'Imprimir / PDF'}
+            <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50 flex-1 sm:flex-none" size="sm" disabled={isPrinting}>
+              <Printer className="w-4 h-4" />{isPrinting ? 'Preparando...' : 'Imprimir'}
             </Button>
-            <Button onClick={handleAddFunction} size="sm">
-              <Plus className="w-4 h-4" />Adicionar Função
+            <Button onClick={handleAddFunction} size="sm" className="flex-1 sm:flex-none">
+              <Plus className="w-4 h-4" />Função
             </Button>
           </div>
         </div>
