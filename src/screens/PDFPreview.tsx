@@ -96,6 +96,23 @@ export const PDFPreview = () => {
           )}
         </section>
 
+        {/* Sumário */}
+        {project.functions.length > 0 && (
+          <section className="pdf-page px-12 py-16 print:break-after-page">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b-2 border-teal-600 pb-2">Sumário</h2>
+            <div className="space-y-3">
+              {project.functions.map((func, idx) => (
+                <div key={func.id} className="flex justify-between items-end text-lg">
+                  <span className="font-medium text-gray-700">
+                    {String(idx + 1).padStart(2, '0')}. {func.name || 'Função sem nome'}
+                  </span>
+                  <span className="flex-1 mx-4 border-b-2 border-dotted border-gray-300 relative -top-1"></span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Functions */}
         {project.functions.map((func, fIdx) => (
           <FunctionSection key={func.id} func={func} index={fIdx} riskColor={riskColor} />

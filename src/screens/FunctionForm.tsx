@@ -15,12 +15,13 @@ const TABS = [
   'Processo & Logística',
   'Equip. & Modo Operatório',
   'Diagnóstico',
-  'Melhorias / Inventário'
+  'Melhorias / Inventário',
+  'Checklist'
 ];
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, updateFunction } = useAET();
+  const { getProject, updateFunction, checklistQuestions } = useAET();
   const navigate = useNavigate();
   
   const project = getProject(id!);
@@ -312,6 +313,46 @@ export const FunctionForm = () => {
               >
                 + Adicionar Melhoria
               </Button>
+            </div>
+          )}
+
+          {activeTab === 8 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2 mb-4">Checklist de Verificação</h3>
+              {checklistQuestions.filter(q => q.functionIds?.includes(funcId!)).length === 0 ? (
+                <p className="text-gray-500 text-sm">Nenhuma pergunta vinculada a esta função.</p>
+              ) : (
+                <div className="space-y-4">
+                  {checklistQuestions.filter(q => q.functionIds?.includes(funcId!)).map(q => {
+                    const answerObj = formData.checklistAnswers?.find(a => a.questionId === q.id) || { questionId: q.id, answer: '' };
+                    return (
+                      <div key={q.id} className="p-4 border rounded-lg bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <span className="font-medium flex-1">{q.text}</span>
+                        <div className="flex gap-2">
+                          {['sim', 'nao', 'nao_se_aplica'].map(val => (
+                            <label key={val} className={`cursor-pointer px-3 py-1 border rounded-full text-sm transition-colors ${answerObj.answer === val ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
+                              <input 
+                                type="radio" 
+                                name={`chk_${q.id}`} 
+                                className="hidden" 
+                                checked={answerObj.answer === val}
+                                onChange={() => {
+                                  let newAnswers = formData.checklistAnswers ? [...formData.checklistAnswers] : [];
+                                  const idx = newAnswers.findIndex(a => a.questionId === q.id);
+                                  if (idx >= 0) newAnswers[idx].answer = val as any;
+                                  else newAnswers.push({ questionId: q.id, answer: val as any });
+                                  handleChange('checklistAnswers', newAnswers);
+                                }}
+                              />
+                              {val === 'sim' ? 'Sim' : val === 'nao' ? 'Não' : 'Não se aplica'}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </CardContent>

@@ -1,3 +1,9 @@
+export interface ChecklistQuestion {
+  id: string;
+  text: string;
+  functionIds: string[];
+}
+
 export interface AETImage {
   id: string;
   dataUrl: string;
@@ -126,6 +132,8 @@ export interface AETFunction {
   diagnosis: string;
   riskLevel: string;
   improvements: AETImprovement[];
+  checklistAnswers: { questionId: string; answer: 'sim' | 'nao' | 'nao_se_aplica' | '' }[];
+  rulaScore?: string;
 }
 
 export interface AETProject {
@@ -161,5 +169,5 @@ export const EMPTY_FUNCTION: AETFunction = {
   equipments: '', equipPrinciple: '', equipProblems: '',
   cyclePrescribed: '', cycleReal: '', postureSittingPct: 50, postureStandingPct: 50, postureOtherPct: 0, postureOtherDescription: '',
   illumination: { ...EMPTY_ILLUMINATION },
-  scientificMethods: [], images: [], diagnosis: '', riskLevel: '', improvements: []
+  scientificMethods: [], images: [], diagnosis: '', riskLevel: '', improvements: [], checklistAnswers: [], rulaScore: ''
 };

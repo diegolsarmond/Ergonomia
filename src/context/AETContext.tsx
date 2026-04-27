@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import localforage from 'localforage';
 import { v4 as uuidv4 } from 'uuid';
-import { AETProject, AETFunction, EMPTY_FUNCTION } from '../types';
+import { AETProject, AETFunction, EMPTY_FUNCTION, ChecklistQuestion } from '../types';
 import { createMockProject } from '../utils/mockData';
 
 interface AETContextType {
@@ -17,12 +17,17 @@ interface AETContextType {
   duplicateFunction: (projectId: string, functionId: string) => Promise<string>;
   exportProjectJSON: (projectId: string) => string | null;
   importProjectJSON: (json: string) => Promise<string | null>;
+  checklistQuestions: ChecklistQuestion[];
+  addChecklistQuestion: (question: Omit<ChecklistQuestion, 'id'>) => Promise<void>;
+  updateChecklistQuestion: (id: string, question: Partial<ChecklistQuestion>) => Promise<void>;
+  deleteChecklistQuestion: (id: string) => Promise<void>;
 }
 
 const AETContext = createContext<AETContextType | undefined>(undefined);
 
 export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<AETProject[]>([]);
+  const [checklistQuestions, setChecklistQuestions] = useState<ChecklistQuestion[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +38,14 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await localforage.setItem('aet_projects', stored);
       }
       setProjects(stored);
+
+      let storedQuestions = await localforage.getItem<ChecklistQuestion[]>('aet_checklist_questions');
+      if (!storedQuestions) {
+        storedQuestions = [];
+        await localforage.setItem('aet_checklist_questions', storedQuestions);
+      }
+      setChecklistQuestions(storedQuestions);
+
       setLoading(false);
     };
     loadData();
@@ -126,11 +139,31 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const addChecklistQuestion = async (questionData: Omit<ChecklistQuestion, 'id'>) => {
+    const newQuestion: ChecklistQuestion = { ...questionData, id: uuidv4() };
+    const newQuestions = [...checklistQuestions, newQuestion];
+    await localforage.setItem('aet_checklist_questions', newQuestions);
+    setChecklistQuestions(newQuestions);
+  };
+
+  const updateChecklistQuestion = async (id: string, questionData: Partial<ChecklistQuestion>) => {
+    const newQuestions = checklistQuestions.map(q => q.id === id ? { ...q, ...questionData } : q);
+    await localforage.setItem('aet_checklist_questions', newQuestions);
+    setChecklistQuestions(newQuestions);
+  };
+
+  const deleteChecklistQuestion = async (id: string) => {
+    const newQuestions = checklistQuestions.filter(q => q.id !== id);
+    await localforage.setItem('aet_checklist_questions', newQuestions);
+    setChecklistQuestions(newQuestions);
+  };
+
   return (
     <AETContext.Provider value={{
       projects, loading, addProject, updateProject, deleteProject, getProject,
       addFunction, updateFunction, deleteFunction, duplicateFunction,
-      exportProjectJSON, importProjectJSON
+      exportProjectJSON, importProjectJSON,
+      checklistQuestions, addChecklistQuestion, updateChecklistQuestion, deleteChecklistQuestion
     }}>
       {children}
     </AETContext.Provider>

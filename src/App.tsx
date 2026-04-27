@@ -12,6 +12,7 @@ import { ProjectView } from './screens/ProjectView';
 import { FunctionForm } from './screens/FunctionForm';
 import { PDFPreview } from './screens/PDFPreview';
 import { Clients } from './screens/Clients';
+import { ChecklistParameters } from './screens/ChecklistParameters';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="project/:id" element={<ProjectView />} />
             <Route path="project/:id/function/:funcId" element={<FunctionForm />} />
             <Route path="clients" element={<Clients />} />
+            <Route path="parameters/checklist" element={<ChecklistParameters />} />
           </Route>
           <Route path="/project/:id/preview" element={<PDFPreview />} />
         </Routes>

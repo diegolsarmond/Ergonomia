@@ -5,6 +5,7 @@ import { FileText, Home, BookOpen } from 'lucide-react';
 const NAV_ITEMS = [
   { to: '/', icon: Home, label: 'Projetos' },
   { to: '/clients', icon: BookOpen, label: 'Clientes' },
+  { to: '/parameters/checklist', icon: FileText, label: 'Parâmetros (Checklist)' },
 ];
 
 export const Layout = () => {
