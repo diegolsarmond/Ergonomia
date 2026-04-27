@@ -63,7 +63,6 @@ export const Layout = () => {
           <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Menu</p>
           <div className="space-y-0.5">
             <NavLink to="/" icon={Home} label="Projetos" active={location.pathname === '/'} />
-            <NavLink to="/clients" icon={BookOpen} label="Clientes" active={location.pathname === '/clients'} />
           </div>
 
           {/* Parâmetros com submenu agrupado */}

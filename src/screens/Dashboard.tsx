@@ -64,10 +64,7 @@ export const Dashboard = () => {
             <p className="text-teal-200 text-sm mt-1">Análise Ergonômica do Trabalho</p>
           </div>
           <div className="flex gap-3">
-            <input ref={importRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
-            <Button variant="outline" onClick={() => importRef.current?.click()} className="hidden !bg-white/10 !border-white/20 !text-white hover:!bg-white/20">
-              <Upload className="w-4 h-4" />Importar JSON
-            </Button>
+
             <Button onClick={() => setIsModalOpen(true)} className="!bg-teal-600 !text-white hover:!bg-teal-700 !shadow-lg !shadow-teal-900/20">
               <Plus className="w-5 h-5" />Novo Projeto
             </Button>

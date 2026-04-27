@@ -75,7 +75,7 @@ export const PDFPreview = () => {
         {/* ═══════════════════════════════════════════════════════════════
             CAPA
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="pdf-page flex flex-col items-center justify-between text-center px-16 py-20 print:break-after-page min-h-[297mm]">
+        <section className="pdf-page flex flex-col items-center justify-between text-center px-16 py-12 print:break-after-page min-h-[250mm] print:min-h-[240mm]">
           {/* Logos topo */}
           <div className="flex justify-between items-start w-full mb-8">
             {project.consultoriaLogoDataUrl
@@ -229,14 +229,18 @@ export const PDFPreview = () => {
 
       {/* ── Print styles ── */}
       <style>{`
+        @page {
+          size: A4;
+          margin: 20mm 15mm 25mm 15mm;
+        }
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .pdf-page { page-break-inside: avoid; }
         }
         .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1f2937; line-height: 1.6; }
-        .pdf-preview h2 { font-size: 1.25rem; font-weight: 700; color: #0d9488; border-bottom: 2px solid #e5e7eb; padding-bottom: .25rem; margin-bottom: .75rem; margin-top: 1.25rem; }
-        .pdf-preview h3 { font-size: 1rem; font-weight: 600; color: #374151; margin-top: 1rem; margin-bottom: .35rem; }
-        .pdf-preview h4 { font-size: .9rem; font-weight: 600; color: #6b7280; margin-top: .75rem; margin-bottom: .25rem; text-transform: uppercase; letter-spacing: .03em; }
+        .pdf-preview h2 { font-size: 1.25rem; font-weight: 700; color: #0d9488; border-bottom: 2px solid #e5e7eb; padding-bottom: .5rem; margin-bottom: 1.5rem; padding-top: 2rem; margin-top: 0; }
+        .pdf-preview h3 { font-size: 1rem; font-weight: 600; color: #374151; padding-top: 1.5rem; margin-top: 0; margin-bottom: .35rem; }
+        .pdf-preview h4 { font-size: .9rem; font-weight: 600; color: #6b7280; padding-top: 1rem; margin-top: 0; margin-bottom: .25rem; text-transform: uppercase; letter-spacing: .03em; }
         .pdf-preview .field { margin-bottom: .6rem; }
         .pdf-preview .field-label { font-weight: 600; font-size: .75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; }
         .pdf-preview .field-value { font-size: .9rem; color: #374151; white-space: pre-wrap; }

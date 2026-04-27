@@ -8,6 +8,11 @@ import {
 } from '../types';
 import { createMockProject } from '../utils/mockData';
 import { Client, MOCK_CLIENTS } from '../data/mockClients';
+import {
+  MOCK_COMPANIES, MOCK_UNITS, MOCK_SECTORS, MOCK_JOB_ROLES, MOCK_EPIS,
+  MOCK_EQUIPMENT, MOCK_SURVEY_QUESTIONS, MOCK_PAUSES, MOCK_RISK_CLASSIFICATIONS,
+  MOCK_REPORT_TEXTS, MOCK_CHECKLIST_QUESTIONS, MOCK_SCIENTIFIC_METHODS
+} from '../data/mockParameters';
 
 interface AETContextType {
   projects: AETProject[];
@@ -129,11 +134,17 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setClients(storedClients);
 
       let storedQuestions = await localforage.getItem<ChecklistQuestion[]>('aet_checklist_questions');
-      if (!storedQuestions) storedQuestions = [];
+      if (!storedQuestions || storedQuestions.length === 0) {
+        storedQuestions = MOCK_CHECKLIST_QUESTIONS;
+        await localforage.setItem('aet_checklist_questions', storedQuestions);
+      }
       setChecklistQuestions(storedQuestions);
 
       let storedMethodTemplates = await localforage.getItem<ScientificMethodTemplate[]>('aet_scientific_method_templates');
-      if (!storedMethodTemplates) storedMethodTemplates = [];
+      if (!storedMethodTemplates || storedMethodTemplates.length === 0) {
+        storedMethodTemplates = MOCK_SCIENTIFIC_METHODS;
+        await localforage.setItem('aet_scientific_method_templates', storedMethodTemplates);
+      }
       let migrated = false;
       storedMethodTemplates = storedMethodTemplates.map((t: any) => {
         if (typeof t.imageDataUrl === 'string' && !t.imageDataUrls) {
@@ -147,20 +158,27 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (migrated) await localforage.setItem('aet_scientific_method_templates', storedMethodTemplates);
       setScientificMethodTemplates(storedMethodTemplates);
 
-      const loadSimple = async <T,>(key: string, setter: React.Dispatch<React.SetStateAction<T[]>>) => {
+      const loadSimple = async <T,>(key: string, setter: React.Dispatch<React.SetStateAction<T[]>>, mockData: T[] = []) => {
         const data = await localforage.getItem<T[]>(key);
+        if (!data || data.length === 0) {
+          if (mockData.length > 0) {
+            await localforage.setItem(key, mockData);
+            setter(mockData);
+            return;
+          }
+        }
         setter(data ?? []);
       };
-      await loadSimple<Company>('aet_companies', setCompanies);
-      await loadSimple<Unit>('aet_units', setUnits);
-      await loadSimple<Sector>('aet_sectors', setSectors);
-      await loadSimple<StandardJobRole>('aet_job_roles', setJobRoles);
-      await loadSimple<EPI>('aet_epis', setEPIs);
-      await loadSimple<StandardEquipment>('aet_equipment', setEquipment);
-      await loadSimple<SurveyQuestion>('aet_survey_questions', setSurveyQuestions);
-      await loadSimple<StandardPause>('aet_pauses', setPauses);
-      await loadSimple<RiskClassification>('aet_risk_classifications', setRiskClassifications);
-      await loadSimple<ReportTextTemplate>('aet_report_texts', setReportTexts);
+      await loadSimple<Company>('aet_companies', setCompanies, MOCK_COMPANIES);
+      await loadSimple<Unit>('aet_units', setUnits, MOCK_UNITS);
+      await loadSimple<Sector>('aet_sectors', setSectors, MOCK_SECTORS);
+      await loadSimple<StandardJobRole>('aet_job_roles', setJobRoles, MOCK_JOB_ROLES);
+      await loadSimple<EPI>('aet_epis', setEPIs, MOCK_EPIS);
+      await loadSimple<StandardEquipment>('aet_equipment', setEquipment, MOCK_EQUIPMENT);
+      await loadSimple<SurveyQuestion>('aet_survey_questions', setSurveyQuestions, MOCK_SURVEY_QUESTIONS);
+      await loadSimple<StandardPause>('aet_pauses', setPauses, MOCK_PAUSES);
+      await loadSimple<RiskClassification>('aet_risk_classifications', setRiskClassifications, MOCK_RISK_CLASSIFICATIONS);
+      await loadSimple<ReportTextTemplate>('aet_report_texts', setReportTexts, MOCK_REPORT_TEXTS);
 
       setLoading(false);
     };
