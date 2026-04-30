@@ -204,7 +204,15 @@ export const Companies = () => {
     setForm(f => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
-    if (!form.razaoSocial.trim()) return;
+    const missing: string[] = [];
+    if (!form.cnpj.trim()) missing.push('CNPJ');
+    if (!form.razaoSocial.trim()) missing.push('Razão Social');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateCompany(editingId, form);
     else await addCompany(form);
     closeModal();

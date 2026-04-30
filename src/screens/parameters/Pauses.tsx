@@ -21,7 +21,13 @@ export const Pauses = () => {
     setForm(f => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome da Pausa');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
     if (editingId) await updatePause(editingId, form);
     else await addPause(form);
     setEditingId(null);

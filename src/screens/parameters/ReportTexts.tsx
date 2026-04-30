@@ -24,7 +24,14 @@ export const ReportTexts = () => {
     setForm(f => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.text.trim()) return;
+    const missing: string[] = [];
+    if (!form.title.trim()) missing.push('Título');
+    if (!form.text.trim()) missing.push('Texto Padrão');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
     if (editingId) await updateReportText(editingId, form);
     else await addReportText(form);
     setEditingId(null);

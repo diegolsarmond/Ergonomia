@@ -29,7 +29,13 @@ export const SurveyQuestions = () => {
     setForm(f => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
-    if (!form.question.trim()) return;
+    const missing: string[] = [];
+    if (!form.question.trim()) missing.push('Pergunta');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
     const order = form.order || surveyQuestions.length + 1;
     if (editingId) await updateSurveyQuestion(editingId, { ...form, order });
     else await addSurveyQuestion({ ...form, order });

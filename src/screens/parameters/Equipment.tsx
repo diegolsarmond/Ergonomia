@@ -28,7 +28,13 @@ export const Equipment = () => {
     }));
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
     if (editingId) await updateEquipment(editingId, form);
     else await addEquipment(form);
     setEditingId(null);

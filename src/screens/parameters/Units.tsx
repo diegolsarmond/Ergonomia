@@ -23,7 +23,15 @@ export const Units = () => {
     setForm(f => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.companyId) missing.push('Empresa');
+    if (!form.name.trim()) missing.push('Nome da Unidade');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateUnit(editingId, form);
     else await addUnit(form);
     setEditingId(null);

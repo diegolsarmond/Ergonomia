@@ -21,7 +21,14 @@ export const Sectors = () => {
   const filteredUnits = units.filter(u => !form.companyId || u.companyId === form.companyId);
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome do Setor');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateSector(editingId, form);
     else await addSector(form);
     setEditingId(null);

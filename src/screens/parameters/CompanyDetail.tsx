@@ -23,7 +23,19 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
   const [editing, setEditing] = useState(false);
   const set = (field: keyof Omit<Company, 'id'>, value: any) => setForm(f => ({ ...f, [field]: value }));
 
-  const handleSave = () => { onSave(form); setEditing(false); };
+  const handleSave = () => { 
+    const missing: string[] = [];
+    if (!form.razaoSocial.trim()) missing.push('Razão Social');
+    if (!form.cnpj.trim()) missing.push('CNPJ');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
+    onSave(form); 
+    setEditing(false); 
+  };
   const handleCancel = () => { setForm({ ...company }); setEditing(false); };
 
   return (
@@ -98,7 +110,7 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
             <FormGroup label="Nome Fantasia">
               <Input value={form.nomeFantasia} onChange={e => set('nomeFantasia', e.target.value)} />
             </FormGroup>
-            <FormGroup label="CNPJ">
+            <FormGroup label="CNPJ" required>
               <Input value={form.cnpj} onChange={e => set('cnpj', e.target.value)} placeholder="00.000.000/0000-00" />
             </FormGroup>
             <FormGroup label="Logradouro">
@@ -300,7 +312,14 @@ const UnitsTab: React.FC<{ companyId: string; company: Company }> = ({ companyId
   const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome da Unidade');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateUnit(editingId, form);
     else await addUnit({ ...form, companyId });
     handleClose();
@@ -442,7 +461,14 @@ const SetoresTab: React.FC<{ companyId: string }> = ({ companyId }) => {
   const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_SECTOR, companyId }); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome do Setor');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateSector(editingId, form);
     else await addSector({ ...form, companyId });
     handleClose();
@@ -642,7 +668,14 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
   const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_ROLE, companyId }); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome da Função');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateJobRole(editingId, form);
     else await addJobRole({ ...form, companyId });
     handleClose();
