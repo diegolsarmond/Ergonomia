@@ -262,18 +262,23 @@ export const Companies = () => {
                   className="border border-slate-200 rounded-xl p-4 flex justify-between items-start hover:border-teal-300 hover:bg-teal-50/30 transition-colors bg-white cursor-pointer"
                   onClick={() => navigate(`/parameters/companies/${c.id}`)}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-800 text-sm">{c.razaoSocial}</p>
-                      {c.active
-                        ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        : <XCircle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
-                    </div>
-                    {c.nomeFantasia && <p className="text-xs text-slate-500 mt-0.5">{c.nomeFantasia}</p>}
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      {c.cnpj && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{c.cnpj}</span>}
-                      {cityLine(c) && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{cityLine(c)}</span>}
-                      {c.riskDegree && <span className="stat-badge !text-[11px] !px-2 !py-0.5">Grau {c.riskDegree}</span>}
+                  <div className="flex gap-4 min-w-0 flex-1">
+                    {c.logoDataUrl && (
+                      <img src={c.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 shrink-0" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-800 text-sm">{c.razaoSocial}</p>
+                        {c.active
+                          ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          : <XCircle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                      </div>
+                      {c.nomeFantasia && <p className="text-xs text-slate-500 mt-0.5">{c.nomeFantasia}</p>}
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {c.cnpj && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{c.cnpj}</span>}
+                        {cityLine(c) && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{cityLine(c)}</span>}
+                        {c.riskDegree && <span className="stat-badge !text-[11px] !px-2 !py-0.5">Grau {c.riskDegree}</span>}
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-1 ml-3 shrink-0" onClick={e => e.stopPropagation()}>

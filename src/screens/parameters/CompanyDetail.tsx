@@ -45,6 +45,7 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
         {!editing ? (
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <DataItem label="Razão Social" value={company.razaoSocial} />
+            <DataItem label="Logo" value={company.logoDataUrl ? <img src={company.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 mt-1" /> : ''} />
             <DataItem label="Nome Fantasia" value={company.nomeFantasia} />
             <DataItem label="CNPJ" value={company.cnpj} />
             <DataItem label="Logradouro" value={[company.logradouro, company.numero].filter(Boolean).join(', ')} />
@@ -55,7 +56,6 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
             <DataItem label="Produto / Atividade" value={company.product} />
             <DataItem label="Grau de Risco" value={company.riskDegree ? `Grau ${company.riskDegree}` : ''} />
             <DataItem label="Status" value={company.active ? 'Ativo' : 'Inativo'} />
-            <DataItem label="Logo" value={company.logoDataUrl ? <img src={company.logoDataUrl} alt="Logo" className="w-16 h-16 object-contain border border-slate-200 rounded-lg bg-slate-50 mt-1" /> : ''} />
           </dl>
         ) : (
           <div className="space-y-1">
