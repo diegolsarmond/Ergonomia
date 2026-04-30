@@ -96,6 +96,40 @@ const CompanyForm: React.FC<{
         {cnpjError && <p className="text-xs text-red-500 mt-1">{cnpjError}</p>}
       </FormGroup>
 
+      <FormGroup label="Logo da Empresa">
+        <div className="flex items-center gap-4">
+          {form.logoDataUrl && (
+            <img src={form.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 shrink-0" />
+          )}
+          <div className="flex-1">
+            <Input 
+              type="file" 
+              accept="image/*"
+              className="!p-1.5 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer text-xs"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    set('logoDataUrl', reader.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+            {form.logoDataUrl && (
+              <button 
+                type="button" 
+                onClick={() => set('logoDataUrl', '')}
+                className="text-xs text-red-500 mt-1.5 hover:underline block"
+              >
+                Remover Logo
+              </button>
+            )}
+          </div>
+        </div>
+      </FormGroup>
+
       <FormGroup label="Razão Social" required>
         <Input value={form.razaoSocial} onChange={e => set('razaoSocial', e.target.value)} placeholder="Razão Social Ltda" />
       </FormGroup>
@@ -144,39 +178,6 @@ const CompanyForm: React.FC<{
           <option value="3">Grau 3</option>
           <option value="4">Grau 4</option>
         </Select>
-      </FormGroup>
-      <FormGroup label="Logo da Empresa">
-        <div className="flex items-center gap-4">
-          {form.logoDataUrl && (
-            <img src={form.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 shrink-0" />
-          )}
-          <div className="flex-1">
-            <Input 
-              type="file" 
-              accept="image/*"
-              className="!p-1.5 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer text-xs"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    set('logoDataUrl', reader.result as string);
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-            />
-            {form.logoDataUrl && (
-              <button 
-                type="button" 
-                onClick={() => set('logoDataUrl', '')}
-                className="text-xs text-red-500 mt-1.5 hover:underline block"
-              >
-                Remover Logo
-              </button>
-            )}
-          </div>
-        </div>
       </FormGroup>
       <FormGroup label="Status">
         <Select value={form.active ? 'true' : 'false'} onChange={e => set('active', e.target.value === 'true')}>
