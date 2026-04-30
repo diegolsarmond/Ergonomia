@@ -6,7 +6,7 @@ import { FormGroup, Input, Textarea, Select } from '../../components/ui/Forms';
 import { StandardJobRole } from '../../types';
 import { Briefcase, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
 
-const EMPTY: Omit<StandardJobRole, 'id'> = { name: '', cbo: '', description: '', active: true };
+const EMPTY: Omit<StandardJobRole, 'id'> = { companyId: '', sectorId: '', parentRoleId: '', name: '', cbo: '', description: '', active: true };
 
 export const JobRoles = () => {
   const { jobRoles, addJobRole, updateJobRole, deleteJobRole } = useAET();

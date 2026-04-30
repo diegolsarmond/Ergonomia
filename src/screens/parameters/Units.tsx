@@ -9,7 +9,9 @@ import { MapPin, Edit, Trash2 } from 'lucide-react';
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 const EMPTY: Omit<Unit, 'id'> = {
-  companyId: '', name: '', city: '', uf: '', address: '', productionLocation: '', logoDataUrl: '',
+  companyId: '', name: '',
+  cep: '', logradouro: '', numero: '', complemento: '', bairro: '',
+  city: '', uf: '', address: '', productionLocation: '', logoDataUrl: '',
 };
 
 export const Units = () => {

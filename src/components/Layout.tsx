@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   FileText, Home, BookOpen, ChevronDown, ChevronRight, Settings,
-  List, FlaskConical, Building2, MapPin, Layers, Briefcase,
+  List, FlaskConical, Building2,
   HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X
 } from 'lucide-react';
 
@@ -11,9 +11,6 @@ const PARAM_GROUPS = [
     label: 'Cadastros',
     items: [
       { to: '/parameters/companies', icon: Building2, label: 'Empresas' },
-      { to: '/parameters/units', icon: MapPin, label: 'Unidades' },
-      { to: '/parameters/sectors', icon: Layers, label: 'Setores' },
-      { to: '/parameters/job-roles', icon: Briefcase, label: 'Funções Padrão' },
     ],
   },
   {
