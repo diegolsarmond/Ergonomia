@@ -55,6 +55,7 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
             <DataItem label="Produto / Atividade" value={company.product} />
             <DataItem label="Grau de Risco" value={company.riskDegree ? `Grau ${company.riskDegree}` : ''} />
             <DataItem label="Status" value={company.active ? 'Ativo' : 'Inativo'} />
+            <DataItem label="Logo" value={company.logoDataUrl ? <img src={company.logoDataUrl} alt="Logo" className="w-16 h-16 object-contain border border-slate-200 rounded-lg bg-slate-50 mt-1" /> : ''} />
           </dl>
         ) : (
           <div className="space-y-1">
@@ -107,6 +108,39 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
                 <option value="4">Grau 4</option>
               </Select>
             </FormGroup>
+            <FormGroup label="Logo da Empresa">
+              <div className="flex items-center gap-4">
+                {form.logoDataUrl && (
+                  <img src={form.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 shrink-0" />
+                )}
+                <div className="flex-1">
+                  <Input 
+                    type="file" 
+                    accept="image/*"
+                    className="!p-1.5 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer text-xs"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          set('logoDataUrl', reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  {form.logoDataUrl && (
+                    <button 
+                      type="button" 
+                      onClick={() => set('logoDataUrl', '')}
+                      className="text-xs text-red-500 mt-1.5 hover:underline block"
+                    >
+                      Remover Logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </FormGroup>
             <FormGroup label="Status">
               <Select value={form.active ? 'true' : 'false'} onChange={e => set('active', e.target.value === 'true')}>
                 <option value="true">Ativo</option>
@@ -120,7 +154,7 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
   );
 };
 
-const DataItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const DataItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div>
     <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
     <dd className="mt-0.5 text-slate-700">{value || <span className="text-slate-300 italic">—</span>}</dd>
