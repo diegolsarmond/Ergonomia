@@ -15,9 +15,7 @@ import { Clients } from './screens/Clients';
 import { ChecklistParameters } from './screens/ChecklistParameters';
 import { ScientificMethodsParameters } from './screens/ScientificMethodsParameters';
 import { Companies } from './screens/parameters/Companies';
-import { Units } from './screens/parameters/Units';
-import { Sectors } from './screens/parameters/Sectors';
-import { JobRoles } from './screens/parameters/JobRoles';
+import { CompanyDetail } from './screens/parameters/CompanyDetail';
 import { EPIs } from './screens/parameters/EPIs';
 import { Equipment } from './screens/parameters/Equipment';
 import { SurveyQuestions } from './screens/parameters/SurveyQuestions';
@@ -37,9 +35,7 @@ export default function App() {
             <Route path="clients" element={<Clients />} />
             {/* Parameter routes */}
             <Route path="parameters/companies" element={<Companies />} />
-            <Route path="parameters/units" element={<Units />} />
-            <Route path="parameters/sectors" element={<Sectors />} />
-            <Route path="parameters/job-roles" element={<JobRoles />} />
+            <Route path="parameters/companies/:id" element={<CompanyDetail />} />
             <Route path="parameters/epis" element={<EPIs />} />
             <Route path="parameters/equipment" element={<Equipment />} />
             <Route path="parameters/survey-questions" element={<SurveyQuestions />} />

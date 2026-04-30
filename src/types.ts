@@ -5,7 +5,13 @@ export interface Company {
   razaoSocial: string;
   nomeFantasia: string;
   cnpj: string;
-  address: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  municipio: string;
+  uf: string;
+  cep: string;
   product: string;
   riskDegree: string;
   logoDataUrl: string;
@@ -16,6 +22,11 @@ export interface Unit {
   id: string;
   companyId: string;
   name: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
   city: string;
   uf: string;
   address: string;
@@ -34,6 +45,9 @@ export interface Sector {
 
 export interface StandardJobRole {
   id: string;
+  companyId: string;
+  sectorId: string;
+  parentRoleId: string;
   name: string;
   cbo: string;
   description: string;

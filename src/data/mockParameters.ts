@@ -11,7 +11,13 @@ export const MOCK_COMPANIES: Company[] = [
     razaoSocial: 'Ergonomia Tech LTDA',
     nomeFantasia: 'ErgoTech',
     cnpj: '00.000.000/0001-00',
-    address: 'Rua das Flores, 123',
+    logradouro: 'Rua das Flores',
+    numero: '123',
+    complemento: '',
+    bairro: '',
+    municipio: '',
+    uf: '',
+    cep: '',
     product: 'Software',
     riskDegree: '1',
     logoDataUrl: '',
@@ -24,6 +30,7 @@ export const MOCK_UNITS: Unit[] = [
     id: uuidv4(),
     companyId: '',
     name: 'Matriz SP',
+    cep: '', logradouro: 'Av Paulista', numero: '1000', complemento: '', bairro: 'Bela Vista',
     city: 'São Paulo',
     uf: 'SP',
     address: 'Av Paulista, 1000',
@@ -46,7 +53,9 @@ export const MOCK_SECTORS: Sector[] = [
 export const MOCK_JOB_ROLES: StandardJobRole[] = [
   {
     id: uuidv4(),
+    companyId: '',
     name: 'Desenvolvedor Frontend',
+    sectorId: '', parentRoleId: '',
     cbo: '2122-05',
     description: 'Desenvolve interfaces web',
     active: true
