@@ -73,7 +73,7 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis } = useAET();
+  const { getProject, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis, surveyQuestions } = useAET();
   const navigate = useNavigate();
 
   const project = getProject(id!);
@@ -390,7 +390,20 @@ export const FunctionForm = () => {
                   </Select>
                 </FormGroup>
                 <FormGroup label="Faixa Etária">
-                  <Input value={formData.opinionAge} onChange={(e) => set('opinionAge', e.target.value)} placeholder="Ex: 25 a 45 anos" />
+                  <Select value={formData.opinionAge} onChange={(e) => set('opinionAge', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    <option value="Menos de 18 anos">Menos de 18 anos</option>
+                    <option value="18 a 25 anos">18 a 25 anos</option>
+                    <option value="26 a 30 anos">26 a 30 anos</option>
+                    <option value="31 a 35 anos">31 a 35 anos</option>
+                    <option value="36 a 40 anos">36 a 40 anos</option>
+                    <option value="41 a 45 anos">41 a 45 anos</option>
+                    <option value="46 a 50 anos">46 a 50 anos</option>
+                    <option value="51 a 55 anos">51 a 55 anos</option>
+                    <option value="56 a 60 anos">56 a 60 anos</option>
+                    <option value="Acima de 60 anos">Acima de 60 anos</option>
+                    <option value="Variada">Variada (múltiplas faixas)</option>
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Tempo Médio na Empresa">
                   <Input value={formData.opinionTime} onChange={(e) => set('opinionTime', e.target.value)} placeholder="Ex: 3 anos" />
@@ -398,126 +411,82 @@ export const FunctionForm = () => {
               </div>
 
               <SectionTitle>Questionário do Trabalhador</SectionTitle>
-              <div className="grid grid-cols-1 gap-4">
-                <FormGroup label="Objetivo do trabalho (segundo o trabalhador)">
-                  <Input value={formData.opinionObjective} onChange={(e) => set('opinionObjective', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <RadioGroup
-                  label="Sensação Térmica"
-                  name="opinionThermal"
-                  value={formData.opinionThermal}
-                  options={[
-                    { value: 'Confortável', label: 'Confortável' },
-                    { value: 'Quente', label: 'Quente' },
-                    { value: 'Frio', label: 'Frio' },
-                    { value: 'Variável', label: 'Variável' },
-                  ]}
-                  onChange={(v) => set('opinionThermal', v)}
-                />
-                <RadioGroup
-                  label="Sensação de Iluminância"
-                  name="opinionLightingSens"
-                  value={formData.opinionLightingSens}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Insuficiente', label: 'Insuficiente' },
-                    { value: 'Excessiva', label: 'Excessiva' },
-                  ]}
-                  onChange={(v) => set('opinionLightingSens', v)}
-                />
-                <FormGroup label="Descrição da Iluminação">
-                  <Input value={formData.opinionLightingDesc} onChange={(e) => set('opinionLightingDesc', e.target.value)} />
-                </FormGroup>
-                <RadioGroup
-                  label="Sensação Acústica"
-                  name="opinionAcoustics"
-                  value={formData.opinionAcoustics}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Ruidoso', label: 'Ruidoso' },
-                    { value: 'Muito ruidoso', label: 'Muito ruidoso' },
-                    { value: 'N/A', label: 'N/A' },
-                  ]}
-                  onChange={(v) => set('opinionAcoustics', v)}
-                />
-                <RadioGroup
-                  label="Ventilação"
-                  name="opinionVentilation"
-                  value={formData.opinionVentilation}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Insuficiente', label: 'Insuficiente' },
-                    { value: 'Excessiva', label: 'Excessiva' },
-                  ]}
-                  onChange={(v) => set('opinionVentilation', v)}
-                />
-                <FormGroup label="Descrição da Ventilação">
-                  <Input value={formData.opinionVentilationDesc} onChange={(e) => set('opinionVentilationDesc', e.target.value)} />
-                </FormGroup>
-                <RadioGroup
-                  label="Opinião sobre Equipamentos"
-                  name="opinionEquip"
-                  value={formData.opinionEquip}
-                  options={[
-                    { value: 'Adequados', label: 'Adequados' },
-                    { value: 'Parcialmente adequados', label: 'Parcialmente adequados' },
-                    { value: 'Inadequados', label: 'Inadequados' },
-                  ]}
-                  onChange={(v) => set('opinionEquip', v)}
-                />
-                <RadioGroup
-                  label="Pressão Temporal"
-                  name="opinionPressure"
-                  value={formData.opinionPressure}
-                  options={[
-                    { value: 'Sem pressão', label: 'Sem pressão' },
-                    { value: 'Pressão moderada', label: 'Moderada' },
-                    { value: 'Alta pressão', label: 'Alta' },
-                  ]}
-                  onChange={(v) => set('opinionPressure', v)}
-                />
-                <RadioGroup
-                  label="Relacionamento com Colegas"
-                  name="opinionRelationship"
-                  value={formData.opinionRelationship}
-                  options={[
-                    { value: 'Bom', label: 'Bom' },
-                    { value: 'Regular', label: 'Regular' },
-                    { value: 'Ruim', label: 'Ruim' },
-                  ]}
-                  onChange={(v) => set('opinionRelationship', v)}
-                />
-                <RadioGroup
-                  label="Abertura da Liderança a Sugestões"
-                  name="opinionLeadership"
-                  value={formData.opinionLeadership}
-                  options={[
-                    { value: 'Aberta', label: 'Aberta' },
-                    { value: 'Parcialmente', label: 'Parcialmente' },
-                    { value: 'Fechada', label: 'Fechada' },
-                  ]}
-                  onChange={(v) => set('opinionLeadership', v)}
-                />
-                <RadioGroup
-                  label="Influência da Manutenção"
-                  name="opinionMaintenanceInfluence"
-                  value={formData.opinionMaintenanceInfluence}
-                  options={[
-                    { value: 'Não interfere', label: 'Não interfere' },
-                    { value: 'Interfere raramente', label: 'Raramente' },
-                    { value: 'Interfere frequentemente', label: 'Frequentemente' },
-                  ]}
-                  onChange={(v) => set('opinionMaintenanceInfluence', v)}
-                />
-              </div>
-              <FormGroup label="Dificuldades na Tarefa">
-                <Textarea value={formData.opinionDifficulties} onChange={(e) => set('opinionDifficulties', e.target.value)} rows={2} />
-              </FormGroup>
-              <FormGroup label="Intercorrências que atrasam a produção">
-                <Textarea value={formData.opinionIntercurrences} onChange={(e) => set('opinionIntercurrences', e.target.value)} rows={2} />
-              </FormGroup>
+              {surveyQuestions.filter(q => q.active).sort((a, b) => a.order - b.order).length === 0 ? (
+                <div className="empty-state !py-10">
+                  <p className="text-slate-400 text-sm">Nenhuma pergunta cadastrada no menu <strong>Questionário</strong>. Acesse Parâmetros › Questionário para adicionar perguntas.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {surveyQuestions
+                    .filter(q => q.active)
+                    .sort((a, b) => a.order - b.order)
+                    .map(q => {
+                      // Use checklistAnswers array to store answers keyed by question id
+                      const ans = (formData.checklistAnswers || []).find(a => a.questionId === q.id);
+                      const currentAnswer = (ans as any)?.answer ?? '';
+
+                      const setAnswer = (value: string) => {
+                        const prev = formData.checklistAnswers || [];
+                        const exists = prev.find(a => a.questionId === q.id);
+                        const next = exists
+                          ? prev.map(a => a.questionId === q.id ? { ...a, answer: value as any } : a)
+                          : [...prev, { questionId: q.id, answer: value as any }];
+                        set('checklistAnswers', next);
+                      };
+
+                      if (q.responseType === 'sim_nao' || q.responseType === 'sim/nao') {
+                        return (
+                          <RadioGroup
+                            key={q.id}
+                            label={q.question}
+                            name={`sq_${q.id}`}
+                            value={currentAnswer}
+                            options={[
+                              { value: 'sim', label: 'Sim' },
+                              { value: 'nao', label: 'Não' },
+                              { value: 'nao_se_aplica', label: 'N/A' },
+                            ]}
+                            onChange={setAnswer}
+                          />
+                        );
+                      }
+                      if (q.responseType === 'multipla_escolha' || q.responseType === 'multipla escolha') {
+                        const options = (q as any).options as string[] | undefined;
+                        if (options && options.length > 0) {
+                          return (
+                            <RadioGroup
+                              key={q.id}
+                              label={q.question}
+                              name={`sq_${q.id}`}
+                              value={currentAnswer}
+                              options={options.map(o => ({ value: o, label: o }))}
+                              onChange={setAnswer}
+                            />
+                          );
+                        }
+                        // fallback to text
+                        return (
+                          <FormGroup key={q.id} label={q.question}>
+                            <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                          </FormGroup>
+                        );
+                      }
+                      if (q.responseType === 'texto_longo' || q.responseType === 'texto longo') {
+                        return (
+                          <FormGroup key={q.id} label={q.question}>
+                            <Textarea value={currentAnswer} onChange={e => setAnswer(e.target.value)} rows={3} />
+                          </FormGroup>
+                        );
+                      }
+                      // default: short text / numeric
+                      return (
+                        <FormGroup key={q.id} label={q.question}>
+                          <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                        </FormGroup>
+                      );
+                    })}
+                </div>
+              )}
             </div>
           )}
 

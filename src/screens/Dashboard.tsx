@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea } from '../components/ui/Forms';
 import { Plus, Trash2, Upload, Building2, FolderOpen, Calendar, MapPin, Hash } from 'lucide-react';
-import { MOCK_CLIENTS } from '../data/mockClients';
 import { DEFAULT_INTRO_ERGONOMIA, DEFAULT_INTRO_OBJETIVO, DEFAULT_INTRO_METODOLOGIA } from '../types';
 
 export const Dashboard = () => {
-  const { projects, loading, addProject, deleteProject, importProjectJSON } = useAET();
+  const { projects, companies, units, loading, addProject, deleteProject, importProjectJSON } = useAET();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -159,14 +159,26 @@ export const Dashboard = () => {
                   <select
                     className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
                     onChange={(e) => {
-                      const client = MOCK_CLIENTS.find(c => c.id === e.target.value);
-                      if (client) setFormData(prev => ({ ...prev, companyName: client.companyName, fantasyName: client.fantasyName, cnpj: client.cnpj, address: client.address }));
+                      const client = companies.find(c => c.id === e.target.value);
+                      setSelectedCompanyId(e.target.value || '');
+                      if (client) setFormData(prev => ({ 
+                        ...prev, 
+                        companyName: client.razaoSocial, 
+                        fantasyName: client.nomeFantasia, 
+                        cnpj: client.cnpj, 
+                        address: `${client.logradouro}${client.numero ? ', ' + client.numero : ''}${client.bairro ? ' - ' + client.bairro : ''}`,
+                        location: `${client.municipio}${client.uf ? ' - ' + client.uf : ''}`,
+                        riskDegree: client.riskDegree || '',
+                        product: client.product || '',
+                        companyLogoDataUrl: client.logoDataUrl || '',
+                        unit: '',
+                      }));
                     }}
                     defaultValue=""
                   >
                     <option value="" disabled>-- Selecione um cliente --</option>
-                    {MOCK_CLIENTS.map(client => (
-                      <option key={client.id} value={client.id}>{client.companyName}</option>
+                    {companies.map(client => (
+                      <option key={client.id} value={client.id}>{client.razaoSocial || 'Empresa sem Razão Social'}</option>
                     ))}
                   </select>
                 </FormGroup>
@@ -193,7 +205,36 @@ export const Dashboard = () => {
                 </FormGroup>
                 <div className="grid grid-cols-2 gap-4">
                   <FormGroup label="Unidade / Local de Produção" required>
-                    <Input value={formData.unit} onChange={e => f('unit', e.target.value)} required />
+                    {(() => {
+                      const companyUnits = selectedCompanyId
+                        ? units.filter(u => u.companyId === selectedCompanyId)
+                        : [];
+                      if (companyUnits.length > 0) {
+                        return (
+                          <select
+                            className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
+                            value={companyUnits.find(u => u.name === formData.unit)?.id ?? ''}
+                            onChange={e => {
+                              const u = companyUnits.find(u => u.id === e.target.value);
+                              if (u) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  unit: u.name,
+                                  location: (u.city || u.uf) ? `${u.city || ''}${u.uf ? ' - ' + u.uf : ''}` : prev.location,
+                                }));
+                              }
+                            }}
+                            required
+                          >
+                            <option value="">-- Selecione uma unidade --</option>
+                            {companyUnits.map(u => (
+                              <option key={u.id} value={u.id}>{u.name}</option>
+                            ))}
+                          </select>
+                        );
+                      }
+                      return <Input value={formData.unit} onChange={e => f('unit', e.target.value)} required placeholder={selectedCompanyId ? 'Nenhuma unidade cadastrada' : 'Ex: Filial São Paulo'} />;
+                    })()}
                   </FormGroup>
                   <FormGroup label="Produto / Atividade" required>
                     <Input value={formData.product} onChange={e => f('product', e.target.value)} required />
