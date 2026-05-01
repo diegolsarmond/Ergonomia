@@ -73,7 +73,7 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, updateFunction, checklistQuestions, scientificMethodTemplates } = useAET();
+  const { getProject, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis } = useAET();
   const navigate = useNavigate();
 
   const project = getProject(id!);
@@ -646,7 +646,20 @@ export const FunctionForm = () => {
           {activeTab === 4 && (
             <div className="space-y-4">
               <SectionTitle>Lista de Equipamentos e Materiais</SectionTitle>
-              {(formData.equipmentList || []).map((eq, idx) => (
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-sm text-slate-700 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                    checked={!!formData.usesEquipment}
+                    onChange={(e) => set('usesEquipment', e.target.checked)}
+                  />
+                  A função utiliza equipamentos?
+                </label>
+              </div>
+              {formData.usesEquipment && (
+                <div className="space-y-4 mb-8">
+                  {(formData.equipmentList || []).map((eq, idx) => (
                 <div key={eq.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
                   <button
                     type="button"
@@ -658,7 +671,15 @@ export const FunctionForm = () => {
                   <p className="text-sm font-medium text-slate-500">Equipamento {idx + 1}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <FormGroup label="Nome">
-                      <Input value={eq.name} onChange={(e) => updateEquipment(idx, 'name', e.target.value)} />
+                      <Select value={eq.name} onChange={(e) => updateEquipment(idx, 'name', e.target.value)}>
+                        <option value="">Selecione...</option>
+                        {equipment.filter(e => e.active).map(e => (
+                          <option key={e.id} value={e.name}>{e.name}</option>
+                        ))}
+                        {eq.name && !equipment.some(e => e.name === eq.name) && (
+                          <option value={eq.name}>{eq.name} (Não cadastrado)</option>
+                        )}
+                      </Select>
                     </FormGroup>
                     <FormGroup label="Quantidade">
                       <Input value={eq.quantity} onChange={(e) => updateEquipment(idx, 'quantity', e.target.value)} />
@@ -698,9 +719,24 @@ export const FunctionForm = () => {
               <FormGroup label="Problemas Aparentes Gerais">
                 <Textarea value={formData.equipProblems} onChange={(e) => set('equipProblems', e.target.value)} rows={2} />
               </FormGroup>
+              </div>
+              )}
 
               <SectionTitle>Lista de EPIs</SectionTitle>
-              {(formData.epiList || []).map((epi, idx) => (
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-sm text-slate-700 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                    checked={!!formData.usesEPI}
+                    onChange={(e) => set('usesEPI', e.target.checked)}
+                  />
+                  A função utiliza EPIs?
+                </label>
+              </div>
+              {formData.usesEPI && (
+                <div className="space-y-4 mb-8">
+                  {(formData.epiList || []).map((epi, idx) => (
                 <div key={epi.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
                   <button
                     type="button"
@@ -712,7 +748,15 @@ export const FunctionForm = () => {
                   <p className="text-sm font-medium text-slate-500">EPI {idx + 1}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <FormGroup label="Nome do EPI">
-                      <Input value={epi.name} onChange={(e) => updateEPI(idx, 'name', e.target.value)} />
+                      <Select value={epi.name} onChange={(e) => updateEPI(idx, 'name', e.target.value)}>
+                        <option value="">Selecione...</option>
+                        {epis.filter(e => e.active).map(e => (
+                          <option key={e.id} value={e.name}>{e.name}</option>
+                        ))}
+                        {epi.name && !epis.some(e => e.name === epi.name) && (
+                          <option value={epi.name}>{epi.name} (Não cadastrado)</option>
+                        )}
+                      </Select>
                     </FormGroup>
                     <FormGroup label="Local de Uso">
                       <Input value={epi.location} onChange={(e) => updateEPI(idx, 'location', e.target.value)} />
@@ -744,6 +788,8 @@ export const FunctionForm = () => {
               <Button type="button" variant="secondary" onClick={addEPI}>
                 <Plus className="w-4 h-4 mr-1" /> Adicionar EPI
               </Button>
+              </div>
+              )}
 
               <SectionTitle>Predominância Postural</SectionTitle>
               <div className="grid grid-cols-3 gap-4">

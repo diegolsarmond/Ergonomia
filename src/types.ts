@@ -287,6 +287,8 @@ export interface AETFunction {
   reworkWeek: string;
   reworkNotApplicable: boolean;
   // 4.17 Equipamentos (CRUD)
+  usesEquipment: boolean;
+  usesEPI: boolean;
   equipmentList: AETEquipmentItem[];
   epiList: AETEPIItem[];
   equipProblems: string;
@@ -438,6 +440,8 @@ export const EMPTY_FUNCTION: AETFunction = {
   reworkDesc: '',
   reworkWeek: '',
   reworkNotApplicable: false,
+  usesEquipment: false,
+  usesEPI: false,
   equipmentList: [],
   epiList: [],
   equipProblems: '',
