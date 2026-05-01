@@ -17,51 +17,177 @@ const RESPONSE_TYPES = [
 ];
 
 const EMPTY: Omit<SurveyQuestion, 'id'> = {
-  question: '', category: '', responseType: 'text', required: false, order: 0, active: true,
+  question: '', category: '', responseType: 'text', options: [], required: false, order: 0, active: true,
 };
 
+// ── Sub-form: opções de múltipla escolha / seleção única ─────────────────────
+const OptionsEditor: React.FC<{
+  options: string[];
+  onChange: (options: string[]) => void;
+}> = ({ options, onChange }) => {
+  const [newOption, setNewOption] = useState('');
+
+  const addOption = () => {
+    const trimmed = newOption.trim();
+    if (!trimmed || options.includes(trimmed)) return;
+    onChange([...options, trimmed]);
+    setNewOption('');
+  };
+
+  const removeOption = (idx: number) => {
+    onChange(options.filter((_, i) => i !== idx));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); addOption(); }
+  };
+
+  return (
+    <div className="rounded-xl border border-teal-200 bg-teal-50/40 p-4 space-y-3">
+      <p className="text-[13px] font-semibold text-teal-800 flex items-center gap-1.5">
+        <span className="w-4 h-4 rounded bg-teal-500 text-white flex items-center justify-center text-[10px] font-bold">≡</span>
+        Opções de resposta
+      </p>
+
+      {/* Lista de opções existentes */}
+      {options.length > 0 ? (
+        <div className="space-y-1.5">
+          {options.map((opt, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 group"
+            >
+              <GripVertical className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+              <span className="flex-1 text-sm text-slate-700">{opt}</span>
+              <button
+                type="button"
+                onClick={() => removeOption(idx)}
+                className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400 italic">Nenhuma opção adicionada ainda.</p>
+      )}
+
+      {/* Input para nova opção */}
+      <div className="flex gap-2">
+        <Input
+          value={newOption}
+          onChange={e => setNewOption(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Digite uma opção e pressione Enter ou +"
+          className="flex-1 !text-sm"
+        />
+        <button
+          type="button"
+          onClick={addOption}
+          disabled={!newOption.trim()}
+          className="flex items-center gap-1 px-3 py-2 rounded-lg border border-teal-300 text-teal-700 bg-white hover:bg-teal-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium shrink-0"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── Formulário principal ──────────────────────────────────────────────────────
 const SurveyQuestionForm: React.FC<{
   form: Omit<SurveyQuestion, 'id'>;
   set: (field: keyof Omit<SurveyQuestion, 'id'>, value: any) => void;
   onSave: () => void;
   onCancel: () => void;
   isEditing: boolean;
-}> = ({ form, set, onSave, onCancel, isEditing }) => (
-  <div className="space-y-1">
-    <FormGroup label="Pergunta" required>
-      <Input value={form.question} onChange={e => set('question', e.target.value)} placeholder="Ex: Como você avalia o nível de ruído?" />
-    </FormGroup>
-    <FormGroup label="Categoria">
-      <Select value={form.category} onChange={e => set('category', e.target.value)}>
-        <option value="">Selecione</option>
-        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-      </Select>
-    </FormGroup>
-    <FormGroup label="Tipo de Resposta">
-      <Select value={form.responseType} onChange={e => set('responseType', e.target.value)}>
-        {RESPONSE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-      </Select>
-    </FormGroup>
-    <FormGroup label="Ordem">
-      <Input type="number" value={form.order || ''} onChange={e => set('order', parseInt(e.target.value) || 0)} placeholder="Posição na lista" />
-    </FormGroup>
-    <div className="flex gap-4 py-1">
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={form.required} onChange={e => set('required', e.target.checked)} className="rounded text-teal-600 border-slate-300 focus:ring-teal-500" />
-        <span className="text-slate-700">Obrigatória</span>
-      </label>
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)} className="rounded text-teal-600 border-slate-300 focus:ring-teal-500" />
-        <span className="text-slate-700">Ativa</span>
-      </label>
-    </div>
-    <div className="flex justify-end gap-2 pt-2">
-      <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
-      <Button onClick={onSave}>{isEditing ? 'Atualizar' : 'Adicionar'}</Button>
-    </div>
-  </div>
-);
+}> = ({ form, set, onSave, onCancel, isEditing }) => {
+  const showOptions = form.responseType === 'multiselect' || form.responseType === 'select';
 
+  return (
+    <div className="space-y-1">
+      <FormGroup label="Pergunta" required>
+        <Input
+          value={form.question}
+          onChange={e => set('question', e.target.value)}
+          placeholder="Ex: Como você avalia o nível de ruído?"
+          autoFocus
+        />
+      </FormGroup>
+
+      <FormGroup label="Categoria">
+        <Select value={form.category} onChange={e => set('category', e.target.value)}>
+          <option value="">Selecione</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </Select>
+      </FormGroup>
+
+      <FormGroup label="Tipo de Resposta">
+        <Select
+          value={form.responseType}
+          onChange={e => {
+            set('responseType', e.target.value);
+            // Limpa opções ao trocar para tipo que não as suporta
+            if (e.target.value !== 'multiselect' && e.target.value !== 'select') {
+              set('options', []);
+            }
+          }}
+        >
+          {RESPONSE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </Select>
+      </FormGroup>
+
+      {/* Editor de opções — exibido somente para multipla escolha / seleção única */}
+      {showOptions && (
+        <div className="pt-1">
+          <OptionsEditor
+            options={form.options || []}
+            onChange={opts => set('options', opts)}
+          />
+        </div>
+      )}
+
+      <FormGroup label="Ordem">
+        <Input
+          type="number"
+          value={form.order || ''}
+          onChange={e => set('order', parseInt(e.target.value) || 0)}
+          placeholder="Posição na lista"
+        />
+      </FormGroup>
+
+      <div className="flex gap-4 py-1">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.required}
+            onChange={e => set('required', e.target.checked)}
+            className="rounded text-teal-600 border-slate-300 focus:ring-teal-500"
+          />
+          <span className="text-slate-700">Obrigatória</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.active}
+            onChange={e => set('active', e.target.checked)}
+            className="rounded text-teal-600 border-slate-300 focus:ring-teal-500"
+          />
+          <span className="text-slate-700">Ativa</span>
+        </label>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
+        <Button onClick={onSave}>{isEditing ? 'Atualizar' : 'Adicionar'}</Button>
+      </div>
+    </div>
+  );
+};
+
+// ── Tela principal ────────────────────────────────────────────────────────────
 export const SurveyQuestions = () => {
   const { surveyQuestions, addSurveyQuestion, updateSurveyQuestion, deleteSurveyQuestion } = useAET();
   const [modalOpen, setModalOpen] = useState(false);
@@ -85,7 +211,7 @@ export const SurveyQuestions = () => {
   };
 
   const openNew = () => { setEditingId(null); setForm(EMPTY); setModalOpen(true); };
-  const handleEdit = (q: SurveyQuestion) => { setEditingId(q.id); setForm({ ...q }); setModalOpen(true); };
+  const handleEdit = (q: SurveyQuestion) => { setEditingId(q.id); setForm({ ...q, options: q.options || [] }); setModalOpen(true); };
   const closeModal = () => { setModalOpen(false); setEditingId(null); setForm(EMPTY); };
 
   const sorted = [...surveyQuestions].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -133,7 +259,7 @@ export const SurveyQuestions = () => {
                 <div key={q.id} className="border border-slate-200 rounded-xl p-4 flex justify-between items-start hover:border-slate-300 transition-colors bg-white">
                   <div className="flex gap-2 min-w-0 flex-1">
                     <GripVertical className="w-4 h-4 text-slate-300 mt-0.5 shrink-0" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-mono text-slate-400">#{q.order || '—'}</span>
                         <p className="font-medium text-slate-800 text-sm">{q.question}</p>
@@ -147,7 +273,22 @@ export const SurveyQuestions = () => {
                           {RESPONSE_TYPES.find(t => t.value === q.responseType)?.label ?? q.responseType}
                         </span>
                         {q.required && <span className="stat-badge !text-[11px] !px-2 !py-0.5 !bg-amber-50 !text-amber-700 !border-amber-200">Obrigatória</span>}
+                        {(q.options?.length ?? 0) > 0 && (
+                          <span className="stat-badge !text-[11px] !px-2 !py-0.5 !bg-teal-50 !text-teal-700 !border-teal-200">
+                            {q.options!.length} opções
+                          </span>
+                        )}
                       </div>
+                      {/* Prévia das opções */}
+                      {(q.options?.length ?? 0) > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {q.options!.map((opt, i) => (
+                            <span key={i} className="text-[11px] bg-slate-100 text-slate-600 rounded-md px-2 py-0.5 border border-slate-200">
+                              {opt}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1 ml-3 shrink-0">

@@ -78,6 +78,7 @@ export interface SurveyQuestion {
   question: string;
   category: string;
   responseType: string;
+  options?: string[];
   required: boolean;
   order: number;
   active: boolean;
