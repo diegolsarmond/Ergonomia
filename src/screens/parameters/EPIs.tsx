@@ -6,7 +6,7 @@ import { FormGroup, Input, Textarea, Select } from '../../components/ui/Forms';
 import { EPI } from '../../types';
 import { HardHat, Edit, Trash2, CheckCircle, XCircle, Plus, X } from 'lucide-react';
 
-const EPI_TYPES = ['Proteção da cabeça','Proteção dos olhos e face','Proteção auditiva','Proteção respiratória','Proteção dos membros superiores','Proteção dos membros inferiores','Proteção do tronco','Proteção do corpo inteiro','Outros'];
+const EPI_TYPES = ['Proteção da cabeça', 'Proteção dos olhos e face', 'Proteção auditiva', 'Proteção respiratória', 'Proteção dos membros superiores', 'Proteção dos membros inferiores', 'Proteção do tronco', 'Proteção do corpo inteiro', 'Outros'];
 
 const EMPTY: Omit<EPI, 'id'> = { name: '', type: '', description: '', mandatoryByDefault: false, active: true };
 

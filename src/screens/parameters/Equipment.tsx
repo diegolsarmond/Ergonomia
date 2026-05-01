@@ -6,8 +6,8 @@ import { FormGroup, Input, Textarea, Select } from '../../components/ui/Forms';
 import { StandardEquipment } from '../../types';
 import { Wrench, Edit, Trash2, CheckCircle, XCircle, Plus, X } from 'lucide-react';
 
-const CATEGORIES = ['Máquina','Ferramenta manual','Veículo','Bancada / Mesa','Esteira','Equipamento de movimentação','Outro'];
-const OPERATIONS = ['manual','elétrico','hidráulico','pneumático'];
+const CATEGORIES = ['Máquina', 'Ferramenta manual', 'Veículo', 'Bancada / Mesa', 'Esteira', 'Equipamento de movimentação', 'Outro'];
+const OPERATIONS = ['manual', 'elétrico', 'hidráulico', 'pneumático'];
 
 const EMPTY: Omit<StandardEquipment, 'id'> = {
   name: '', category: '', operation: [], description: '', hasDimensions: false, active: true,

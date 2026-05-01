@@ -6,7 +6,7 @@ import { FormGroup, Input, Textarea, Select } from '../../components/ui/Forms';
 import { StandardPause } from '../../types';
 import { Coffee, Edit, Trash2, CheckCircle, XCircle, Plus, X } from 'lucide-react';
 
-const DURATION_UNITS = ['minutos','horas'];
+const DURATION_UNITS = ['minutos', 'horas'];
 
 const EMPTY: Omit<StandardPause, 'id'> = {
   name: '', duration: '', durationUnit: 'minutos', description: '', active: true,
