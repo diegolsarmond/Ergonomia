@@ -392,17 +392,12 @@ export const FunctionForm = () => {
                 <FormGroup label="Faixa Etária">
                   <Select value={formData.opinionAge} onChange={(e) => set('opinionAge', e.target.value)}>
                     <option value="">Selecione...</option>
-                    <option value="Menos de 18 anos">Menos de 18 anos</option>
-                    <option value="18 a 25 anos">18 a 25 anos</option>
-                    <option value="26 a 30 anos">26 a 30 anos</option>
-                    <option value="31 a 35 anos">31 a 35 anos</option>
-                    <option value="36 a 40 anos">36 a 40 anos</option>
-                    <option value="41 a 45 anos">41 a 45 anos</option>
-                    <option value="46 a 50 anos">46 a 50 anos</option>
-                    <option value="51 a 55 anos">51 a 55 anos</option>
-                    <option value="56 a 60 anos">56 a 60 anos</option>
-                    <option value="Acima de 60 anos">Acima de 60 anos</option>
-                    <option value="Variada">Variada (múltiplas faixas)</option>
+                    <option value="Menor de 18 anos">Menor de 18 anos</option>
+                    <option value="18 a 30 anos">18 a 30 anos</option>
+                    <option value="31 a 45 anos">31 a 45 anos</option>
+                    <option value="46 a 60 anos">46 a 60 anos</option>
+                    <option value="Maior de 60 anos">Maior de 60 anos</option>
+                    <option value="Variada (múltiplas faixas)">Variada (múltiplas faixas)</option>
                   </Select>
                 </FormGroup>
                 <FormGroup label="Tempo Médio na Empresa">
@@ -411,33 +406,36 @@ export const FunctionForm = () => {
               </div>
 
               <SectionTitle>Questionário do Trabalhador</SectionTitle>
-              {surveyQuestions.filter(q => q.active).sort((a, b) => a.order - b.order).length === 0 ? (
-                <div className="empty-state !py-10">
-                  <p className="text-slate-400 text-sm">Nenhuma pergunta cadastrada no menu <strong>Questionário</strong>. Acesse Parâmetros › Questionário para adicionar perguntas.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {surveyQuestions
-                    .filter(q => q.active)
-                    .sort((a, b) => a.order - b.order)
-                    .map(q => {
-                      // Use checklistAnswers array to store answers keyed by question id
-                      const ans = (formData.checklistAnswers || []).find(a => a.questionId === q.id);
-                      const currentAnswer = (ans as any)?.answer ?? '';
 
-                      const setAnswer = (value: string) => {
-                        const prev = formData.checklistAnswers || [];
-                        const exists = prev.find(a => a.questionId === q.id);
-                        const next = exists
-                          ? prev.map(a => a.questionId === q.id ? { ...a, answer: value as any } : a)
-                          : [...prev, { questionId: q.id, answer: value as any }];
-                        set('checklistAnswers', next);
-                      };
+              {/* Perguntas já adicionadas */}
+              {(formData.checklistAnswers || []).length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {(formData.checklistAnswers || []).map((ans) => {
+                    const q = surveyQuestions.find(sq => sq.id === ans.questionId);
+                    if (!q) return null;
+                    const currentAnswer = (ans as any).answer ?? '';
+                    const setAnswer = (value: string) => {
+                      const next = (formData.checklistAnswers || []).map(a =>
+                        a.questionId === q.id ? { ...a, answer: value as any } : a
+                      );
+                      set('checklistAnswers', next);
+                    };
+                    const removeAnswer = () => {
+                      set('checklistAnswers', (formData.checklistAnswers || []).filter(a => a.questionId !== q.id));
+                    };
 
-                      if (q.responseType === 'sim_nao' || q.responseType === 'sim/nao') {
-                        return (
+                    return (
+                      <div key={q.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 relative hover:border-teal-200 transition-colors">
+                        <button
+                          type="button"
+                          onClick={removeAnswer}
+                          className="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                          title="Remover pergunta"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        {(q.responseType === 'sim_nao' || q.responseType === 'sim/nao') ? (
                           <RadioGroup
-                            key={q.id}
                             label={q.question}
                             name={`sq_${q.id}`}
                             value={currentAnswer}
@@ -448,45 +446,72 @@ export const FunctionForm = () => {
                             ]}
                             onChange={setAnswer}
                           />
-                        );
-                      }
-                      if (q.responseType === 'multipla_escolha' || q.responseType === 'multipla escolha') {
-                        const options = (q as any).options as string[] | undefined;
-                        if (options && options.length > 0) {
-                          return (
-                            <RadioGroup
-                              key={q.id}
-                              label={q.question}
-                              name={`sq_${q.id}`}
-                              value={currentAnswer}
-                              options={options.map(o => ({ value: o, label: o }))}
-                              onChange={setAnswer}
-                            />
-                          );
-                        }
-                        // fallback to text
-                        return (
-                          <FormGroup key={q.id} label={q.question}>
-                            <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
-                          </FormGroup>
-                        );
-                      }
-                      if (q.responseType === 'texto_longo' || q.responseType === 'texto longo') {
-                        return (
-                          <FormGroup key={q.id} label={q.question}>
+                        ) : (q.responseType === 'multipla_escolha' || q.responseType === 'multipla escolha') ? (
+                          (() => {
+                            const opts = (q as any).options as string[] | undefined;
+                            return opts && opts.length > 0 ? (
+                              <RadioGroup
+                                label={q.question}
+                                name={`sq_${q.id}`}
+                                value={currentAnswer}
+                                options={opts.map(o => ({ value: o, label: o }))}
+                                onChange={setAnswer}
+                              />
+                            ) : (
+                              <FormGroup label={q.question}>
+                                <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                              </FormGroup>
+                            );
+                          })()
+                        ) : (q.responseType === 'texto_longo' || q.responseType === 'texto longo') ? (
+                          <FormGroup label={q.question}>
                             <Textarea value={currentAnswer} onChange={e => setAnswer(e.target.value)} rows={3} />
                           </FormGroup>
-                        );
-                      }
-                      // default: short text / numeric
-                      return (
-                        <FormGroup key={q.id} label={q.question}>
-                          <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
-                        </FormGroup>
-                      );
-                    })}
+                        ) : (
+                          <FormGroup label={q.question}>
+                            <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                          </FormGroup>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
+
+              {/* Adicionar pergunta */}
+              {(() => {
+                const usedIds = new Set((formData.checklistAnswers || []).map(a => a.questionId));
+                const available = surveyQuestions.filter(q => q.active && !usedIds.has(q.id)).sort((a, b) => a.order - b.order);
+                if (available.length === 0 && (formData.checklistAnswers || []).length === 0) {
+                  return (
+                    <div className="empty-state !py-10">
+                      <p className="text-slate-400 text-sm">Nenhuma pergunta cadastrada. Acesse <strong>Parâmetros › Questionário</strong> para adicionar perguntas.</p>
+                    </div>
+                  );
+                }
+                if (available.length === 0) return null;
+                return (
+                  <div className="flex items-center gap-3 border border-dashed border-slate-300 rounded-xl p-3 bg-white hover:border-teal-400 transition-colors">
+                    <Plus className="w-4 h-4 text-teal-500 shrink-0" />
+                    <select
+                      className="flex-1 text-sm text-slate-600 bg-transparent border-none outline-none cursor-pointer"
+                      value=""
+                      onChange={e => {
+                        const qId = e.target.value;
+                        if (!qId) return;
+                        const prev = formData.checklistAnswers || [];
+                        if (prev.find(a => a.questionId === qId)) return;
+                        set('checklistAnswers', [...prev, { questionId: qId, answer: '' as any }]);
+                      }}
+                    >
+                      <option value="">+ Adicionar pergunta ao questionário...</option>
+                      {available.map(q => (
+                        <option key={q.id} value={q.id}>{q.question}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
