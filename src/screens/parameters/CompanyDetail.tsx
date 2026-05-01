@@ -21,7 +21,36 @@ type Tab = 'dados' | 'unidades' | 'setores' | 'funcoes';
 const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id'>) => void }> = ({ company, onSave }) => {
   const [form, setForm] = useState<Omit<Company, 'id'>>({ ...company });
   const [editing, setEditing] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
   const set = (field: keyof Omit<Company, 'id'>, value: any) => setForm(f => ({ ...f, [field]: value }));
+
+  const handleCepChange = async (raw: string) => {
+    const masked = raw.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2').slice(0, 9);
+    set('cep', masked);
+    setCepError('');
+
+    const digits = masked.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+
+    setCepLoading(true);
+    try {
+      const data = await fetchCep(digits);
+      if (!data) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      setForm(f => ({
+        ...f,
+        logradouro: data.logradouro || f.logradouro,
+        bairro: data.bairro || f.bairro,
+        municipio: data.localidade || f.municipio,
+        uf: data.uf || f.uf
+      }));
+    } finally {
+      setCepLoading(false);
+    }
+  };
 
   const handleSave = () => { 
     const missing: string[] = [];
@@ -113,6 +142,19 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
             <FormGroup label="CNPJ" required>
               <Input value={form.cnpj} onChange={e => set('cnpj', e.target.value)} placeholder="00.000.000/0000-00" />
             </FormGroup>
+            <FormGroup label="CEP">
+              <div className="relative">
+                <Input 
+                  value={form.cep} 
+                  onChange={e => handleCepChange(e.target.value)} 
+                  placeholder="00000-000" 
+                  maxLength={9}
+                  className={cepError ? 'border-red-400 focus:ring-red-300' : ''}
+                />
+                {cepLoading && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 animate-pulse">buscando...</span>}
+              </div>
+              {cepError && <p className="text-xs text-red-500 mt-1">{cepError}</p>}
+            </FormGroup>
             <FormGroup label="Logradouro">
               <Input value={form.logradouro} onChange={e => set('logradouro', e.target.value)} placeholder="Rua / Avenida" />
             </FormGroup>
@@ -138,9 +180,7 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
                 </Select>
               </FormGroup>
             </div>
-            <FormGroup label="CEP">
-              <Input value={form.cep} onChange={e => set('cep', e.target.value)} placeholder="00000-000" />
-            </FormGroup>
+
             <FormGroup label="Produto / Atividade">
               <Input value={form.product} onChange={e => set('product', e.target.value)} />
             </FormGroup>
@@ -270,6 +310,7 @@ const UnitsTab: React.FC<{ companyId: string; company: Company }> = ({ companyId
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [cepError, setCepError] = useState('');
+  const [copyAddress, setCopyAddress] = useState(false);
   const set = (field: keyof Omit<Unit, 'id'>, value: string) => setForm(f => ({ ...f, [field]: value }));
 
   const loadCities = async (uf: string) => {
@@ -307,9 +348,9 @@ const UnitsTab: React.FC<{ companyId: string; company: Company }> = ({ companyId
     }
   };
 
-  const openNew = () => { setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); setModalOpen(true); };
-  const openEdit = async (u: Unit) => { setEditingId(u.id); setForm({ ...u }); setCepError(''); if (u.uf) await loadCities(u.uf); setModalOpen(true); };
-  const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); };
+  const openNew = () => { setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); setCopyAddress(false); setModalOpen(true); };
+  const openEdit = async (u: Unit) => { setEditingId(u.id); setForm({ ...u }); setCepError(''); setCopyAddress(false); if (u.uf) await loadCities(u.uf); setModalOpen(true); };
+  const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); setCopyAddress(false); };
 
   const handleSave = async () => {
     const missing: string[] = [];
@@ -333,17 +374,33 @@ const UnitsTab: React.FC<{ companyId: string; company: Company }> = ({ companyId
             <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex: Unidade Sede, Filial Norte" />
           </FormGroup>
 
-          {(company.logradouro || company.municipio) && (
-            <div className="flex items-center gap-3 py-0.5">
-              <button type="button" onClick={handleCopyCompanyAddress} className="text-xs text-teal-600 hover:text-teal-700 hover:underline transition-colors">
-                Usar endereço da empresa
-              </button>
-              <span className="text-slate-200">|</span>
-              <button type="button" onClick={() => { setForm(f => ({ ...f, cep: '', logradouro: '', numero: '', complemento: '', bairro: '', city: '', uf: '' })); setCities([]); setCepError(''); }} className="text-xs text-slate-400 hover:text-slate-600 hover:underline transition-colors">
-                Limpar endereço
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              type="checkbox"
+              id="copyCompanyAddressModal"
+              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer w-4 h-4"
+              checked={copyAddress}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setCopyAddress(checked);
+                if (checked) {
+                  if (!company.logradouro && !company.municipio) {
+                    alert('A empresa não possui endereço cadastrado.');
+                    setCopyAddress(false);
+                    return;
+                  }
+                  handleCopyCompanyAddress();
+                } else {
+                  setForm(f => ({ ...f, cep: '', logradouro: '', numero: '', complemento: '', bairro: '', city: '', uf: '' }));
+                  setCities([]); 
+                  setCepError('');
+                }
+              }}
+            />
+            <label htmlFor="copyCompanyAddressModal" className="text-[13px] font-medium text-slate-600 cursor-pointer">
+              Repetir endereço da empresa
+            </label>
+          </div>
 
           <FormGroup label="CEP">
             <div className="relative">
@@ -683,7 +740,11 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
 
   const sectorName = (id: string) => companySectors.find(s => s.id === id)?.name ?? '—';
   const roleName = (id: string) => companyRoles.find(r => r.id === id)?.name ?? '—';
-  const parentOptions = companyRoles.filter(r => r.id !== editingId);
+  const parentOptions = companyRoles.filter(r => {
+    if (r.id === editingId) return false;
+    if (form.sectorId) return r.sectorId === form.sectorId;
+    return true;
+  });
 
   const ancestorChain = (roleId: string): string[] => {
     const chain: string[] = [];
@@ -711,7 +772,19 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
           </FormGroup>
           <div className="grid grid-cols-2 gap-3">
             <FormGroup label="Setor">
-              <Select value={form.sectorId} onChange={e => set('sectorId', e.target.value)}>
+              <Select value={form.sectorId} onChange={e => {
+                const newSectorId = e.target.value;
+                setForm(f => {
+                  const updated = { ...f, sectorId: newSectorId };
+                  if (f.parentRoleId) {
+                    const parentRole = companyRoles.find(r => r.id === f.parentRoleId);
+                    if (parentRole && newSectorId && parentRole.sectorId !== newSectorId) {
+                      updated.parentRoleId = '';
+                    }
+                  }
+                  return updated;
+                });
+              }}>
                 <option value="">Nenhum</option>
                 {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </Select>

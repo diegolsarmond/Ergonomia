@@ -29,6 +29,18 @@ function formatCep(raw: string) {
   return d.replace(/^(\d{5})(\d)/, '$1-$2');
 }
 
+async function fetchCep(cep: string) {
+  const digits = cep.replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const data = await res.json();
+    return data.erro ? null : data;
+  } catch {
+    return null;
+  }
+}
+
 const CompanyForm: React.FC<{
   form: Omit<Company, 'id'>;
   set: (field: keyof Omit<Company, 'id'>, value: any) => void;
@@ -38,11 +50,38 @@ const CompanyForm: React.FC<{
 }> = ({ form, set, onSave, onCancel, isEditing }) => {
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cnpjError, setCnpjError] = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
   const cnpjDigits = form.cnpj.replace(/\D/g, '');
 
   const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCnpjError('');
     set('cnpj', formatCnpj(e.target.value));
+  };
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const masked = formatCep(raw);
+    set('cep', masked);
+    setCepError('');
+
+    const digits = masked.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+
+    setCepLoading(true);
+    try {
+      const data = await fetchCep(digits);
+      if (!data) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      set('logradouro', data.logradouro || form.logradouro);
+      set('bairro', data.bairro || form.bairro);
+      set('municipio', data.localidade || form.municipio);
+      set('uf', data.uf || form.uf);
+    } finally {
+      setCepLoading(false);
+    }
   };
 
   const fetchCnpj = async () => {
@@ -138,6 +177,20 @@ const CompanyForm: React.FC<{
       </FormGroup>
 
       {/* Endereço separado */}
+      <FormGroup label="CEP">
+        <div className="relative">
+          <Input 
+            value={form.cep} 
+            onChange={handleCepChange} 
+            placeholder="00000-000" 
+            maxLength={9}
+            className={cepError ? 'border-red-400 focus:ring-red-300' : ''}
+          />
+          {cepLoading && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 animate-pulse">buscando...</span>}
+        </div>
+        {cepError && <p className="text-xs text-red-500 mt-1">{cepError}</p>}
+      </FormGroup>
+
       <FormGroup label="Logradouro">
         <Input value={form.logradouro} onChange={e => set('logradouro', e.target.value)} placeholder="Rua / Avenida / Travessa" />
       </FormGroup>
@@ -163,9 +216,7 @@ const CompanyForm: React.FC<{
           </Select>
         </FormGroup>
       </div>
-      <FormGroup label="CEP">
-        <Input value={form.cep} onChange={e => set('cep', formatCep(e.target.value))} placeholder="00000-000" />
-      </FormGroup>
+
 
       <FormGroup label="Produto / Atividade">
         <Input value={form.product} onChange={e => set('product', e.target.value)} placeholder="Descreva o produto ou atividade principal" />
