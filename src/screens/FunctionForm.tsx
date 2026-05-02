@@ -5,7 +5,7 @@ import { Card, CardContent } from '../components/ui/Card';
 import { FormGroup, Input, Textarea, Select } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
-import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage } from '../types';
+import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ImageUpload } from '../components/ImageUpload';
 
@@ -73,17 +73,21 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis, surveyQuestions } = useAET();
+  const { getProject, addFunction, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis, surveyQuestions } = useAET();
   const navigate = useNavigate();
 
   const project = getProject(id!);
   const [activeTab, setActiveTab] = useState(0);
 
-  const initialData = project?.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+  const isNew = funcId === 'new';
+  const initialData = isNew 
+    ? { ...EMPTY_FUNCTION } 
+    : project?.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+  
   const [formData, setFormData] = useState<AETFunction>(initialData);
   const [error, setError] = useState<string | null>(null);
 
-  if (!project || !initialData.id) return <div className="p-8">Função não encontrada.</div>;
+  if (!project || (!isNew && !initialData.id)) return <div className="p-8">Função não encontrada.</div>;
 
   const set = (field: keyof AETFunction, value: any) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -95,19 +99,32 @@ export const FunctionForm = () => {
     }));
 
   const handleSave = async () => {
-    if (!formData.name?.trim()) {
-      setError('O Nome da Função é obrigatório.');
-      setActiveTab(0);
-      return;
+    try {
+      if (!formData.name?.trim()) {
+        setError('O Nome da Função é obrigatório.');
+        setActiveTab(0);
+        return;
+      }
+      if (!formData.numEmployees?.trim()) {
+        setError('O Nº de colaboradores é obrigatório.');
+        setActiveTab(0);
+        return;
+      }
+      setError(null);
+      console.log('Salvando função...', { isNew, id, funcId, formData });
+      if (isNew) {
+        const newId = await addFunction(id!, formData);
+        console.log('Função adicionada com ID:', newId);
+      } else {
+        await updateFunction(id!, funcId!, formData);
+        console.log('Função atualizada');
+      }
+      navigate(`/project/${id}`);
+    } catch (err) {
+      console.error('Erro ao salvar função:', err);
+      setError('Não foi possível salvar a função. Verifique os campos obrigatórios e tente novamente.');
+      alert('Não conseguimos salvar a função agora. Se o problema persistir, atualize a página e tente novamente.');
     }
-    if (!formData.numEmployees?.trim()) {
-      setError('O Nº de colaboradores é obrigatório.');
-      setActiveTab(0);
-      return;
-    }
-    setError(null);
-    await updateFunction(id!, funcId!, formData);
-    navigate(`/project/${id}`);
   };
 
   // ── Equipment helpers ────────────────────────────────────────────────────

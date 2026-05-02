@@ -204,7 +204,7 @@ export const Dashboard = () => {
                   <Input value={formData.address} onChange={e => f('address', e.target.value)} required />
                 </FormGroup>
                 <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="Unidade / Local de Produção" required>
+                  <FormGroup label="Unidade / Local de Produção">
                     {(() => {
                       const companyUnits = selectedCompanyId
                         ? units.filter(u => u.companyId === selectedCompanyId)
@@ -224,7 +224,7 @@ export const Dashboard = () => {
                                 }));
                               }
                             }}
-                            required
+
                           >
                             <option value="">-- Selecione uma unidade --</option>
                             {companyUnits.map(u => (
@@ -233,11 +233,11 @@ export const Dashboard = () => {
                           </select>
                         );
                       }
-                      return <Input value={formData.unit} onChange={e => f('unit', e.target.value)} required placeholder={selectedCompanyId ? 'Nenhuma unidade cadastrada' : 'Ex: Filial São Paulo'} />;
+                      return <Input value={formData.unit} onChange={e => f('unit', e.target.value)} placeholder={selectedCompanyId ? 'Nenhuma unidade cadastrada' : 'Ex: Filial São Paulo'} />;
                     })()}
                   </FormGroup>
-                  <FormGroup label="Produto / Atividade" required>
-                    <Input value={formData.product} onChange={e => f('product', e.target.value)} required />
+                  <FormGroup label="Produto / Atividade">
+                    <Input value={formData.product} onChange={e => f('product', e.target.value)} />
                   </FormGroup>
                 </div>
                 <FormGroup label="Local (Cidade – UF)">

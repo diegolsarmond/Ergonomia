@@ -19,9 +19,8 @@ export const ProjectView = () => {
     </div>
   );
 
-  const handleAddFunction = async () => {
-    const newFuncId = await addFunction(project.id, { name: 'Nova Função' });
-    navigate(`/project/${project.id}/function/${newFuncId}`);
+  const handleAddFunction = () => {
+    navigate(`/project/${project.id}/function/new`);
   };
 
   const handlePrintDirectly = () => {

@@ -202,35 +202,71 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getProject = (id: string) => projects.find(p => p.id === id);
 
   const addFunction = async (projectId: string, funcData: Partial<AETFunction>) => {
-    const newFunc: AETFunction = { ...EMPTY_FUNCTION, id: uuidv4(), ...funcData };
-    const newProjects = projects.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
-    await saveToStorage(newProjects);
-    return newFunc.id;
+    console.log('Context: addFunction starting...', { projectId });
+    const newFunc: AETFunction = { ...EMPTY_FUNCTION, ...funcData, id: uuidv4() };
+    
+    return new Promise<string>((resolve, reject) => {
+      setProjects(prev => {
+        try {
+          const projectExists = prev.some(p => p.id === projectId);
+          if (!projectExists) {
+            console.error('Context: Project not found!', projectId);
+            throw new Error('Projeto não encontrado');
+          }
+          
+          const next = prev.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
+          localforage.setItem('aet_projects', next).then(() => {
+            console.log('Context: Function saved to storage');
+            resolve(newFunc.id);
+          }).catch(err => {
+            console.error('Context: Error saving to storage', err);
+            reject(err);
+          });
+          return next;
+        } catch (err) {
+          reject(err);
+          return prev;
+        }
+      });
+    });
   };
   const updateFunction = async (projectId: string, functionId: string, funcData: Partial<AETFunction>) => {
-    const newProjects = projects.map(p =>
-      p.id === projectId ? { ...p, functions: p.functions.map(f => f.id === functionId ? { ...f, ...funcData } : f) } : p
-    );
-    await saveToStorage(newProjects);
+    setProjects(prev => {
+      const next = prev.map(p =>
+        p.id === projectId ? { ...p, functions: p.functions.map(f => f.id === functionId ? { ...f, ...funcData } : f) } : p
+      );
+      localforage.setItem('aet_projects', next);
+      return next;
+    });
   };
   const deleteFunction = async (projectId: string, functionId: string) => {
-    const newProjects = projects.map(p =>
-      p.id === projectId ? { ...p, functions: p.functions.filter(f => f.id !== functionId) } : p
-    );
-    await saveToStorage(newProjects);
+    setProjects(prev => {
+      const next = prev.map(p =>
+        p.id === projectId ? { ...p, functions: p.functions.filter(f => f.id !== functionId) } : p
+      );
+      localforage.setItem('aet_projects', next);
+      return next;
+    });
   };
   const duplicateFunction = async (projectId: string, functionId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    const func = project?.functions.find(f => f.id === functionId);
-    if (!func) return '';
-    const newFunc: AETFunction = { ...JSON.parse(JSON.stringify(func)), id: uuidv4(), name: `${func.name} (Cópia)` };
-    newFunc.improvements = newFunc.improvements.map((imp: any) => ({ ...imp, id: uuidv4() }));
-    newFunc.scientificMethods = newFunc.scientificMethods.map((m: any) => ({ ...m, id: uuidv4() }));
-    newFunc.images = newFunc.images.map((img: any) => ({ ...img, id: uuidv4() }));
-    newFunc.illumination.checklist = newFunc.illumination.checklist.map((c: any) => ({ ...c, id: uuidv4() }));
-    const newProjects = projects.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
-    await saveToStorage(newProjects);
-    return newFunc.id;
+    let finalId = '';
+    setProjects(prev => {
+      const project = prev.find(p => p.id === projectId);
+      const func = project?.functions.find(f => f.id === functionId);
+      if (!func) return prev;
+      
+      const newFunc: AETFunction = { ...JSON.parse(JSON.stringify(func)), id: uuidv4(), name: `${func.name} (Cópia)` };
+      newFunc.improvements = newFunc.improvements.map((imp: any) => ({ ...imp, id: uuidv4() }));
+      newFunc.scientificMethods = newFunc.scientificMethods.map((m: any) => ({ ...m, id: uuidv4() }));
+      newFunc.images = newFunc.images.map((img: any) => ({ ...img, id: uuidv4() }));
+      newFunc.illumination.checklist = newFunc.illumination.checklist.map((c: any) => ({ ...c, id: uuidv4() }));
+      
+      finalId = newFunc.id;
+      const next = prev.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
+      localforage.setItem('aet_projects', next);
+      return next;
+    });
+    return finalId;
   };
 
   const exportProjectJSON = (projectId: string): string | null => {
