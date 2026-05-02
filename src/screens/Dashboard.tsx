@@ -213,27 +213,30 @@ export const Dashboard = () => {
                         return (
                           <select
                             className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
-                            value={companyUnits.find(u => u.name === formData.unit)?.id ?? ''}
+                            value={units.find(u => u.name === formData.unit && u.companyId === selectedCompanyId)?.id ?? ''}
                             onChange={e => {
                               const u = companyUnits.find(u => u.id === e.target.value);
                               if (u) {
                                 setFormData(prev => ({
                                   ...prev,
                                   unit: u.name,
+                                  address: u.address || `${u.logradouro}${u.numero ? ', ' + u.numero : ''}${u.bairro ? ' - ' + u.bairro : ''}`,
                                   location: (u.city || u.uf) ? `${u.city || ''}${u.uf ? ' - ' + u.uf : ''}` : prev.location,
                                 }));
+                              } else {
+                                f('unit', '');
                               }
                             }}
-
                           >
                             <option value="">-- Selecione uma unidade --</option>
                             {companyUnits.map(u => (
                               <option key={u.id} value={u.id}>{u.name}</option>
                             ))}
+                            <option value="other">-- Outra unidade (digitar) --</option>
                           </select>
                         );
                       }
-                      return <Input value={formData.unit} onChange={e => f('unit', e.target.value)} placeholder={selectedCompanyId ? 'Nenhuma unidade cadastrada' : 'Ex: Filial São Paulo'} />;
+                      return <Input value={formData.unit} onChange={e => f('unit', e.target.value)} placeholder={selectedCompanyId ? 'Nenhuma unidade cadastrada' : 'Selecione uma empresa primeiro'} />;
                     })()}
                   </FormGroup>
                   <FormGroup label="Produto / Atividade">

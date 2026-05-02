@@ -40,6 +40,18 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
 );
 Select.displayName = 'Select';
 
+export const Checkbox = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className = '', ...props }, ref) => (
+    <input
+      type="checkbox"
+      ref={ref}
+      className={`w-4 h-4 rounded text-teal-600 border-slate-300 focus:ring-teal-500 cursor-pointer transition-all ${className}`}
+      {...props}
+    />
+  )
+);
+Checkbox.displayName = 'Checkbox';
+
 export const FormGroup = ({ label, htmlFor, children, required }: { label: string; htmlFor?: string; children: React.ReactNode; required?: boolean }) => (
   <div className="mb-4">
     <Label htmlFor={htmlFor}>{label} {required && <span className="text-red-400 ml-0.5">*</span>}</Label>

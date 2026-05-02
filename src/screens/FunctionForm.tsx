@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
-import { FormGroup, Input, Textarea, Select } from '../components/ui/Forms';
+import { FormGroup, Input, Textarea, Select, Checkbox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
 import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION } from '../types';
@@ -19,8 +19,9 @@ const TABS = [
   'Métodos Ergonômicos',
   'Riscos e Melhorias',
   'Diagnóstico Final',
-  'Fotos / Registros',
 ];
+
+const DAYS_OF_WEEK = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -73,7 +74,7 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, addFunction, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis, surveyQuestions } = useAET();
+  const { getProject, addFunction, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis, surveyQuestions, shifts, addShift } = useAET();
   const navigate = useNavigate();
 
   const project = getProject(id!);
@@ -125,6 +126,16 @@ export const FunctionForm = () => {
       setError('Não foi possível salvar a função. Verifique os campos obrigatórios e tente novamente.');
       alert('Não conseguimos salvar a função agora. Se o problema persistir, atualize a página e tente novamente.');
     }
+  };
+
+  const [newShiftName, setNewShiftName] = useState('');
+  const [showNewShiftInput, setShowNewShiftInput] = useState(false);
+
+  const handleAddQuickShift = async () => {
+    if (!newShiftName.trim()) return;
+    await addShift({ name: newShiftName, description: 'Cadastrado via formulário', active: true });
+    setNewShiftName('');
+    setShowNewShiftInput(false);
   };
 
   // ── Equipment helpers ────────────────────────────────────────────────────
@@ -321,9 +332,55 @@ export const FunctionForm = () => {
             <div className="space-y-4">
               <SectionTitle>Turnos e Jornada</SectionTitle>
               <div className="grid grid-cols-3 gap-4">
-                <FormGroup label="Descrição dos Turnos">
-                  <Input value={formData.shifts} onChange={(e) => set('shifts', e.target.value)} placeholder="Ex: 2 turnos" />
-                </FormGroup>
+                <div className="col-span-3">
+                  <FormGroup label="Turnos de Trabalho">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {shifts.filter(s => s.active).map(s => {
+                        const selected = (formData.shifts || '').split(', ').includes(s.name);
+                        return (
+                          <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                            <Checkbox 
+                              checked={selected}
+                              onChange={() => {
+                                const current = (formData.shifts || '').split(', ').filter(Boolean);
+                                const next = selected ? current.filter(v => v !== s.name) : [...current, s.name];
+                                set('shifts', next.join(', '));
+                              }}
+                            />
+                            {s.name}
+                          </label>
+                        );
+                      })}
+                      <button 
+                        type="button"
+                        onClick={() => setShowNewShiftInput(!showNewShiftInput)}
+                        className={`flex items-center gap-2 px-3 py-1.5 border border-dashed rounded-xl text-sm transition-all ${showNewShiftInput ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 text-slate-400 hover:border-teal-400 hover:text-teal-600'}`}
+                      >
+                        <Plus className="w-4 h-4" />
+                        {showNewShiftInput ? 'Cancelar' : 'Novo Turno'}
+                      </button>
+                    </div>
+                    {showNewShiftInput && (
+                      <div className="flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Input 
+                          placeholder="Nome do novo turno..." 
+                          value={newShiftName} 
+                          onChange={e => setNewShiftName(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddQuickShift())}
+                        />
+                        <Button type="button" onClick={handleAddQuickShift}>Adicionar</Button>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <p className="text-[11px] text-slate-400 uppercase font-semibold mb-1">Resumo / Customizado</p>
+                      <Input 
+                        value={formData.shifts} 
+                        onChange={(e) => set('shifts', e.target.value)} 
+                        placeholder="Ex: Turno Diurno, Turno Noturno" 
+                      />
+                    </div>
+                  </FormGroup>
+                </div>
                 <FormGroup label="Horário Inicial">
                   <Input type="time" value={formData.shiftStart} onChange={(e) => set('shiftStart', e.target.value)} />
                 </FormGroup>
@@ -333,7 +390,50 @@ export const FunctionForm = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Dias da Semana">
-                  <Input value={formData.workDays} onChange={(e) => set('workDays', e.target.value)} placeholder="Ex: Segunda a Sexta" />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(() => {
+                      const allSelected = DAYS_OF_WEEK.every(day => (formData.workDays || '').includes(day));
+                      return (
+                        <label className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${allSelected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox 
+                            checked={allSelected}
+                            onChange={() => {
+                              if (allSelected) set('workDays', '');
+                              else set('workDays', DAYS_OF_WEEK.join(', '));
+                            }}
+                          />
+                          Todos
+                        </label>
+                      );
+                    })()}
+                    {DAYS_OF_WEEK.map(day => {
+                      const selected = (formData.workDays || '').includes(day);
+                      return (
+                        <label key={day} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox 
+                            checked={selected}
+                            onChange={() => {
+                              const current = (formData.workDays || '').split(', ').filter(Boolean);
+                              let next;
+                              if (selected) {
+                                next = current.filter(v => v !== day);
+                              } else {
+                                // Keep order if possible
+                                next = [...current, day].sort((a, b) => DAYS_OF_WEEK.indexOf(a) - DAYS_OF_WEEK.indexOf(b));
+                              }
+                              set('workDays', next.join(', '));
+                            }}
+                          />
+                          {day}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <Input 
+                    value={formData.workDays} 
+                    onChange={(e) => set('workDays', e.target.value)} 
+                    placeholder="Ex: Seg, Ter, Qua, Qui, Sex" 
+                  />
                 </FormGroup>
                 <RadioGroup
                   label="Horas Extras"
@@ -396,7 +496,15 @@ export const FunctionForm = () => {
                   <Input value={formData.collabFormation} onChange={(e) => set('collabFormation', e.target.value)} />
                 </FormGroup>
                 <FormGroup label="Turno Entrevistado">
-                  <Input value={formData.collabTurn} onChange={(e) => set('collabTurn', e.target.value)} />
+                  <Select value={formData.collabTurn} onChange={(e) => set('collabTurn', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {shifts.filter(s => s.active).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                    {formData.collabTurn && !shifts.some(s => s.name === formData.collabTurn) && (
+                      <option value={formData.collabTurn}>{formData.collabTurn}</option>
+                    )}
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Gênero predominante">
                   <Select value={formData.opinionGender} onChange={(e) => set('opinionGender', e.target.value)}>

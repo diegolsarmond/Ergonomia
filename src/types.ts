@@ -110,6 +110,13 @@ export interface ReportTextTemplate {
   active: boolean;
 }
 
+export interface Shift {
+  id: string;
+  name: string;
+  description: string;
+  active: boolean;
+}
+
 export interface ScientificMethodTemplate {
   id: string;
   name: string;

@@ -4,14 +4,14 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   AETProject, AETFunction, EMPTY_FUNCTION, ChecklistQuestion, ScientificMethodTemplate,
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
-  SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate,
+  SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate, Shift,
 } from '../types';
 import { createMockProject } from '../utils/mockData';
 import { Client, MOCK_CLIENTS } from '../data/mockClients';
 import {
   MOCK_COMPANIES, MOCK_UNITS, MOCK_SECTORS, MOCK_JOB_ROLES, MOCK_EPIS,
   MOCK_EQUIPMENT, MOCK_SURVEY_QUESTIONS, MOCK_PAUSES, MOCK_RISK_CLASSIFICATIONS,
-  MOCK_REPORT_TEXTS, MOCK_CHECKLIST_QUESTIONS, MOCK_SCIENTIFIC_METHODS
+  MOCK_REPORT_TEXTS, MOCK_CHECKLIST_QUESTIONS, MOCK_SCIENTIFIC_METHODS, MOCK_SHIFTS
 } from '../data/mockParameters';
 
 interface AETContextType {
@@ -80,6 +80,10 @@ interface AETContextType {
   addReportText: (t: Omit<ReportTextTemplate, 'id'>) => Promise<void>;
   updateReportText: (id: string, t: Partial<ReportTextTemplate>) => Promise<void>;
   deleteReportText: (id: string) => Promise<void>;
+  shifts: Shift[];
+  addShift: (s: Omit<Shift, 'id'>) => Promise<void>;
+  updateShift: (id: string, s: Partial<Shift>) => Promise<void>;
+  deleteShift: (id: string) => Promise<void>;
 }
 
 const AETContext = createContext<AETContextType | undefined>(undefined);
@@ -115,6 +119,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pauses, setPauses] = useState<StandardPause[]>([]);
   const [riskClassifications, setRiskClassifications] = useState<RiskClassification[]>([]);
   const [reportTexts, setReportTexts] = useState<ReportTextTemplate[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -179,6 +184,25 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await loadSimple<StandardPause>('aet_pauses', setPauses, MOCK_PAUSES);
       await loadSimple<RiskClassification>('aet_risk_classifications', setRiskClassifications, MOCK_RISK_CLASSIFICATIONS);
       await loadSimple<ReportTextTemplate>('aet_report_texts', setReportTexts, MOCK_REPORT_TEXTS);
+      
+      const loadedShifts = await localforage.getItem<Shift[]>('aet_shifts');
+      if (!loadedShifts || loadedShifts.length === 0) {
+        await localforage.setItem('aet_shifts', MOCK_SHIFTS);
+        setShifts(MOCK_SHIFTS);
+      } else {
+        // Migration: strip emojis from existing names
+        const emojiRegex = /[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+        const cleaned = loadedShifts.map(s => ({
+          ...s,
+          name: s.name.replace(emojiRegex, '').trim()
+        }));
+        if (JSON.stringify(cleaned) !== JSON.stringify(loadedShifts)) {
+          await localforage.setItem('aet_shifts', cleaned);
+          setShifts(cleaned);
+        } else {
+          setShifts(loadedShifts);
+        }
+      }
 
       setLoading(false);
     };
@@ -343,6 +367,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const pauseCRUD = makeCRUD('aet_pauses', pauses, setPauses);
   const riskClassificationCRUD = makeCRUD('aet_risk_classifications', riskClassifications, setRiskClassifications);
   const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
+  const shiftCRUD = makeCRUD('aet_shifts', shifts, setShifts);
 
   return (
     <AETContext.Provider value={{
@@ -362,6 +387,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       pauses, addPause: pauseCRUD.add, updatePause: pauseCRUD.update, deletePause: pauseCRUD.remove,
       riskClassifications, addRiskClassification: riskClassificationCRUD.add, updateRiskClassification: riskClassificationCRUD.update, deleteRiskClassification: riskClassificationCRUD.remove,
       reportTexts, addReportText: reportTextCRUD.add, updateReportText: reportTextCRUD.update, deleteReportText: reportTextCRUD.remove,
+      shifts, addShift: shiftCRUD.add, updateShift: shiftCRUD.update, deleteShift: shiftCRUD.remove,
     }}>
       {children}
     </AETContext.Provider>
