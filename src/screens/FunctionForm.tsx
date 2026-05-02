@@ -74,7 +74,11 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, addFunction, updateFunction, checklistQuestions, scientificMethodTemplates, equipment, epis, surveyQuestions, shifts, addShift } = useAET();
+  const { 
+    getProject, addFunction, updateFunction, checklistQuestions, 
+    scientificMethodTemplates, equipment, epis, surveyQuestions, 
+    shifts, addShift, companies, units, sectors, jobRoles 
+  } = useAET();
   const navigate = useNavigate();
 
   const project = getProject(id!);
@@ -270,62 +274,113 @@ export const FunctionForm = () => {
         <CardContent className="pt-6">
 
           {/* ── Tab 0: Identificação ───────────────────────────────────────── */}
-          {activeTab === 0 && (
-            <div className="space-y-4">
-              <SectionTitle>Cadastro da Função</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Nome da Função" required>
-                  <Input value={formData.name} onChange={(e) => set('name', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Nº de Colaboradores" required>
-                  <Input value={formData.numEmployees} onChange={(e) => set('numEmployees', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Setor">
-                  <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Unidade">
-                  <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Data da Análise">
-                  <Input type="date" value={formData.analysisDate} onChange={(e) => set('analysisDate', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Status da Análise">
-                  <Select value={formData.demandFound} onChange={(e) => set('demandFound', e.target.value)}>
-                    <option value="">Selecione...</option>
-                    <option value="Posto passível de investigações ergonômicas">Passível de investigações</option>
-                    <option value="Posto passível de modificações ergonômicas">Passível de modificações</option>
-                    <option value="Posto sem necessidade de intervenção imediata">Sem intervenção imediata</option>
-                    <option value="Análise concluída">Análise concluída</option>
-                  </Select>
-                </FormGroup>
-              </div>
+          {activeTab === 0 && (() => {
+            const matchedCompany = companies.find(c => 
+              (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g, '') === project.cnpj.replace(/\D/g, '')) || 
+              c.razaoSocial === project.companyName || 
+              c.nomeFantasia === project.companyName
+            );
 
-              <SectionTitle>Origem e Objetivo</SectionTitle>
-              <FormGroup label="Origem da Demanda">
-                <Textarea value={formData.demandOrigin} onChange={(e) => set('demandOrigin', e.target.value)} rows={3} />
-              </FormGroup>
-              <FormGroup label="Objetivo da Análise">
-                <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
-              </FormGroup>
+            const companyUnits = matchedCompany ? units.filter(u => u.companyId === matchedCompany.id) : [];
+            const companySectors = matchedCompany ? sectors.filter(s => s.companyId === matchedCompany.id) : [];
+            const companyJobRoles = matchedCompany ? jobRoles.filter(r => r.companyId === matchedCompany.id) : [];
 
-              <SectionTitle>Análise Global da Empresa (nesta função)</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Situação de Mercado">
-                  <Input value={formData.marketSituation} onChange={(e) => set('marketSituation', e.target.value)} />
+            const handleApplyJobRole = (roleId: string) => {
+              const role = companyJobRoles.find(r => r.id === roleId);
+              if (!role) return;
+              
+              const sector = companySectors.find(s => s.id === role.sectorId);
+              const unit = sector ? companyUnits.find(u => u.id === sector.unitId) : null;
+              
+              setFormData(prev => ({
+                ...prev,
+                name: role.name,
+                sector: sector ? sector.name : prev.sector,
+                unit: unit ? unit.name : prev.unit,
+              }));
+            };
+
+            return (
+              <div className="space-y-4">
+                <SectionTitle>Cadastro da Função</SectionTitle>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Nome da Função" required>
+                    {matchedCompany && companyJobRoles.length > 0 ? (
+                      <div className="flex gap-2">
+                        <Select 
+                          className="flex-1"
+                          value={companyJobRoles.find(r => r.name === formData.name)?.id || ''}
+                          onChange={(e) => handleApplyJobRole(e.target.value)}
+                        >
+                          <option value="">Selecione função padrão...</option>
+                          {companyJobRoles.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                        </Select>
+                        <Input 
+                          className="flex-1"
+                          value={formData.name} 
+                          onChange={(e) => set('name', e.target.value)} 
+                          placeholder="Ou digite o nome" 
+                        />
+                      </div>
+                    ) : (
+                      <Input value={formData.name} onChange={(e) => set('name', e.target.value)} placeholder="Ex: Auxiliar de Produção" />
+                    )}
+                  </FormGroup>
+                  <FormGroup label="Nº de Colaboradores" required>
+                    <Input value={formData.numEmployees} onChange={(e) => set('numEmployees', e.target.value)} />
+                  </FormGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Unidade">
+                    <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="Setor">
+                    <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
+                  </FormGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Data da Análise">
+                    <Input type="date" value={formData.analysisDate} onChange={(e) => set('analysisDate', e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="Status da Análise">
+                    <Select value={formData.demandFound} onChange={(e) => set('demandFound', e.target.value)}>
+                      <option value="">Selecione...</option>
+                      <option value="Posto passível de investigações ergonômicas">Passível de investigações</option>
+                      <option value="Posto passível de modificações ergonômicas">Passível de modificações</option>
+                      <option value="Posto sem necessidade de intervenção imediata">Sem intervenção imediata</option>
+                      <option value="Análise concluída">Análise concluída</option>
+                    </Select>
+                  </FormGroup>
+                </div>
+
+                <SectionTitle>Origem e Objetivo</SectionTitle>
+                <FormGroup label="Origem da Demanda">
+                  <Textarea value={formData.demandOrigin} onChange={(e) => set('demandOrigin', e.target.value)} rows={3} />
                 </FormGroup>
-                <FormGroup label="Produto / Serviço">
-                  <Input value={formData.product} onChange={(e) => set('product', e.target.value)} />
+                <FormGroup label="Objetivo da Análise">
+                  <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
+                </FormGroup>
+
+                <SectionTitle>Análise Global da Empresa (nesta função)</SectionTitle>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Situação de Mercado">
+                    <Input value={formData.marketSituation} onChange={(e) => set('marketSituation', e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="Produto / Serviço">
+                    <Input value={formData.product} onChange={(e) => set('product', e.target.value)} />
+                  </FormGroup>
+                </div>
+                <FormGroup label="Local de Produção">
+                  <Input value={formData.productionLocation} onChange={(e) => set('productionLocation', e.target.value)} />
                 </FormGroup>
               </div>
-              <FormGroup label="Local de Produção">
-                <Input value={formData.productionLocation} onChange={(e) => set('productionLocation', e.target.value)} />
-              </FormGroup>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Tab 1: Organização do Trabalho ────────────────────────────── */}
           {activeTab === 1 && (
