@@ -25,7 +25,7 @@ const PARAM_GROUPS = [
   {
     label: 'Análise Ergonômica',
     items: [
-      { to: '/parameters/survey-questions', icon: MessageSquare, label: 'Perguntas' },
+      { to: '/parameters/survey-questions', icon: MessageSquare, label: 'Questionário do Trabalhador' },
       { to: '/parameters/checklist', icon: List, label: 'Checklist NHO 11' },
       { to: '/parameters/scientific-methods', icon: FlaskConical, label: 'Métodos Científicos' },
       { to: '/parameters/risk-classifications', icon: AlertTriangle, label: 'Classificação de Risco' },

@@ -174,7 +174,23 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         setter(data ?? []);
       };
-      await loadSimple<Company>('aet_companies', setCompanies, MOCK_COMPANIES);
+      {
+        const raw = await localforage.getItem<Company[]>('aet_companies');
+        if (!raw || raw.length === 0) {
+          await localforage.setItem('aet_companies', MOCK_COMPANIES);
+          setCompanies(MOCK_COMPANIES);
+        } else {
+          let migrated = false;
+          const patched = raw.map((c: any) => {
+            const needs = c.marketSituation === undefined || c.productionLocation === undefined;
+            if (!needs) return c;
+            migrated = true;
+            return { ...c, marketSituation: c.marketSituation ?? '', productionLocation: c.productionLocation ?? '' };
+          });
+          if (migrated) await localforage.setItem('aet_companies', patched);
+          setCompanies(patched);
+        }
+      }
       await loadSimple<Unit>('aet_units', setUnits, MOCK_UNITS);
       await loadSimple<Sector>('aet_sectors', setSectors, MOCK_SECTORS);
       await loadSimple<StandardJobRole>('aet_job_roles', setJobRoles, MOCK_JOB_ROLES);

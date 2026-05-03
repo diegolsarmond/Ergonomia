@@ -366,18 +366,6 @@ export const FunctionForm = () => {
                   <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
                 </FormGroup>
 
-                <SectionTitle>Análise Global da Empresa (nesta função)</SectionTitle>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="Situação de Mercado">
-                    <Input value={formData.marketSituation} onChange={(e) => set('marketSituation', e.target.value)} />
-                  </FormGroup>
-                  <FormGroup label="Produto / Serviço">
-                    <Input value={formData.product} onChange={(e) => set('product', e.target.value)} />
-                  </FormGroup>
-                </div>
-                <FormGroup label="Local de Produção">
-                  <Input value={formData.productionLocation} onChange={(e) => set('productionLocation', e.target.value)} />
-                </FormGroup>
               </div>
             );
           })()}
@@ -539,6 +527,13 @@ export const FunctionForm = () => {
                   onChange={(v) => set('bathroomCondition', v)}
                 />
               </div>
+
+              <SectionTitle>Fotos – Banheiros / Refeitórios</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="bathroom"
+              />
             </div>
           )}
 
@@ -813,6 +808,13 @@ export const FunctionForm = () => {
               <FormGroup label="Referência">
                 <Input value={formData.meioAmbiente} onChange={(e) => set('meioAmbiente', e.target.value)} placeholder="Vide LTCAT / Vide PGR" />
               </FormGroup>
+
+              <SectionTitle>Fotos – Posto de Trabalho</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="workplace"
+              />
             </div>
           )}
 
@@ -992,6 +994,20 @@ export const FunctionForm = () => {
                   <p className="text-amber-600 text-sm font-medium">Atenção: o total postural é {total}% (deve somar 100%).</p>
                 ) : null;
               })()}
+
+              <SectionTitle>Fotos – Equipamentos</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="equipment"
+              />
+
+              <SectionTitle>Fotos – Posturas</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="posture"
+              />
             </div>
           )}
 
@@ -1183,6 +1199,13 @@ export const FunctionForm = () => {
                 <Plus className="w-4 h-4 mr-1" /> Adicionar Método
               </Button>
 
+              <SectionTitle>Fotos – Métodos Científicos</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="method"
+              />
+
               <SectionTitle>Checklist de Verificação</SectionTitle>
               {checklistQuestions.filter((q) => q.functionIds?.includes(funcId!)).length === 0 ? (
                 <p className="text-gray-500 text-sm">Nenhuma pergunta de checklist vinculada a esta função. Configure em Parâmetros → Checklist.</p>
@@ -1303,6 +1326,13 @@ export const FunctionForm = () => {
               <Button type="button" variant="secondary" onClick={addImprovement}>
                 <Plus className="w-4 h-4 mr-1" /> Adicionar Item ao Inventário
               </Button>
+
+              <SectionTitle>Fotos – Evidências de Risco</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="risk_evidence"
+              />
             </div>
           )}
 
@@ -1343,55 +1373,8 @@ export const FunctionForm = () => {
                   </Select>
                 </FormGroup>
               </div>
-            </div>
-          )}
 
-          {/* ── Tab 9: Fotos / Registros ──────────────────────────────────── */}
-          {activeTab === 9 && (
-            <div className="space-y-6">
-              <SectionTitle>Posto de Trabalho</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="workplace"
-              />
-
-              <SectionTitle>Equipamentos</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="equipment"
-              />
-
-              <SectionTitle>Posturas</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="posture"
-              />
-
-              <SectionTitle>Evidências de Risco</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="risk_evidence"
-              />
-
-              <SectionTitle>Banheiros / Refeitórios</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="bathroom"
-              />
-
-              <SectionTitle>Métodos Científicos</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="method"
-              />
-
-              <SectionTitle>Outras</SectionTitle>
+              <SectionTitle>Outras Fotos</SectionTitle>
               <ImageUpload
                 images={formData.images}
                 onChange={(imgs: AETImage[]) => set('images', imgs)}

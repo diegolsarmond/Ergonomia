@@ -13,6 +13,8 @@ export interface Company {
   uf: string;
   cep: string;
   product: string;
+  marketSituation: string;
+  productionLocation: string;
   riskDegree: string;
   logoDataUrl: string;
   active: boolean;

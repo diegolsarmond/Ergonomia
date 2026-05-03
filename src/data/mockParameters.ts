@@ -19,6 +19,8 @@ export const MOCK_COMPANIES: Company[] = [
     uf: '',
     cep: '',
     product: 'Software',
+    marketSituation: '',
+    productionLocation: '',
     riskDegree: '1',
     logoDataUrl: '',
     active: true

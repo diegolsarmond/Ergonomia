@@ -95,6 +95,8 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
             <DataItem label="Município / UF" value={[company.municipio, company.uf].filter(Boolean).join(' / ')} />
             <DataItem label="CEP" value={company.cep} />
             <DataItem label="Produto / Atividade" value={company.product} />
+            <DataItem label="Situação de Mercado" value={company.marketSituation} />
+            <DataItem label="Local de Produção" value={company.productionLocation} />
             <DataItem label="Grau de Risco" value={company.riskDegree ? `Grau ${company.riskDegree}` : ''} />
             <DataItem label="Status" value={company.active ? 'Ativo' : 'Inativo'} />
           </dl>
@@ -183,6 +185,12 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
 
             <FormGroup label="Produto / Atividade">
               <Input value={form.product} onChange={e => set('product', e.target.value)} />
+            </FormGroup>
+            <FormGroup label="Situação de Mercado">
+              <Input value={form.marketSituation} onChange={e => set('marketSituation', e.target.value)} placeholder="Ex: Empresa fornecedora com demanda crescente" />
+            </FormGroup>
+            <FormGroup label="Local de Produção">
+              <Input value={form.productionLocation} onChange={e => set('productionLocation', e.target.value)} placeholder="Ex: Galpão principal – Linha 1" />
             </FormGroup>
             <FormGroup label="Grau de Risco">
               <Select value={form.riskDegree} onChange={e => set('riskDegree', e.target.value)}>

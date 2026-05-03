@@ -12,7 +12,7 @@ const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG
 const EMPTY: Omit<Company, 'id'> = {
   razaoSocial: '', nomeFantasia: '', cnpj: '',
   logradouro: '', numero: '', complemento: '', bairro: '', municipio: '', uf: '', cep: '',
-  product: '', riskDegree: '', logoDataUrl: '', active: true,
+  product: '', marketSituation: '', productionLocation: '', riskDegree: '', logoDataUrl: '', active: true,
 };
 
 function formatCnpj(raw: string) {
@@ -220,6 +220,12 @@ const CompanyForm: React.FC<{
 
       <FormGroup label="Produto / Atividade">
         <Input value={form.product} onChange={e => set('product', e.target.value)} placeholder="Descreva o produto ou atividade principal" />
+      </FormGroup>
+      <FormGroup label="Situação de Mercado">
+        <Input value={form.marketSituation} onChange={e => set('marketSituation', e.target.value)} placeholder="Ex: Empresa fornecedora com demanda crescente" />
+      </FormGroup>
+      <FormGroup label="Local de Produção">
+        <Input value={form.productionLocation} onChange={e => set('productionLocation', e.target.value)} placeholder="Ex: Galpão principal – Linha 1" />
       </FormGroup>
       <FormGroup label="Grau de Risco">
         <Select value={form.riskDegree} onChange={e => set('riskDegree', e.target.value)}>
