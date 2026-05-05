@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea } from '../components/ui/Forms';
 import { Plus, Trash2, Upload, Building2, FolderOpen, Calendar, MapPin, Hash } from 'lucide-react';
-import { DEFAULT_INTRO_ERGONOMIA, DEFAULT_INTRO_OBJETIVO, DEFAULT_INTRO_METODOLOGIA } from '../types';
+import { DEFAULT_INTRO_ERGONOMIA, DEFAULT_INTRO_OBJETIVO, DEFAULT_INTRO_METODOLOGIA, ReportType } from '../types';
 
 export const Dashboard = () => {
   const { projects, companies, units, loading, addProject, deleteProject, importProjectJSON } = useAET();
@@ -14,6 +14,7 @@ export const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
+    reportType: 'AET' as ReportType,
     companyName: '', fantasyName: '', cnpj: '', address: '', unit: '', product: '',
     riskDegree: '', location: '',
     evaluatorName: '', evaluatorFormation: '', evaluatorCrefito: '', evaluatorCompany: '',
@@ -60,8 +61,8 @@ export const Dashboard = () => {
       <div className="page-header mb-8">
         <div className="flex justify-between items-center relative z-10">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Projetos AET</h1>
-            <p className="text-teal-200 text-sm mt-1">Análise Ergonômica do Trabalho</p>
+            <h1 className="text-2xl font-bold tracking-tight">Projetos Ergonômicos</h1>
+            <p className="text-teal-200 text-sm mt-1">AEP · AET</p>
           </div>
           <div className="flex gap-3">
 
@@ -137,7 +138,16 @@ export const Dashboard = () => {
                   <span className="stat-badge">
                     {project.functions.length} funções
                   </span>
-                  <span className="text-[11px] text-slate-400">CNPJ: {project.cnpj || '-'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      (project.reportType || 'AET') === 'AEP'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-teal-100 text-teal-700'
+                    }`}>
+                      {project.reportType || 'AET'}
+                    </span>
+                    <span className="text-[11px] text-slate-400">CNPJ: {project.cnpj || '-'}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -150,10 +160,22 @@ export const Dashboard = () => {
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <Card className="modal-content w-full max-w-2xl max-h-[90vh] overflow-y-auto !rounded-2xl" onClick={e => e.stopPropagation()}>
             <CardHeader className="!bg-gradient-to-r !from-slate-50 !to-slate-100/50">
-              <CardTitle className="!text-lg">Novo Projeto AET</CardTitle>
+              <CardTitle className="!text-lg">Novo Projeto</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreate} className="space-y-4">
+                <FormGroup label="Tipo de Relatório" required>
+                  <select
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
+                    value={formData.reportType}
+                    onChange={e => setFormData(prev => ({ ...prev, reportType: e.target.value as ReportType }))}
+                    required
+                  >
+                    <option value="AET">AET – Análise Ergonômica do Trabalho</option>
+                    <option value="AEP">AEP – Análise Ergonômica Preliminar</option>
+                  </select>
+                </FormGroup>
+
                 {/* Cliente pré-preenchido */}
                 <FormGroup label="Selecionar Cliente Cadastrado">
                   <select

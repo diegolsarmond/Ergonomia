@@ -2,6 +2,7 @@ import { AETProject } from '../types';
 
 export const createMockProject = (): AETProject => ({
   id: 'mock-1',
+  reportType: 'AET',
   companyName: 'Metalúrgica São Paulo Ltda',
   fantasyName: 'MetalSP',
   cnpj: '12.345.678/0001-90',
@@ -86,6 +87,8 @@ export const createMockProject = (): AETProject => ({
       reworkDesc: 'Retrabalho por defeitos dimensionais (rebarbas, amassados). Refugo médio de 2%.',
       reworkWeek: '3-5 peças/dia',
       reworkNotApplicable: false,
+      usesEquipment: true,
+      usesEPI: true,
       equipmentList: [
         { id: 'eq-1', name: 'Prensa Hidráulica 150 ton', quantity: '3', dimensions: '2500x1800x3000 mm', principle: 'hidraulico', condition: 'Regular', observations: 'Prensa 02 com vibração acima do normal.' },
         { id: 'eq-2', name: 'Mesa de Alimentação', quantity: '3', dimensions: '1200x800x850 mm', principle: 'manual', condition: 'Regular', observations: 'Altura fixa, não regulável.' },
@@ -211,6 +214,8 @@ export const createMockProject = (): AETProject => ({
       reworkDesc: 'Reembalagem por erro de quantidade. Baixo índice.',
       reworkWeek: '2-3 caixas/semana',
       reworkNotApplicable: false,
+      usesEquipment: true,
+      usesEPI: true,
       equipmentList: [
         { id: 'eq-4', name: 'Bancada de Embalagem', quantity: '4', dimensions: '1500x700x900 mm', principle: 'manual', condition: 'Boa', observations: '' },
         { id: 'eq-5', name: 'Seladora Térmica', quantity: '2', dimensions: '600x400x200 mm', principle: 'eletrico', condition: 'Boa', observations: '' },

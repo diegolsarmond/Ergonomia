@@ -1,3 +1,6 @@
+import type { RiskLevel } from './domain/risks/riskTypes';
+export type { RiskLevel };
+
 // ── Parameter / System entities ─────────────────────────────────────────────
 
 export interface Company {
@@ -217,6 +220,25 @@ export interface AETEPIItem {
   observations: string;
 }
 
+export interface ErgonomicRisk {
+  id: string;
+  agent: string;
+  riskFactor: string;
+  possibleHealthEffect: string;
+  foundSituation: string;
+  existingControl: string;
+  improvementProposal: string;
+  probability: number;
+  severity: number;
+  score: number;
+  riskLevel: RiskLevel;
+  normativeReference: string;
+  evidenceImageDataUrl?: string;
+  responsible?: string;
+  deadline?: string;
+  status?: string;
+}
+
 export interface AETFunction {
   id: string;
   // 4.1 Cabeçalho
@@ -323,10 +345,44 @@ export interface AETFunction {
   improvements: AETImprovement[];
   checklistAnswers: { questionId: string; answer: 'sim' | 'nao' | 'nao_se_aplica' | '' }[];
   rulaScore?: string;
+  risks?: ErgonomicRisk[];
+  // AEP-specific fields (optional for backward compatibility)
+  ghe?: string;
+  generalConditions?: string;
+  accessConditions?: string;
+  workstationOrganization?: string;
+  environmentalConditions?: string;
+  biomechanicalFactors?: string;
+  cognitiveFactors?: string;
+  organizationalFactors?: string;
+  prescribedTask?: string;
+  realTask?: string;
+  conclusion?: string;
+  requiresAET?: boolean;
+  requiresAETJustification?: string;
 }
+
+export interface AEPFunctionFields {
+  ghe: string;
+  generalConditions: string;
+  accessConditions: string;
+  workstationOrganization: string;
+  environmentalConditions: string;
+  biomechanicalFactors: string;
+  cognitiveFactors: string;
+  organizationalFactors: string;
+  prescribedTask: string;
+  realTask: string;
+  conclusion: string;
+  requiresAET: boolean;
+  requiresAETJustification: string;
+}
+
+export type ReportType = 'AEP' | 'AET';
 
 export interface AETProject {
   id: string;
+  reportType: ReportType;
   // Logos
   consultoriaLogoDataUrl: string;
   companyLogoDataUrl: string;
@@ -472,4 +528,19 @@ export const EMPTY_FUNCTION: AETFunction = {
   improvements: [],
   checklistAnswers: [],
   rulaScore: '',
+  risks: [],
+  // AEP fields
+  ghe: '',
+  generalConditions: '',
+  accessConditions: '',
+  workstationOrganization: '',
+  environmentalConditions: '',
+  biomechanicalFactors: '',
+  cognitiveFactors: '',
+  organizationalFactors: '',
+  prescribedTask: '',
+  realTask: '',
+  conclusion: '',
+  requiresAET: false,
+  requiresAETJustification: '',
 };

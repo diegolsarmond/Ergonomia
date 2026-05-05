@@ -5,6 +5,7 @@ import {
   AETProject, AETFunction, EMPTY_FUNCTION, ChecklistQuestion, ScientificMethodTemplate,
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate, Shift,
+  ReportType,
 } from '../types';
 import { createMockProject } from '../utils/mockData';
 import { Client, MOCK_CLIENTS } from '../data/mockClients';
@@ -128,6 +129,15 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!stored || stored.length === 0) {
         stored = [createMockProject()];
         await localforage.setItem('aet_projects', stored);
+      }
+      // Migration: add reportType to projects that predate this field
+      {
+        let projectsMigrated = false;
+        stored = stored.map((p: any) => {
+          if (!p.reportType) { projectsMigrated = true; return { ...p, reportType: 'AET' as ReportType }; }
+          return p;
+        });
+        if (projectsMigrated) await localforage.setItem('aet_projects', stored);
       }
       setProjects(stored);
 
