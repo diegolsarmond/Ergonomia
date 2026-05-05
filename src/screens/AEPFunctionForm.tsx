@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
+import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { FormGroup, Input, Textarea } from '../components/ui/Forms';
+import { FormGroup, Input, Textarea, Select, Checkbox } from '../components/ui/Forms';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
 import { ImageUpload } from '../components/ImageUpload';
 import type {
@@ -120,6 +121,22 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const {
+    companies, units, sectors, jobRoles,
+    epis: epiCatalog, equipment: equipmentCatalog,
+    shifts: shiftCatalog, pauses: pauseCatalog,
+    scientificMethodTemplates,
+  } = useAET();
+
+  const matchedCompany = companies.find(c =>
+    (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g, '') === project.cnpj.replace(/\D/g, '')) ||
+    c.razaoSocial === project.companyName ||
+    c.nomeFantasia === project.companyName
+  );
+  const companyUnits    = matchedCompany ? units.filter(u => u.companyId === matchedCompany.id) : [];
+  const companySectors  = matchedCompany ? sectors.filter(s => s.companyId === matchedCompany.id) : [];
+  const companyJobRoles = matchedCompany ? jobRoles.filter(r => r.companyId === matchedCompany.id) : [];
+
   const aep = formData.aep!;
 
   // ── setters ──────────────────────────────────────────────────────────────
@@ -153,6 +170,16 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         toolsAndMaterials: { ...a.workCharacterization.toolsAndMaterials, [field]: value },
       },
     }));
+
+  const handleApplyJobRole = (roleId: string) => {
+    const role   = companyJobRoles.find(r => r.id === roleId);
+    if (!role) return;
+    const sector = companySectors.find(s => s.id === role.sectorId);
+    const unit   = sector ? companyUnits.find(u => u.id === sector.unitId) : null;
+    setFormData(prev => ({ ...prev, name: role.name }));
+    if (sector) setIdent('sectorArea',  sector.name);
+    if (unit)   setIdent('unitBranch',  unit.name);
+  };
 
   const setEnvComfort = (field: keyof AEPFunctionAssessment['biomechanics']['environmentalComfort'], value: string) =>
     setAep(a => ({
@@ -407,7 +434,21 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               <SectionTitle>1. Identificação</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Nome da Função / Cargo" required>
-                  <Input value={formData.name} onChange={e => setField('name', e.target.value)} required />
+                  {companyJobRoles.length > 0 ? (
+                    <div className="flex gap-2">
+                      <Select
+                        className="flex-1"
+                        value={companyJobRoles.find(r => r.name === formData.name)?.id || ''}
+                        onChange={e => handleApplyJobRole(e.target.value)}
+                      >
+                        <option value="">Selecionar do catálogo...</option>
+                        {companyJobRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </Select>
+                      <Input className="flex-1" value={formData.name} onChange={e => setField('name', e.target.value)} placeholder="Ou digitar" />
+                    </div>
+                  ) : (
+                    <Input value={formData.name} onChange={e => setField('name', e.target.value)} required />
+                  )}
                 </FormGroup>
                 <FormGroup label="Código do Posto">
                   <Input value={aep.identification.code} onChange={e => setIdent('code', e.target.value)} />
@@ -415,10 +456,38 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Unidade / Filial">
-                  <Input value={aep.identification.unitBranch} onChange={e => setIdent('unitBranch', e.target.value)} placeholder={project.unit} />
+                  {companyUnits.length > 0 ? (
+                    <div className="flex gap-2">
+                      <Select
+                        className="flex-1"
+                        value={companyUnits.find(u => u.name === aep.identification.unitBranch)?.id || ''}
+                        onChange={e => { const u = companyUnits.find(x => x.id === e.target.value); if (u) setIdent('unitBranch', u.name); }}
+                      >
+                        <option value="">Selecionar...</option>
+                        {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </Select>
+                      <Input className="flex-1" value={aep.identification.unitBranch} onChange={e => setIdent('unitBranch', e.target.value)} placeholder={project.unit || 'Ou digitar'} />
+                    </div>
+                  ) : (
+                    <Input value={aep.identification.unitBranch} onChange={e => setIdent('unitBranch', e.target.value)} placeholder={project.unit} />
+                  )}
                 </FormGroup>
                 <FormGroup label="Setor / Área">
-                  <Input value={aep.identification.sectorArea} onChange={e => setIdent('sectorArea', e.target.value)} />
+                  {companySectors.length > 0 ? (
+                    <div className="flex gap-2">
+                      <Select
+                        className="flex-1"
+                        value={companySectors.find(s => s.name === aep.identification.sectorArea)?.id || ''}
+                        onChange={e => { const s = companySectors.find(x => x.id === e.target.value); if (s) setIdent('sectorArea', s.name); }}
+                      >
+                        <option value="">Selecionar...</option>
+                        {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </Select>
+                      <Input className="flex-1" value={aep.identification.sectorArea} onChange={e => setIdent('sectorArea', e.target.value)} placeholder="Ou digitar" />
+                    </div>
+                  ) : (
+                    <Input value={aep.identification.sectorArea} onChange={e => setIdent('sectorArea', e.target.value)} />
+                  )}
                 </FormGroup>
               </div>
               <FormGroup label="Funções Contempladas">
@@ -455,6 +524,23 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   <Input value={aep.workCharacterization.workOrganization.workday} onChange={e => setWorkOrg('workday', e.target.value)} placeholder="Ex: 8h diárias, 44h semanais" />
                 </FormGroup>
                 <FormGroup label="Escala / Turno">
+                  {shiftCatalog.filter(s => s.active).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {shiftCatalog.filter(s => s.active).map(s => {
+                        const selected = aep.workCharacterization.workOrganization.scale.split(', ').includes(s.name);
+                        return (
+                          <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                            <Checkbox checked={selected} onChange={() => {
+                              const cur = aep.workCharacterization.workOrganization.scale.split(', ').filter(Boolean);
+                              const nxt = selected ? cur.filter(v => v !== s.name) : [...cur, s.name];
+                              setWorkOrg('scale', nxt.join(', '));
+                            }} />
+                            {s.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                   <Input value={aep.workCharacterization.workOrganization.scale} onChange={e => setWorkOrg('scale', e.target.value)} placeholder="Ex: Segunda a sexta, turno diurno" />
                 </FormGroup>
                 <FormGroup label="Horas Extras">
@@ -464,6 +550,24 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   <Input value={aep.workCharacterization.workOrganization.lunchBreak} onChange={e => setWorkOrg('lunchBreak', e.target.value)} placeholder="Ex: 1 hora" />
                 </FormGroup>
                 <FormGroup label="Outras Pausas">
+                  {pauseCatalog.filter(p => p.active).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {pauseCatalog.filter(p => p.active).map(p => {
+                        const label = p.duration ? `${p.name} (${p.duration} ${p.durationUnit})` : p.name;
+                        const selected = aep.workCharacterization.workOrganization.otherBreaks.includes(p.name);
+                        return (
+                          <label key={p.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                            <Checkbox checked={selected} onChange={() => {
+                              const cur = aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(Boolean);
+                              const nxt = selected ? cur.filter(v => v !== p.name) : [...cur, label];
+                              setWorkOrg('otherBreaks', nxt.join(', '));
+                            }} />
+                            {label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                   <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Ex: 2 pausas de 10 min" />
                 </FormGroup>
                 <FormGroup label="Rodízio de Tarefas">
