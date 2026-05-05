@@ -7,7 +7,7 @@ import {
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate, Shift,
 } from '../types';
 import { normalizeFunction, normalizeProject, normalizeProjectsOnLoad } from '../domain/normalize';
-import { createMockProject } from '../utils/mockData';
+import { createMockAEPProject, createMockAETProject } from '../utils/mockData';
 import { Client, MOCK_CLIENTS } from '../data/mockClients';
 import {
   MOCK_COMPANIES, MOCK_UNITS, MOCK_SECTORS, MOCK_JOB_ROLES, MOCK_EPIS,
@@ -28,6 +28,7 @@ interface AETContextType {
   duplicateFunction: (projectId: string, functionId: string) => Promise<string>;
   exportProjectJSON: (projectId: string) => string | null;
   importProjectJSON: (json: string) => Promise<string | null>;
+  resetDevelopmentData?: () => Promise<void>;
   clients: Client[];
   addClient: (client: Omit<Client, 'id'>) => Promise<string>;
   updateClient: (id: string, client: Partial<Client>) => Promise<void>;
@@ -127,7 +128,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const loadData = async () => {
       let stored = await localforage.getItem<AETProject[]>('aet_projects');
       if (!stored || stored.length === 0) {
-        stored = [createMockProject()];
+        stored = [createMockAEPProject(), createMockAETProject()];
         await localforage.setItem('aet_projects', stored);
       }
       // Normalize all projects (fills missing fields, guarantees arrays, AEP fields, etc.)
@@ -395,11 +396,18 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
   const shiftCRUD = makeCRUD('aet_shifts', shifts, setShifts);
 
+  const resetDevelopmentData = (import.meta as any).env?.DEV
+    ? async () => {
+        await localforage.clear();
+        window.location.reload();
+      }
+    : undefined;
+
   return (
     <AETContext.Provider value={{
       projects, loading, addProject, updateProject, deleteProject, getProject,
       addFunction, updateFunction, deleteFunction, duplicateFunction,
-      exportProjectJSON, importProjectJSON,
+      exportProjectJSON, importProjectJSON, resetDevelopmentData,
       clients, addClient, updateClient, deleteClient,
       checklistQuestions, addChecklistQuestion, updateChecklistQuestion, deleteChecklistQuestion,
       scientificMethodTemplates, addScientificMethodTemplate, updateScientificMethodTemplate, deleteScientificMethodTemplate,
