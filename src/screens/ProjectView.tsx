@@ -58,7 +58,7 @@ export const ProjectView = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `AET_${project.companyName.replace(/\s+/g, '_')}.json`;
+    a.download = `${project.reportType || 'AET'}_${project.companyName.replace(/\s+/g, '_')}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -83,7 +83,7 @@ export const ProjectView = () => {
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5 truncate">{project.companyName}</h1>
               {project.fantasyName && <p className="text-teal-200 text-sm font-medium truncate">{project.fantasyName}</p>}
               <p className="text-teal-300/70 text-xs mt-1 truncate">
-                AET — {project.unit || project.location} — {project.date ? new Date(project.date).toLocaleDateString('pt-BR') : ''}
+                {project.reportType || 'AET'} — {project.unit || project.location} — {project.date ? new Date(project.date).toLocaleDateString('pt-BR') : ''}
               </p>
             </div>
           </div>
