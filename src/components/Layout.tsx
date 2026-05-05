@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   FileText, Home, BookOpen, ChevronDown, ChevronRight, Settings,
   List, FlaskConical, Building2,
-  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock
 } from 'lucide-react';
 
 const PARAM_GROUPS = [
@@ -11,6 +11,7 @@ const PARAM_GROUPS = [
     label: 'Cadastros',
     items: [
       { to: '/parameters/companies', icon: Building2, label: 'Empresas' },
+      { to: '/parameters/shifts', icon: Clock, label: 'Turnos' },
     ],
   },
   {
@@ -24,7 +25,7 @@ const PARAM_GROUPS = [
   {
     label: 'Análise Ergonômica',
     items: [
-      { to: '/parameters/survey-questions', icon: MessageSquare, label: 'Perguntas' },
+      { to: '/parameters/survey-questions', icon: MessageSquare, label: 'Questionário do Trabalhador' },
       { to: '/parameters/checklist', icon: List, label: 'Checklist NHO 11' },
       { to: '/parameters/scientific-methods', icon: FlaskConical, label: 'Métodos Científicos' },
       { to: '/parameters/risk-classifications', icon: AlertTriangle, label: 'Classificação de Risco' },

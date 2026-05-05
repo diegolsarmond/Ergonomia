@@ -12,7 +12,7 @@ const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG
 const EMPTY: Omit<Company, 'id'> = {
   razaoSocial: '', nomeFantasia: '', cnpj: '',
   logradouro: '', numero: '', complemento: '', bairro: '', municipio: '', uf: '', cep: '',
-  product: '', riskDegree: '', logoDataUrl: '', active: true,
+  product: '', marketSituation: '', productionLocation: '', riskDegree: '', logoDataUrl: '', active: true,
 };
 
 function formatCnpj(raw: string) {
@@ -29,6 +29,18 @@ function formatCep(raw: string) {
   return d.replace(/^(\d{5})(\d)/, '$1-$2');
 }
 
+async function fetchCep(cep: string) {
+  const digits = cep.replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const data = await res.json();
+    return data.erro ? null : data;
+  } catch {
+    return null;
+  }
+}
+
 const CompanyForm: React.FC<{
   form: Omit<Company, 'id'>;
   set: (field: keyof Omit<Company, 'id'>, value: any) => void;
@@ -38,11 +50,38 @@ const CompanyForm: React.FC<{
 }> = ({ form, set, onSave, onCancel, isEditing }) => {
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cnpjError, setCnpjError] = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
   const cnpjDigits = form.cnpj.replace(/\D/g, '');
 
   const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCnpjError('');
     set('cnpj', formatCnpj(e.target.value));
+  };
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const masked = formatCep(raw);
+    set('cep', masked);
+    setCepError('');
+
+    const digits = masked.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+
+    setCepLoading(true);
+    try {
+      const data = await fetchCep(digits);
+      if (!data) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      set('logradouro', data.logradouro || form.logradouro);
+      set('bairro', data.bairro || form.bairro);
+      set('municipio', data.localidade || form.municipio);
+      set('uf', data.uf || form.uf);
+    } finally {
+      setCepLoading(false);
+    }
   };
 
   const fetchCnpj = async () => {
@@ -96,6 +135,40 @@ const CompanyForm: React.FC<{
         {cnpjError && <p className="text-xs text-red-500 mt-1">{cnpjError}</p>}
       </FormGroup>
 
+      <FormGroup label="Logo da Empresa">
+        <div className="flex items-center gap-4">
+          {form.logoDataUrl && (
+            <img src={form.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 shrink-0" />
+          )}
+          <div className="flex-1">
+            <Input 
+              type="file" 
+              accept="image/*"
+              className="!p-1.5 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer text-xs"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    set('logoDataUrl', reader.result as string);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+            {form.logoDataUrl && (
+              <button 
+                type="button" 
+                onClick={() => set('logoDataUrl', '')}
+                className="text-xs text-red-500 mt-1.5 hover:underline block"
+              >
+                Remover Logo
+              </button>
+            )}
+          </div>
+        </div>
+      </FormGroup>
+
       <FormGroup label="Razão Social" required>
         <Input value={form.razaoSocial} onChange={e => set('razaoSocial', e.target.value)} placeholder="Razão Social Ltda" />
       </FormGroup>
@@ -104,6 +177,20 @@ const CompanyForm: React.FC<{
       </FormGroup>
 
       {/* Endereço separado */}
+      <FormGroup label="CEP">
+        <div className="relative">
+          <Input 
+            value={form.cep} 
+            onChange={handleCepChange} 
+            placeholder="00000-000" 
+            maxLength={9}
+            className={cepError ? 'border-red-400 focus:ring-red-300' : ''}
+          />
+          {cepLoading && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 animate-pulse">buscando...</span>}
+        </div>
+        {cepError && <p className="text-xs text-red-500 mt-1">{cepError}</p>}
+      </FormGroup>
+
       <FormGroup label="Logradouro">
         <Input value={form.logradouro} onChange={e => set('logradouro', e.target.value)} placeholder="Rua / Avenida / Travessa" />
       </FormGroup>
@@ -129,12 +216,16 @@ const CompanyForm: React.FC<{
           </Select>
         </FormGroup>
       </div>
-      <FormGroup label="CEP">
-        <Input value={form.cep} onChange={e => set('cep', formatCep(e.target.value))} placeholder="00000-000" />
-      </FormGroup>
+
 
       <FormGroup label="Produto / Atividade">
         <Input value={form.product} onChange={e => set('product', e.target.value)} placeholder="Descreva o produto ou atividade principal" />
+      </FormGroup>
+      <FormGroup label="Situação de Mercado">
+        <Input value={form.marketSituation} onChange={e => set('marketSituation', e.target.value)} placeholder="Ex: Empresa fornecedora com demanda crescente" />
+      </FormGroup>
+      <FormGroup label="Local de Produção">
+        <Input value={form.productionLocation} onChange={e => set('productionLocation', e.target.value)} placeholder="Ex: Galpão principal – Linha 1" />
       </FormGroup>
       <FormGroup label="Grau de Risco">
         <Select value={form.riskDegree} onChange={e => set('riskDegree', e.target.value)}>
@@ -170,7 +261,15 @@ export const Companies = () => {
     setForm(f => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
-    if (!form.razaoSocial.trim()) return;
+    const missing: string[] = [];
+    if (!form.cnpj.trim()) missing.push('CNPJ');
+    if (!form.razaoSocial.trim()) missing.push('Razão Social');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateCompany(editingId, form);
     else await addCompany(form);
     closeModal();
@@ -228,18 +327,23 @@ export const Companies = () => {
                   className="border border-slate-200 rounded-xl p-4 flex justify-between items-start hover:border-teal-300 hover:bg-teal-50/30 transition-colors bg-white cursor-pointer"
                   onClick={() => navigate(`/parameters/companies/${c.id}`)}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-800 text-sm">{c.razaoSocial}</p>
-                      {c.active
-                        ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        : <XCircle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
-                    </div>
-                    {c.nomeFantasia && <p className="text-xs text-slate-500 mt-0.5">{c.nomeFantasia}</p>}
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      {c.cnpj && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{c.cnpj}</span>}
-                      {cityLine(c) && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{cityLine(c)}</span>}
-                      {c.riskDegree && <span className="stat-badge !text-[11px] !px-2 !py-0.5">Grau {c.riskDegree}</span>}
+                  <div className="flex gap-4 min-w-0 flex-1">
+                    {c.logoDataUrl && (
+                      <img src={c.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 shrink-0" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-800 text-sm">{c.razaoSocial}</p>
+                        {c.active
+                          ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          : <XCircle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                      </div>
+                      {c.nomeFantasia && <p className="text-xs text-slate-500 mt-0.5">{c.nomeFantasia}</p>}
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {c.cnpj && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{c.cnpj}</span>}
+                        {cityLine(c) && <span className="stat-badge !text-[11px] !px-2 !py-0.5">{cityLine(c)}</span>}
+                        {c.riskDegree && <span className="stat-badge !text-[11px] !px-2 !py-0.5">Grau {c.riskDegree}</span>}
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-1 ml-3 shrink-0" onClick={e => e.stopPropagation()}>

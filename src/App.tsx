@@ -22,6 +22,7 @@ import { SurveyQuestions } from './screens/parameters/SurveyQuestions';
 import { Pauses } from './screens/parameters/Pauses';
 import { RiskClassifications } from './screens/parameters/RiskClassifications';
 import { ReportTexts } from './screens/parameters/ReportTexts';
+import { Shifts } from './screens/parameters/Shifts';
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="parameters/scientific-methods" element={<ScientificMethodsParameters />} />
             <Route path="parameters/risk-classifications" element={<RiskClassifications />} />
             <Route path="parameters/report-texts" element={<ReportTexts />} />
+            <Route path="parameters/shifts" element={<Shifts />} />
           </Route>
           <Route path="/project/:id/preview" element={<PDFPreview />} />
         </Routes>

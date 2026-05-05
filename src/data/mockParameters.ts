@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate,
-  ScientificMethodTemplate, ChecklistQuestion
+  ScientificMethodTemplate, ChecklistQuestion, Shift
 } from '../types';
 
 export const MOCK_COMPANIES: Company[] = [
@@ -19,6 +19,8 @@ export const MOCK_COMPANIES: Company[] = [
     uf: '',
     cep: '',
     product: 'Software',
+    marketSituation: '',
+    productionLocation: '',
     riskDegree: '1',
     logoDataUrl: '',
     active: true
@@ -143,5 +145,50 @@ export const MOCK_SCIENTIFIC_METHODS: ScientificMethodTemplate[] = [
     name: 'RULA',
     description: 'Avaliação rápida de membros superiores',
     imageDataUrls: []
+  }
+];
+
+export const MOCK_SHIFTS: Shift[] = [
+  {
+    id: uuidv4(),
+    name: 'Turno diurno',
+    description: 'Realizado durante o dia. Normalmente entre 6h e 18h. Exemplo: 8h às 17h.',
+    active: true
+  },
+  {
+    id: uuidv4(),
+    name: 'Turno noturno',
+    description: 'Acontece à noite. Geralmente entre 22h e 5h (ou 6h). Pode ter regras específicas (como adicional noturno, dependendo da legislação).',
+    active: true
+  },
+  {
+    id: uuidv4(),
+    name: 'Turno vespertino',
+    description: 'Período da tarde. Normalmente entre 12h e 18h. Exemplo: 13h às 19h.',
+    active: true
+  },
+  {
+    id: uuidv4(),
+    name: 'Turno rotativo (ou revezamento)',
+    description: 'O trabalhador alterna entre turnos (dia/noite/tarde). Pode mudar semanalmente ou mensalmente.',
+    active: true
+  },
+  {
+    id: uuidv4(),
+    name: 'Turno fixo',
+    description: 'Sempre no mesmo horário. Exemplo: sempre trabalhar só de manhã ou só à noite.',
+    active: true
+  },
+  {
+    id: uuidv4(),
+    name: 'Turno ininterrupto de revezamento',
+    description: 'Usado em empresas que funcionam 24h (indústrias, hospitais). Equipes se alternam continuamente. No Brasil, costuma ter jornada reduzida (ex: 6h/dia).',
+    active: true
+  },
+  {
+    id: uuidv4(),
+    name: 'Escalas especiais',
+    description: 'Algumas formas comuns: 12x36 → trabalha 12h, folga 36h; 6x1 → trabalha 6 dias, folga 1; 5x2 → trabalha 5 dias, folga 2 (padrão de escritório).',
+    active: true
   }
 ];

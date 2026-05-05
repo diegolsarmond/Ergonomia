@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
-import { FormGroup, Input, Textarea, Select } from '../components/ui/Forms';
+import { FormGroup, Input, Textarea, Select, Checkbox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
-import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage } from '../types';
+import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ImageUpload } from '../components/ImageUpload';
 
@@ -19,8 +19,9 @@ const TABS = [
   'Métodos Ergonômicos',
   'Riscos e Melhorias',
   'Diagnóstico Final',
-  'Fotos / Registros',
 ];
+
+const DAYS_OF_WEEK = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -73,17 +74,25 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, updateFunction, checklistQuestions, scientificMethodTemplates } = useAET();
+  const { 
+    getProject, addFunction, updateFunction, checklistQuestions, 
+    scientificMethodTemplates, equipment, epis, surveyQuestions, 
+    shifts, addShift, companies, units, sectors, jobRoles 
+  } = useAET();
   const navigate = useNavigate();
 
   const project = getProject(id!);
   const [activeTab, setActiveTab] = useState(0);
 
-  const initialData = project?.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+  const isNew = funcId === 'new';
+  const initialData = isNew 
+    ? { ...EMPTY_FUNCTION } 
+    : project?.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+  
   const [formData, setFormData] = useState<AETFunction>(initialData);
   const [error, setError] = useState<string | null>(null);
 
-  if (!project || !initialData.id) return <div className="p-8">Função não encontrada.</div>;
+  if (!project || (!isNew && !initialData.id)) return <div className="p-8">Função não encontrada.</div>;
 
   const set = (field: keyof AETFunction, value: any) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -95,19 +104,42 @@ export const FunctionForm = () => {
     }));
 
   const handleSave = async () => {
-    if (!formData.name?.trim()) {
-      setError('O Nome da Função é obrigatório.');
-      setActiveTab(0);
-      return;
+    try {
+      if (!formData.name?.trim()) {
+        setError('O Nome da Função é obrigatório.');
+        setActiveTab(0);
+        return;
+      }
+      if (!formData.numEmployees?.trim()) {
+        setError('O Nº de colaboradores é obrigatório.');
+        setActiveTab(0);
+        return;
+      }
+      setError(null);
+      console.log('Salvando função...', { isNew, id, funcId, formData });
+      if (isNew) {
+        const newId = await addFunction(id!, formData);
+        console.log('Função adicionada com ID:', newId);
+      } else {
+        await updateFunction(id!, funcId!, formData);
+        console.log('Função atualizada');
+      }
+      navigate(`/project/${id}`);
+    } catch (err) {
+      console.error('Erro ao salvar função:', err);
+      setError('Não foi possível salvar a função. Verifique os campos obrigatórios e tente novamente.');
+      alert('Não conseguimos salvar a função agora. Se o problema persistir, atualize a página e tente novamente.');
     }
-    if (!formData.numEmployees?.trim()) {
-      setError('O Nº de colaboradores é obrigatório.');
-      setActiveTab(0);
-      return;
-    }
-    setError(null);
-    await updateFunction(id!, funcId!, formData);
-    navigate(`/project/${id}`);
+  };
+
+  const [newShiftName, setNewShiftName] = useState('');
+  const [showNewShiftInput, setShowNewShiftInput] = useState(false);
+
+  const handleAddQuickShift = async () => {
+    if (!newShiftName.trim()) return;
+    await addShift({ name: newShiftName, description: 'Cadastrado via formulário', active: true });
+    setNewShiftName('');
+    setShowNewShiftInput(false);
   };
 
   // ── Equipment helpers ────────────────────────────────────────────────────
@@ -242,71 +274,156 @@ export const FunctionForm = () => {
         <CardContent className="pt-6">
 
           {/* ── Tab 0: Identificação ───────────────────────────────────────── */}
-          {activeTab === 0 && (
-            <div className="space-y-4">
-              <SectionTitle>Cadastro da Função</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Nome da Função" required>
-                  <Input value={formData.name} onChange={(e) => set('name', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Nº de Colaboradores" required>
-                  <Input value={formData.numEmployees} onChange={(e) => set('numEmployees', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Setor">
-                  <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Unidade">
-                  <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Data da Análise">
-                  <Input type="date" value={formData.analysisDate} onChange={(e) => set('analysisDate', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Status da Análise">
-                  <Select value={formData.demandFound} onChange={(e) => set('demandFound', e.target.value)}>
-                    <option value="">Selecione...</option>
-                    <option value="Posto passível de investigações ergonômicas">Passível de investigações</option>
-                    <option value="Posto passível de modificações ergonômicas">Passível de modificações</option>
-                    <option value="Posto sem necessidade de intervenção imediata">Sem intervenção imediata</option>
-                    <option value="Análise concluída">Análise concluída</option>
-                  </Select>
-                </FormGroup>
-              </div>
+          {activeTab === 0 && (() => {
+            const matchedCompany = companies.find(c => 
+              (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g, '') === project.cnpj.replace(/\D/g, '')) || 
+              c.razaoSocial === project.companyName || 
+              c.nomeFantasia === project.companyName
+            );
 
-              <SectionTitle>Origem e Objetivo</SectionTitle>
-              <FormGroup label="Origem da Demanda">
-                <Textarea value={formData.demandOrigin} onChange={(e) => set('demandOrigin', e.target.value)} rows={3} />
-              </FormGroup>
-              <FormGroup label="Objetivo da Análise">
-                <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
-              </FormGroup>
+            const companyUnits = matchedCompany ? units.filter(u => u.companyId === matchedCompany.id) : [];
+            const companySectors = matchedCompany ? sectors.filter(s => s.companyId === matchedCompany.id) : [];
+            const companyJobRoles = matchedCompany ? jobRoles.filter(r => r.companyId === matchedCompany.id) : [];
 
-              <SectionTitle>Análise Global da Empresa (nesta função)</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Situação de Mercado">
-                  <Input value={formData.marketSituation} onChange={(e) => set('marketSituation', e.target.value)} />
+            const handleApplyJobRole = (roleId: string) => {
+              const role = companyJobRoles.find(r => r.id === roleId);
+              if (!role) return;
+              
+              const sector = companySectors.find(s => s.id === role.sectorId);
+              const unit = sector ? companyUnits.find(u => u.id === sector.unitId) : null;
+              
+              setFormData(prev => ({
+                ...prev,
+                name: role.name,
+                sector: sector ? sector.name : prev.sector,
+                unit: unit ? unit.name : prev.unit,
+              }));
+            };
+
+            return (
+              <div className="space-y-4">
+                <SectionTitle>Cadastro da Função</SectionTitle>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Nome da Função" required>
+                    {matchedCompany && companyJobRoles.length > 0 ? (
+                      <div className="flex gap-2">
+                        <Select 
+                          className="flex-1"
+                          value={companyJobRoles.find(r => r.name === formData.name)?.id || ''}
+                          onChange={(e) => handleApplyJobRole(e.target.value)}
+                        >
+                          <option value="">Selecione função padrão...</option>
+                          {companyJobRoles.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                        </Select>
+                        <Input 
+                          className="flex-1"
+                          value={formData.name} 
+                          onChange={(e) => set('name', e.target.value)} 
+                          placeholder="Ou digite o nome" 
+                        />
+                      </div>
+                    ) : (
+                      <Input value={formData.name} onChange={(e) => set('name', e.target.value)} placeholder="Ex: Auxiliar de Produção" />
+                    )}
+                  </FormGroup>
+                  <FormGroup label="Nº de Colaboradores" required>
+                    <Input value={formData.numEmployees} onChange={(e) => set('numEmployees', e.target.value)} />
+                  </FormGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Unidade">
+                    <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="Setor">
+                    <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
+                  </FormGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Data da Análise">
+                    <Input type="date" value={formData.analysisDate} onChange={(e) => set('analysisDate', e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="Status da Análise">
+                    <Select value={formData.demandFound} onChange={(e) => set('demandFound', e.target.value)}>
+                      <option value="">Selecione...</option>
+                      <option value="Posto passível de investigações ergonômicas">Passível de investigações</option>
+                      <option value="Posto passível de modificações ergonômicas">Passível de modificações</option>
+                      <option value="Posto sem necessidade de intervenção imediata">Sem intervenção imediata</option>
+                      <option value="Análise concluída">Análise concluída</option>
+                    </Select>
+                  </FormGroup>
+                </div>
+
+                <SectionTitle>Origem e Objetivo</SectionTitle>
+                <FormGroup label="Origem da Demanda">
+                  <Textarea value={formData.demandOrigin} onChange={(e) => set('demandOrigin', e.target.value)} rows={3} />
                 </FormGroup>
-                <FormGroup label="Produto / Serviço">
-                  <Input value={formData.product} onChange={(e) => set('product', e.target.value)} />
+                <FormGroup label="Objetivo da Análise">
+                  <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
                 </FormGroup>
+
               </div>
-              <FormGroup label="Local de Produção">
-                <Input value={formData.productionLocation} onChange={(e) => set('productionLocation', e.target.value)} />
-              </FormGroup>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Tab 1: Organização do Trabalho ────────────────────────────── */}
           {activeTab === 1 && (
             <div className="space-y-4">
               <SectionTitle>Turnos e Jornada</SectionTitle>
               <div className="grid grid-cols-3 gap-4">
-                <FormGroup label="Descrição dos Turnos">
-                  <Input value={formData.shifts} onChange={(e) => set('shifts', e.target.value)} placeholder="Ex: 2 turnos" />
-                </FormGroup>
+                <div className="col-span-3">
+                  <FormGroup label="Turnos de Trabalho">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {shifts.filter(s => s.active).map(s => {
+                        const selected = (formData.shifts || '').split(', ').includes(s.name);
+                        return (
+                          <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                            <Checkbox 
+                              checked={selected}
+                              onChange={() => {
+                                const current = (formData.shifts || '').split(', ').filter(Boolean);
+                                const next = selected ? current.filter(v => v !== s.name) : [...current, s.name];
+                                set('shifts', next.join(', '));
+                              }}
+                            />
+                            {s.name}
+                          </label>
+                        );
+                      })}
+                      <button 
+                        type="button"
+                        onClick={() => setShowNewShiftInput(!showNewShiftInput)}
+                        className={`flex items-center gap-2 px-3 py-1.5 border border-dashed rounded-xl text-sm transition-all ${showNewShiftInput ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 text-slate-400 hover:border-teal-400 hover:text-teal-600'}`}
+                      >
+                        <Plus className="w-4 h-4" />
+                        {showNewShiftInput ? 'Cancelar' : 'Novo Turno'}
+                      </button>
+                    </div>
+                    {showNewShiftInput && (
+                      <div className="flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Input 
+                          placeholder="Nome do novo turno..." 
+                          value={newShiftName} 
+                          onChange={e => setNewShiftName(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddQuickShift())}
+                        />
+                        <Button type="button" onClick={handleAddQuickShift}>Adicionar</Button>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <p className="text-[11px] text-slate-400 uppercase font-semibold mb-1">Resumo / Customizado</p>
+                      <Input 
+                        value={formData.shifts} 
+                        onChange={(e) => set('shifts', e.target.value)} 
+                        placeholder="Ex: Turno Diurno, Turno Noturno" 
+                      />
+                    </div>
+                  </FormGroup>
+                </div>
                 <FormGroup label="Horário Inicial">
                   <Input type="time" value={formData.shiftStart} onChange={(e) => set('shiftStart', e.target.value)} />
                 </FormGroup>
@@ -316,7 +433,50 @@ export const FunctionForm = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Dias da Semana">
-                  <Input value={formData.workDays} onChange={(e) => set('workDays', e.target.value)} placeholder="Ex: Segunda a Sexta" />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(() => {
+                      const allSelected = DAYS_OF_WEEK.every(day => (formData.workDays || '').includes(day));
+                      return (
+                        <label className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${allSelected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox 
+                            checked={allSelected}
+                            onChange={() => {
+                              if (allSelected) set('workDays', '');
+                              else set('workDays', DAYS_OF_WEEK.join(', '));
+                            }}
+                          />
+                          Todos
+                        </label>
+                      );
+                    })()}
+                    {DAYS_OF_WEEK.map(day => {
+                      const selected = (formData.workDays || '').includes(day);
+                      return (
+                        <label key={day} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox 
+                            checked={selected}
+                            onChange={() => {
+                              const current = (formData.workDays || '').split(', ').filter(Boolean);
+                              let next;
+                              if (selected) {
+                                next = current.filter(v => v !== day);
+                              } else {
+                                // Keep order if possible
+                                next = [...current, day].sort((a, b) => DAYS_OF_WEEK.indexOf(a) - DAYS_OF_WEEK.indexOf(b));
+                              }
+                              set('workDays', next.join(', '));
+                            }}
+                          />
+                          {day}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <Input 
+                    value={formData.workDays} 
+                    onChange={(e) => set('workDays', e.target.value)} 
+                    placeholder="Ex: Seg, Ter, Qua, Qui, Sex" 
+                  />
                 </FormGroup>
                 <RadioGroup
                   label="Horas Extras"
@@ -367,6 +527,13 @@ export const FunctionForm = () => {
                   onChange={(v) => set('bathroomCondition', v)}
                 />
               </div>
+
+              <SectionTitle>Fotos – Banheiros / Refeitórios</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="bathroom"
+              />
             </div>
           )}
 
@@ -379,7 +546,15 @@ export const FunctionForm = () => {
                   <Input value={formData.collabFormation} onChange={(e) => set('collabFormation', e.target.value)} />
                 </FormGroup>
                 <FormGroup label="Turno Entrevistado">
-                  <Input value={formData.collabTurn} onChange={(e) => set('collabTurn', e.target.value)} />
+                  <Select value={formData.collabTurn} onChange={(e) => set('collabTurn', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {shifts.filter(s => s.active).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                    {formData.collabTurn && !shifts.some(s => s.name === formData.collabTurn) && (
+                      <option value={formData.collabTurn}>{formData.collabTurn}</option>
+                    )}
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Gênero predominante">
                   <Select value={formData.opinionGender} onChange={(e) => set('opinionGender', e.target.value)}>
@@ -390,7 +565,15 @@ export const FunctionForm = () => {
                   </Select>
                 </FormGroup>
                 <FormGroup label="Faixa Etária">
-                  <Input value={formData.opinionAge} onChange={(e) => set('opinionAge', e.target.value)} placeholder="Ex: 25 a 45 anos" />
+                  <Select value={formData.opinionAge} onChange={(e) => set('opinionAge', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    <option value="Menor de 18 anos">Menor de 18 anos</option>
+                    <option value="18 a 30 anos">18 a 30 anos</option>
+                    <option value="31 a 45 anos">31 a 45 anos</option>
+                    <option value="46 a 60 anos">46 a 60 anos</option>
+                    <option value="Maior de 60 anos">Maior de 60 anos</option>
+                    <option value="Variada (múltiplas faixas)">Variada (múltiplas faixas)</option>
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Tempo Médio na Empresa">
                   <Input value={formData.opinionTime} onChange={(e) => set('opinionTime', e.target.value)} placeholder="Ex: 3 anos" />
@@ -398,126 +581,112 @@ export const FunctionForm = () => {
               </div>
 
               <SectionTitle>Questionário do Trabalhador</SectionTitle>
-              <div className="grid grid-cols-1 gap-4">
-                <FormGroup label="Objetivo do trabalho (segundo o trabalhador)">
-                  <Input value={formData.opinionObjective} onChange={(e) => set('opinionObjective', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <RadioGroup
-                  label="Sensação Térmica"
-                  name="opinionThermal"
-                  value={formData.opinionThermal}
-                  options={[
-                    { value: 'Confortável', label: 'Confortável' },
-                    { value: 'Quente', label: 'Quente' },
-                    { value: 'Frio', label: 'Frio' },
-                    { value: 'Variável', label: 'Variável' },
-                  ]}
-                  onChange={(v) => set('opinionThermal', v)}
-                />
-                <RadioGroup
-                  label="Sensação de Iluminância"
-                  name="opinionLightingSens"
-                  value={formData.opinionLightingSens}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Insuficiente', label: 'Insuficiente' },
-                    { value: 'Excessiva', label: 'Excessiva' },
-                  ]}
-                  onChange={(v) => set('opinionLightingSens', v)}
-                />
-                <FormGroup label="Descrição da Iluminação">
-                  <Input value={formData.opinionLightingDesc} onChange={(e) => set('opinionLightingDesc', e.target.value)} />
-                </FormGroup>
-                <RadioGroup
-                  label="Sensação Acústica"
-                  name="opinionAcoustics"
-                  value={formData.opinionAcoustics}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Ruidoso', label: 'Ruidoso' },
-                    { value: 'Muito ruidoso', label: 'Muito ruidoso' },
-                    { value: 'N/A', label: 'N/A' },
-                  ]}
-                  onChange={(v) => set('opinionAcoustics', v)}
-                />
-                <RadioGroup
-                  label="Ventilação"
-                  name="opinionVentilation"
-                  value={formData.opinionVentilation}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Insuficiente', label: 'Insuficiente' },
-                    { value: 'Excessiva', label: 'Excessiva' },
-                  ]}
-                  onChange={(v) => set('opinionVentilation', v)}
-                />
-                <FormGroup label="Descrição da Ventilação">
-                  <Input value={formData.opinionVentilationDesc} onChange={(e) => set('opinionVentilationDesc', e.target.value)} />
-                </FormGroup>
-                <RadioGroup
-                  label="Opinião sobre Equipamentos"
-                  name="opinionEquip"
-                  value={formData.opinionEquip}
-                  options={[
-                    { value: 'Adequados', label: 'Adequados' },
-                    { value: 'Parcialmente adequados', label: 'Parcialmente adequados' },
-                    { value: 'Inadequados', label: 'Inadequados' },
-                  ]}
-                  onChange={(v) => set('opinionEquip', v)}
-                />
-                <RadioGroup
-                  label="Pressão Temporal"
-                  name="opinionPressure"
-                  value={formData.opinionPressure}
-                  options={[
-                    { value: 'Sem pressão', label: 'Sem pressão' },
-                    { value: 'Pressão moderada', label: 'Moderada' },
-                    { value: 'Alta pressão', label: 'Alta' },
-                  ]}
-                  onChange={(v) => set('opinionPressure', v)}
-                />
-                <RadioGroup
-                  label="Relacionamento com Colegas"
-                  name="opinionRelationship"
-                  value={formData.opinionRelationship}
-                  options={[
-                    { value: 'Bom', label: 'Bom' },
-                    { value: 'Regular', label: 'Regular' },
-                    { value: 'Ruim', label: 'Ruim' },
-                  ]}
-                  onChange={(v) => set('opinionRelationship', v)}
-                />
-                <RadioGroup
-                  label="Abertura da Liderança a Sugestões"
-                  name="opinionLeadership"
-                  value={formData.opinionLeadership}
-                  options={[
-                    { value: 'Aberta', label: 'Aberta' },
-                    { value: 'Parcialmente', label: 'Parcialmente' },
-                    { value: 'Fechada', label: 'Fechada' },
-                  ]}
-                  onChange={(v) => set('opinionLeadership', v)}
-                />
-                <RadioGroup
-                  label="Influência da Manutenção"
-                  name="opinionMaintenanceInfluence"
-                  value={formData.opinionMaintenanceInfluence}
-                  options={[
-                    { value: 'Não interfere', label: 'Não interfere' },
-                    { value: 'Interfere raramente', label: 'Raramente' },
-                    { value: 'Interfere frequentemente', label: 'Frequentemente' },
-                  ]}
-                  onChange={(v) => set('opinionMaintenanceInfluence', v)}
-                />
-              </div>
-              <FormGroup label="Dificuldades na Tarefa">
-                <Textarea value={formData.opinionDifficulties} onChange={(e) => set('opinionDifficulties', e.target.value)} rows={2} />
-              </FormGroup>
-              <FormGroup label="Intercorrências que atrasam a produção">
-                <Textarea value={formData.opinionIntercurrences} onChange={(e) => set('opinionIntercurrences', e.target.value)} rows={2} />
-              </FormGroup>
+
+              {/* Perguntas já adicionadas */}
+              {(formData.checklistAnswers || []).length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {(formData.checklistAnswers || []).map((ans) => {
+                    const q = surveyQuestions.find(sq => sq.id === ans.questionId);
+                    if (!q) return null;
+                    const currentAnswer = (ans as any).answer ?? '';
+                    const setAnswer = (value: string) => {
+                      const next = (formData.checklistAnswers || []).map(a =>
+                        a.questionId === q.id ? { ...a, answer: value as any } : a
+                      );
+                      set('checklistAnswers', next);
+                    };
+                    const removeAnswer = () => {
+                      set('checklistAnswers', (formData.checklistAnswers || []).filter(a => a.questionId !== q.id));
+                    };
+
+                    return (
+                      <div key={q.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 relative hover:border-teal-200 transition-colors">
+                        <button
+                          type="button"
+                          onClick={removeAnswer}
+                          className="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                          title="Remover pergunta"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        {(q.responseType === 'sim_nao' || q.responseType === 'sim/nao') ? (
+                          <RadioGroup
+                            label={q.question}
+                            name={`sq_${q.id}`}
+                            value={currentAnswer}
+                            options={[
+                              { value: 'sim', label: 'Sim' },
+                              { value: 'nao', label: 'Não' },
+                              { value: 'nao_se_aplica', label: 'N/A' },
+                            ]}
+                            onChange={setAnswer}
+                          />
+                        ) : (q.responseType === 'multipla_escolha' || q.responseType === 'multipla escolha') ? (
+                          (() => {
+                            const opts = (q as any).options as string[] | undefined;
+                            return opts && opts.length > 0 ? (
+                              <RadioGroup
+                                label={q.question}
+                                name={`sq_${q.id}`}
+                                value={currentAnswer}
+                                options={opts.map(o => ({ value: o, label: o }))}
+                                onChange={setAnswer}
+                              />
+                            ) : (
+                              <FormGroup label={q.question}>
+                                <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                              </FormGroup>
+                            );
+                          })()
+                        ) : (q.responseType === 'texto_longo' || q.responseType === 'texto longo') ? (
+                          <FormGroup label={q.question}>
+                            <Textarea value={currentAnswer} onChange={e => setAnswer(e.target.value)} rows={3} />
+                          </FormGroup>
+                        ) : (
+                          <FormGroup label={q.question}>
+                            <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                          </FormGroup>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Adicionar pergunta */}
+              {(() => {
+                const usedIds = new Set((formData.checklistAnswers || []).map(a => a.questionId));
+                const available = surveyQuestions.filter(q => q.active && !usedIds.has(q.id)).sort((a, b) => a.order - b.order);
+                if (available.length === 0 && (formData.checklistAnswers || []).length === 0) {
+                  return (
+                    <div className="empty-state !py-10">
+                      <p className="text-slate-400 text-sm">Nenhuma pergunta cadastrada. Acesse <strong>Parâmetros › Questionário</strong> para adicionar perguntas.</p>
+                    </div>
+                  );
+                }
+                if (available.length === 0) return null;
+                return (
+                  <div className="flex items-center gap-3 border border-dashed border-slate-300 rounded-xl p-3 bg-white hover:border-teal-400 transition-colors">
+                    <Plus className="w-4 h-4 text-teal-500 shrink-0" />
+                    <select
+                      className="flex-1 text-sm text-slate-600 bg-transparent border-none outline-none cursor-pointer"
+                      value=""
+                      onChange={e => {
+                        const qId = e.target.value;
+                        if (!qId) return;
+                        const prev = formData.checklistAnswers || [];
+                        if (prev.find(a => a.questionId === qId)) return;
+                        set('checklistAnswers', [...prev, { questionId: qId, answer: '' as any }]);
+                      }}
+                    >
+                      <option value="">+ Adicionar pergunta ao questionário...</option>
+                      {available.map(q => (
+                        <option key={q.id} value={q.id}>{q.question}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -639,6 +808,13 @@ export const FunctionForm = () => {
               <FormGroup label="Referência">
                 <Input value={formData.meioAmbiente} onChange={(e) => set('meioAmbiente', e.target.value)} placeholder="Vide LTCAT / Vide PGR" />
               </FormGroup>
+
+              <SectionTitle>Fotos – Posto de Trabalho</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="workplace"
+              />
             </div>
           )}
 
@@ -646,7 +822,20 @@ export const FunctionForm = () => {
           {activeTab === 4 && (
             <div className="space-y-4">
               <SectionTitle>Lista de Equipamentos e Materiais</SectionTitle>
-              {(formData.equipmentList || []).map((eq, idx) => (
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-sm text-slate-700 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                    checked={!!formData.usesEquipment}
+                    onChange={(e) => set('usesEquipment', e.target.checked)}
+                  />
+                  A função utiliza equipamentos?
+                </label>
+              </div>
+              {formData.usesEquipment && (
+                <div className="space-y-4 mb-8">
+                  {(formData.equipmentList || []).map((eq, idx) => (
                 <div key={eq.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
                   <button
                     type="button"
@@ -658,7 +847,15 @@ export const FunctionForm = () => {
                   <p className="text-sm font-medium text-slate-500">Equipamento {idx + 1}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <FormGroup label="Nome">
-                      <Input value={eq.name} onChange={(e) => updateEquipment(idx, 'name', e.target.value)} />
+                      <Select value={eq.name} onChange={(e) => updateEquipment(idx, 'name', e.target.value)}>
+                        <option value="">Selecione...</option>
+                        {equipment.filter(e => e.active).map(e => (
+                          <option key={e.id} value={e.name}>{e.name}</option>
+                        ))}
+                        {eq.name && !equipment.some(e => e.name === eq.name) && (
+                          <option value={eq.name}>{eq.name} (Não cadastrado)</option>
+                        )}
+                      </Select>
                     </FormGroup>
                     <FormGroup label="Quantidade">
                       <Input value={eq.quantity} onChange={(e) => updateEquipment(idx, 'quantity', e.target.value)} />
@@ -698,9 +895,24 @@ export const FunctionForm = () => {
               <FormGroup label="Problemas Aparentes Gerais">
                 <Textarea value={formData.equipProblems} onChange={(e) => set('equipProblems', e.target.value)} rows={2} />
               </FormGroup>
+              </div>
+              )}
 
               <SectionTitle>Lista de EPIs</SectionTitle>
-              {(formData.epiList || []).map((epi, idx) => (
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-sm text-slate-700 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                    checked={!!formData.usesEPI}
+                    onChange={(e) => set('usesEPI', e.target.checked)}
+                  />
+                  A função utiliza EPIs?
+                </label>
+              </div>
+              {formData.usesEPI && (
+                <div className="space-y-4 mb-8">
+                  {(formData.epiList || []).map((epi, idx) => (
                 <div key={epi.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
                   <button
                     type="button"
@@ -712,7 +924,15 @@ export const FunctionForm = () => {
                   <p className="text-sm font-medium text-slate-500">EPI {idx + 1}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <FormGroup label="Nome do EPI">
-                      <Input value={epi.name} onChange={(e) => updateEPI(idx, 'name', e.target.value)} />
+                      <Select value={epi.name} onChange={(e) => updateEPI(idx, 'name', e.target.value)}>
+                        <option value="">Selecione...</option>
+                        {epis.filter(e => e.active).map(e => (
+                          <option key={e.id} value={e.name}>{e.name}</option>
+                        ))}
+                        {epi.name && !epis.some(e => e.name === epi.name) && (
+                          <option value={epi.name}>{epi.name} (Não cadastrado)</option>
+                        )}
+                      </Select>
                     </FormGroup>
                     <FormGroup label="Local de Uso">
                       <Input value={epi.location} onChange={(e) => updateEPI(idx, 'location', e.target.value)} />
@@ -744,6 +964,8 @@ export const FunctionForm = () => {
               <Button type="button" variant="secondary" onClick={addEPI}>
                 <Plus className="w-4 h-4 mr-1" /> Adicionar EPI
               </Button>
+              </div>
+              )}
 
               <SectionTitle>Predominância Postural</SectionTitle>
               <div className="grid grid-cols-3 gap-4">
@@ -772,6 +994,20 @@ export const FunctionForm = () => {
                   <p className="text-amber-600 text-sm font-medium">Atenção: o total postural é {total}% (deve somar 100%).</p>
                 ) : null;
               })()}
+
+              <SectionTitle>Fotos – Equipamentos</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="equipment"
+              />
+
+              <SectionTitle>Fotos – Posturas</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="posture"
+              />
             </div>
           )}
 
@@ -963,6 +1199,13 @@ export const FunctionForm = () => {
                 <Plus className="w-4 h-4 mr-1" /> Adicionar Método
               </Button>
 
+              <SectionTitle>Fotos – Métodos Científicos</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="method"
+              />
+
               <SectionTitle>Checklist de Verificação</SectionTitle>
               {checklistQuestions.filter((q) => q.functionIds?.includes(funcId!)).length === 0 ? (
                 <p className="text-gray-500 text-sm">Nenhuma pergunta de checklist vinculada a esta função. Configure em Parâmetros → Checklist.</p>
@@ -1083,6 +1326,13 @@ export const FunctionForm = () => {
               <Button type="button" variant="secondary" onClick={addImprovement}>
                 <Plus className="w-4 h-4 mr-1" /> Adicionar Item ao Inventário
               </Button>
+
+              <SectionTitle>Fotos – Evidências de Risco</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="risk_evidence"
+              />
             </div>
           )}
 
@@ -1123,55 +1373,8 @@ export const FunctionForm = () => {
                   </Select>
                 </FormGroup>
               </div>
-            </div>
-          )}
 
-          {/* ── Tab 9: Fotos / Registros ──────────────────────────────────── */}
-          {activeTab === 9 && (
-            <div className="space-y-6">
-              <SectionTitle>Posto de Trabalho</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="workplace"
-              />
-
-              <SectionTitle>Equipamentos</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="equipment"
-              />
-
-              <SectionTitle>Posturas</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="posture"
-              />
-
-              <SectionTitle>Evidências de Risco</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="risk_evidence"
-              />
-
-              <SectionTitle>Banheiros / Refeitórios</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="bathroom"
-              />
-
-              <SectionTitle>Métodos Científicos</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="method"
-              />
-
-              <SectionTitle>Outras</SectionTitle>
+              <SectionTitle>Outras Fotos</SectionTitle>
               <ImageUpload
                 images={formData.images}
                 onChange={(imgs: AETImage[]) => set('images', imgs)}
