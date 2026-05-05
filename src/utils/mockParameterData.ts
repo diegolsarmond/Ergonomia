@@ -1,6 +1,7 @@
 import {
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate,
+  Shift, ScientificMethodTemplate, ChecklistQuestion,
 } from '../types';
 
 export const MOCK_COMPANIES: Company[] = [
@@ -61,6 +62,44 @@ export const MOCK_COMPANIES: Company[] = [
     logoDataUrl: '',
     active: true,
   },
+  {
+    id: 'company-padaria-horizonte',
+    razaoSocial: 'Padaria Horizonte Azul Ltda.',
+    nomeFantasia: 'Padaria Horizonte Azul',
+    cnpj: '11.222.333/0001-44',
+    logradouro: 'Rua das Palmeiras',
+    numero: '250',
+    complemento: '',
+    bairro: 'Boa Vista',
+    municipio: 'Recife',
+    uf: 'PE',
+    cep: '50000-000',
+    product: 'Panificação, confeitaria e atendimento ao público',
+    marketSituation: 'Comércio local com atendimento presencial, produção diária e maior fluxo em horários de pico.',
+    productionLocation: 'Área de panificação, balcão de atendimento, salão de consumo e estoque.',
+    riskDegree: '2',
+    logoDataUrl: '',
+    active: true,
+  },
+  {
+    id: 'company-metalurgica-serra-clara',
+    razaoSocial: 'Metalúrgica Serra Clara S.A.',
+    nomeFantasia: 'Serra Clara Componentes Industriais',
+    cnpj: '55.666.777/0001-88',
+    logradouro: 'Avenida Industrial',
+    numero: '1450',
+    complemento: '',
+    bairro: 'Cinco',
+    municipio: 'Contagem',
+    uf: 'MG',
+    cep: '32000-000',
+    product: 'Fabricação de componentes metálicos para máquinas industriais',
+    marketSituation: 'Empresa com produção contínua para clientes industriais, com demanda variável conforme carteira de pedidos.',
+    productionLocation: 'Usinagem, montagem, almoxarifado e administrativo técnico.',
+    riskDegree: '3',
+    logoDataUrl: '',
+    active: true,
+  },
 ];
 
 export const MOCK_UNITS: Unit[] = [
@@ -93,6 +132,20 @@ export const MOCK_UNITS: Unit[] = [
     city: 'Belo Horizonte', uf: 'MG', address: 'Av. das Construções, 500 - Centro Empresarial',
     productionLocation: 'Escritório + canteiro de obras ativo', logoDataUrl: '',
   },
+  {
+    id: 'unit-padaria-matriz', companyId: 'company-padaria-horizonte',
+    name: 'Loja Matriz',
+    cep: '50000-000', logradouro: 'Rua das Palmeiras', numero: '250', complemento: '', bairro: 'Boa Vista',
+    city: 'Recife', uf: 'PE', address: 'Rua das Palmeiras, 250 - Boa Vista',
+    productionLocation: 'Área de panificação, balcão de atendimento, salão de consumo e estoque.', logoDataUrl: '',
+  },
+  {
+    id: 'unit-serra-clara-contagem', companyId: 'company-metalurgica-serra-clara',
+    name: 'Planta Contagem',
+    cep: '32000-000', logradouro: 'Avenida Industrial', numero: '1450', complemento: '', bairro: 'Cinco',
+    city: 'Contagem', uf: 'MG', address: 'Avenida Industrial, 1450 - Cinco',
+    productionLocation: 'Usinagem, montagem, almoxarifado e administrativo técnico.', logoDataUrl: '',
+  },
 ];
 
 export const MOCK_SECTORS: Sector[] = [
@@ -104,6 +157,10 @@ export const MOCK_SECTORS: Sector[] = [
   { id: 'sect-6', companyId: 'comp-2', unitId: 'unit-3', name: 'Recebimento', description: 'Recebimento, conferência e entrada de mercadorias', active: true },
   { id: 'sect-7', companyId: 'comp-2', unitId: 'unit-3', name: 'Separação e Picking', description: 'Separação de pedidos e preparação para entrega', active: true },
   { id: 'sect-8', companyId: 'comp-3', unitId: 'unit-4', name: 'Administrativo', description: 'Suporte administrativo, financeiro e RH', active: true },
+  { id: 'sector-padaria-atendimento', companyId: 'company-padaria-horizonte', unitId: 'unit-padaria-matriz', name: 'Atendimento ao Balcão', description: 'Atendimento a clientes, caixa e venda de produtos de panificação e confeitaria.', active: true },
+  { id: 'sector-padaria-producao', companyId: 'company-padaria-horizonte', unitId: 'unit-padaria-matriz', name: 'Produção', description: 'Produção de pães, bolos e demais itens de panificação e confeitaria.', active: true },
+  { id: 'sector-serra-usinagem', companyId: 'company-metalurgica-serra-clara', unitId: 'unit-serra-clara-contagem', name: 'Usinagem', description: 'Torneamento, fresamento e usinagem CNC de componentes metálicos.', active: true },
+  { id: 'sector-serra-qualidade', companyId: 'company-metalurgica-serra-clara', unitId: 'unit-serra-clara-contagem', name: 'Controle de Qualidade', description: 'Inspeção dimensional e testes de conformidade de peças usinadas.', active: true },
 ];
 
 export const MOCK_JOB_ROLES: StandardJobRole[] = [
@@ -114,6 +171,9 @@ export const MOCK_JOB_ROLES: StandardJobRole[] = [
   { id: 'role-5', companyId: '', sectorId: '', parentRoleId: '', name: 'Assistente Administrativo', cbo: '4110-10', description: 'Executar atividades de suporte administrativo, controles de planilha, atendimento telefônico e gestão de documentos.', active: true },
   { id: 'role-6', companyId: '', sectorId: 'sect-3', parentRoleId: '', name: 'Técnico de Manutenção', cbo: '9112-05', description: 'Realizar manutenção preventiva e corretiva em máquinas, equipamentos e instalações industriais.', active: true },
   { id: 'role-7', companyId: '', sectorId: 'sect-4', parentRoleId: '', name: 'Inspetor de Qualidade', cbo: '3115-10', description: 'Inspecionar matérias-primas, produtos em processo e acabados, garantindo conformidade com especificações técnicas.', active: true },
+  { id: 'role-padaria-atendente-balcao', companyId: 'company-padaria-horizonte', sectorId: 'sector-padaria-atendimento', parentRoleId: '', name: 'Atendente de Balcão', cbo: '5244-05', description: 'Atender clientes no balcão, realizar vendas, operar caixa e organizar exposição de produtos.', active: true },
+  { id: 'role-padaria-auxiliar-producao', companyId: 'company-padaria-horizonte', sectorId: 'sector-padaria-producao', parentRoleId: '', name: 'Auxiliar de Produção', cbo: '8483-05', description: 'Auxiliar na produção de pães, bolos e itens de confeitaria, incluindo pesagem, mistura e controle de forno.', active: true },
+  { id: 'role-serra-operador-cnc', companyId: 'company-metalurgica-serra-clara', sectorId: 'sector-serra-usinagem', parentRoleId: '', name: 'Operador de Máquina CNC', cbo: '7323-10', description: 'Operar tornos e centros de usinagem CNC para fabricação de componentes metálicos conforme especificações técnicas.', active: true },
 ];
 
 export const MOCK_EPIS: EPI[] = [
@@ -127,6 +187,11 @@ export const MOCK_EPIS: EPI[] = [
   { id: 'epi-p-8', name: 'Avental de Raspa', type: 'Proteção do tronco', description: 'Avental de raspa de couro para proteção contra respingos de material quente e abrasão.', mandatoryByDefault: false, active: true },
   { id: 'epi-p-9', name: 'Máscara de Proteção Respiratória PFF2', type: 'Proteção respiratória', description: 'Máscara PFF2 (N95) para proteção contra particulados e névoas. Eficiência mínima de 94%.', mandatoryByDefault: false, active: true },
   { id: 'epi-p-10', name: 'Colete Refletivo', type: 'Proteção do corpo inteiro', description: 'Colete de alta visibilidade com faixas refletivas para uso em áreas de circulação de veículos.', mandatoryByDefault: false, active: true },
+  // EPIs — Padaria / Alimentação
+  { id: 'epi-padaria-1', name: 'Avental de Proteção Alimentar', type: 'Proteção do tronco', description: 'Avental impermeável, lavável, em PVC ou neoprene, para proteção contra umidade, gordura e calor moderado em ambientes de panificação e confeitaria.', mandatoryByDefault: true, active: true },
+  { id: 'epi-padaria-2', name: 'Calçado Antiderrapante (uso alimentar)', type: 'Proteção dos membros inferiores', description: 'Calçado fechado com solado antiderrapante, resistente a óleos e gorduras, adequado para pisos úmidos de cozinha industrial e panificação.', mandatoryByDefault: true, active: true },
+  { id: 'epi-padaria-3', name: 'Luva Térmica', type: 'Proteção dos membros superiores', description: 'Luva resistente ao calor para manuseio de assadeiras, formas e produtos quentes em forno industrial. Resistência mínima a 250 °C.', mandatoryByDefault: true, active: true },
+  { id: 'epi-padaria-4', name: 'Touca Descartável', type: 'Proteção da cabeça', description: 'Touca sanfonada descartável para cobertura total dos cabelos, exigida em áreas de manipulação de alimentos conforme RDC 216/2004.', mandatoryByDefault: true, active: true },
 ];
 
 export const MOCK_EQUIPMENT: StandardEquipment[] = [
@@ -138,6 +203,20 @@ export const MOCK_EQUIPMENT: StandardEquipment[] = [
   { id: 'eq-p-6', name: 'Paleteira Manual', category: 'Equipamento de movimentação', operation: ['manual', 'hidráulico'], description: 'Transpalete manual hidráulico para movimentação horizontal de paletes. Capacidade até 2.500 kg.', hasDimensions: true, active: true },
   { id: 'eq-p-7', name: 'Esteira Transportadora', category: 'Esteira', operation: ['elétrico'], description: 'Esteira de correia para transporte contínuo de peças entre postos de trabalho.', hasDimensions: true, active: true },
   { id: 'eq-p-8', name: 'Mesa de Inspeção com Iluminação', category: 'Bancada / Mesa', operation: ['elétrico'], description: 'Mesa com iluminação integrada para inspeção visual de peças e componentes.', hasDimensions: true, active: true },
+  // Equipamentos — Padaria / Panificação
+  { id: 'eq-padaria-1', name: 'Forno Industrial', category: 'Máquina', operation: ['elétrico'], description: 'Forno industrial rotativo ou de lastro para cocção de pães, bolos e massas. Capacidade de 8 a 32 assadeiras por fornada.', hasDimensions: true, active: true },
+  { id: 'eq-padaria-2', name: 'Masseira', category: 'Máquina', operation: ['elétrico'], description: 'Amassadeira espiral elétrica para mistura e desenvolvimento de massas de panificação. Capacidade de 25 a 100 kg de massa.', hasDimensions: true, active: true },
+  { id: 'eq-padaria-3', name: 'Cilindro de Massa', category: 'Máquina', operation: ['elétrico'], description: 'Cilindro elétrico para laminação e homogeneização de massas, utilizado em croissants, folhados e pães especiais.', hasDimensions: true, active: true },
+  { id: 'eq-padaria-4', name: 'Bancada de Preparo (panificação)', category: 'Bancada / Mesa', operation: ['manual'], description: 'Bancada em aço inox para moldagem, pesagem e acabamento de produtos de panificação e confeitaria. Com ou sem cuba integrada.', hasDimensions: true, active: true },
+  { id: 'eq-padaria-5', name: 'Balcão Refrigerado', category: 'Equipamento de refrigeração', operation: ['elétrico'], description: 'Balcão expositor refrigerado para apresentação e conservação de produtos de confeitaria, frios e sobremesas ao cliente.', hasDimensions: true, active: true },
+  { id: 'eq-padaria-6', name: 'Carrinho de Transporte de Bandejas', category: 'Equipamento de movimentação', operation: ['manual'], description: 'Carrinho aramado em inox para transporte de bandejas entre produção, câmaras de crescimento e forno. Capacidade de 16 a 36 bandejas.', hasDimensions: true, active: true },
+  // Equipamentos — Metalúrgica / Usinagem
+  { id: 'eq-serra-1', name: 'Centro de Usinagem CNC', category: 'Máquina', operation: ['elétrico'], description: 'Centro de usinagem vertical CNC com troca automática de ferramentas para fresamento, furação e mandrilamento de peças metálicas com alta precisão.', hasDimensions: true, active: true },
+  { id: 'eq-serra-2', name: 'Bancada de Inspeção Dimensional', category: 'Bancada / Mesa', operation: ['manual'], description: 'Bancada plana em granito ou ferro fundido para verificação dimensional de peças usinadas com instrumentos de medição de precisão.', hasDimensions: true, active: true },
+  { id: 'eq-serra-3', name: 'Carrinho de Transporte de Peças', category: 'Equipamento de movimentação', operation: ['manual'], description: 'Carrinho plataforma em aço para movimentação de peças e conjuntos metálicos entre postos de usinagem, inspeção e expedição.', hasDimensions: true, active: true },
+  { id: 'eq-serra-4', name: 'Paquímetro', category: 'Instrumento de medição', operation: ['manual'], description: 'Paquímetro universal em aço inox para medições externas, internas, de profundidade e degrau. Resolução de 0,02 mm ou 0,001 pol.', hasDimensions: false, active: true },
+  { id: 'eq-serra-5', name: 'Micrômetro', category: 'Instrumento de medição', operation: ['manual'], description: 'Micrômetro externo para medição de alta precisão de diâmetros e espessuras. Resolução de 0,001 mm. Com certificado de calibração.', hasDimensions: false, active: true },
+  { id: 'eq-serra-6', name: 'Armário de Ferramentas', category: 'Mobiliário industrial', operation: ['manual'], description: 'Armário metálico modular para organização e armazenamento de ferramentas de corte, brocas, insertos e acessórios de usinagem.', hasDimensions: true, active: true },
 ];
 
 export const MOCK_SURVEY_QUESTIONS: SurveyQuestion[] = [
@@ -163,6 +242,40 @@ export const MOCK_PAUSES: StandardPause[] = [
   { id: 'pause-4', name: 'Hidratação e Necessidades Fisiológicas', duration: '5', durationUnit: 'minutos', description: 'Pausa curta para hidratação e uso de sanitário conforme necessidade do trabalhador.', active: true },
   { id: 'pause-5', name: 'Ginástica Laboral', duration: '10', durationUnit: 'minutos', description: 'Exercícios de alongamento e aquecimento realizados no início ou meio do turno, orientados por profissional de saúde.', active: true },
   { id: 'pause-6', name: 'Troca de Turno', duration: '15', durationUnit: 'minutos', description: 'Tempo de passagem de informações entre turnos e troca de EPIs/equipamentos.', active: true },
+  { id: 'pause-rec-postural', name: 'Pausa de Recuperação Postural', duration: '5', durationUnit: 'minutos', description: 'Pausa curta para alívio de tensão muscular e recuperação postural, realizada a cada 50–60 minutos de trabalho estático ou repetitivo. Inclui microexercícios de mobilidade.', active: true },
+  { id: 'pause-operacional', name: 'Pausa Operacional', duration: '10', durationUnit: 'minutos', description: 'Pausa técnica vinculada ao fluxo de produção, necessária para preparação, ajuste de máquinas, aguardo de insumos ou reorganização do posto de trabalho.', active: true },
+];
+
+export const MOCK_SHIFTS: Shift[] = [
+  { id: 'shift-comercial', name: 'Turno Comercial', description: 'Horário: 08:00 às 17:00 com 1 hora de intervalo para refeição. Jornada de 8 horas diárias, de segunda a sexta-feira.', active: true },
+  { id: 'shift-diurno', name: 'Turno Diurno', description: 'Horário: 07:00 às 16:48 com 48 minutos de intervalo. Jornada de 8h48 com descanso compensado semanalmente.', active: true },
+  { id: 'shift-vespertino', name: 'Turno Vespertino', description: 'Horário: 14:00 às 22:00 com intervalo de 60 minutos. Utilizado em empresas com dois turnos de produção.', active: true },
+  { id: 'shift-noturno', name: 'Turno Noturno', description: 'Acontece à noite. Geralmente entre 22:00 e 06:00. Sujeito a adicional noturno conforme CLT (art. 73).', active: true },
+  { id: 'shift-rotativo', name: 'Turno Rotativo (Revezamento)', description: 'O trabalhador alterna entre turnos (dia/noite/tarde). Pode mudar semanalmente ou mensalmente conforme escala.', active: true },
+  { id: 'shift-ininterrupto', name: 'Turno Ininterrupto de Revezamento', description: 'Usado em empresas que funcionam 24h. Equipes se alternam continuamente. Jornada reduzida (6h/dia) conforme CF/88, art. 7°, XIV.', active: true },
+  { id: 'shift-12x36', name: 'Escala 12x36', description: 'Trabalha 12 horas, folga 36 horas. Comum em serviços contínuos como saúde, segurança e indústria de processo.', active: true },
+];
+
+export const MOCK_SCIENTIFIC_METHODS: ScientificMethodTemplate[] = [
+  { id: 'sci-rula', name: 'RULA', description: 'Rapid Upper Limb Assessment — avaliação rápida de membros superiores desenvolvida por McAtamney e Corlett (1993). Analisa pescoço, tronco e membros superiores com pontuação de 1 a 7 em quatro níveis de ação.', imageDataUrls: [] },
+  { id: 'sci-reba', name: 'REBA', description: 'Rapid Entire Body Assessment — avaliação de posturas de corpo inteiro em tarefas dinâmicas (Hignett e McAtamney, 2000). Pontuação de 1 a 15 com cinco níveis de risco musculoesquelético.', imageDataUrls: [] },
+  { id: 'sci-kim', name: 'KIM', description: 'Key Indicator Method (Método dos Indicadores-Chave) — método alemão para avaliação de atividades de levantamento, transporte, puxar e empurrar. Classifica o risco em quatro faixas conforme pontuação ponderada.', imageDataUrls: [] },
+  { id: 'sci-niosh', name: 'NIOSH', description: 'Equação Revisada de NIOSH (Waters et al., 1993) — avalia tarefas de levantamento manual calculando o Limite de Peso Recomendado (LPR) e o Índice de Levantamento (IL). IL > 1,0 indica risco aumentado; IL > 3,0 risco muito elevado.', imageDataUrls: [] },
+  { id: 'sci-checklist-nr17', name: 'Checklist NR-17', description: 'Lista de verificação estruturada baseada nos itens da NR-17 (Ergonomia). Avalia condições de mobiliário, equipamentos, condições ambientais, organização do trabalho e treinamento no posto avaliado.', imageDataUrls: [] },
+  { id: 'sci-nho11', name: 'NHO 11 – Iluminância', description: 'Norma de Higiene Ocupacional da Fundacentro para medição de iluminância nos ambientes de trabalho. Utiliza luxímetro calibrado e compara a iluminância média medida (Emed) com os valores de referência da ABNT NBR ISO/CIE 8995-1:2013.', imageDataUrls: [] },
+];
+
+export const MOCK_CHECKLIST_QUESTIONS: ChecklistQuestion[] = [
+  { id: 'chk-1', text: 'A iluminação é adequada para a tarefa executada no posto de trabalho?', functionIds: [] },
+  { id: 'chk-2', text: 'O mobiliário (mesa, cadeira, bancada) é ajustável e adequado à estatura do trabalhador?', functionIds: [] },
+  { id: 'chk-3', text: 'Os equipamentos e ferramentas estão em bom estado de conservação e manutenção?', functionIds: [] },
+  { id: 'chk-4', text: 'O trabalhador adota posturas adequadas durante a realização das tarefas?', functionIds: [] },
+  { id: 'chk-5', text: 'Há pausas regulares para recuperação física durante a jornada de trabalho?', functionIds: [] },
+  { id: 'chk-6', text: 'O ritmo de trabalho é compatível com a capacidade física do trabalhador?', functionIds: [] },
+  { id: 'chk-7', text: 'O trabalhador recebeu treinamento e orientação sobre ergonomia e uso correto dos equipamentos?', functionIds: [] },
+  { id: 'chk-8', text: 'O ambiente de trabalho apresenta nível de ruído dentro dos limites toleráveis?', functionIds: [] },
+  { id: 'chk-9', text: 'A temperatura e ventilação do ambiente são adequadas para o tipo de atividade realizada?', functionIds: [] },
+  { id: 'chk-10', text: 'Os EPIs fornecidos são adequados para as atividades desenvolvidas e estão sendo utilizados corretamente?', functionIds: [] },
 ];
 
 export const MOCK_RISK_CLASSIFICATIONS: RiskClassification[] = [

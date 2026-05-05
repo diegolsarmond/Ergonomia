@@ -14,7 +14,7 @@ O sistema usa **localforage** (IndexedDB no navegador) para persistência. Se vo
 
 ### Opção A — Botão de desenvolvimento (recomendado)
 
-Se o sistema estiver em modo de desenvolvimento (`import.meta.env.DEV`), está disponível uma função `resetDevelopmentData()` no contexto `AETContext`. Ela limpa todo o localforage e recarrega a página.
+A função `resetDevelopmentData()` está disponível no contexto `AETContext` em qualquer build (DEV e produção). Ela limpa todo o localforage e recarrega a página, recarregando os mocks iniciais.
 
 > Para expor isso na UI, adicione temporariamente um botão que chame `resetDevelopmentData()` do contexto.
 
@@ -56,12 +56,12 @@ Acesse `http://localhost:3000` no navegador.
 Na tela de dashboard, o projeto **"Padaria Horizonte Azul Ltda."** (reportType: AEP) estará listado.
 
 - Empresa: Padaria Horizonte Azul Ltda.
-- CNPJ: 12.345.678/0001-90
+- CNPJ: 11.222.333/0001-44
 - Unidade: Loja Matriz
 - Local: Recife – PE
 - Avaliador: Mariana Costa Albuquerque (CREFITO-1 123456-F)
 - Data: 15/01/2026
-- Funções: Atendente de Balcão + Auxiliar de Produção de Panificação
+- Funções: Atendente de Balcão + Auxiliar de Produção
 
 ---
 
@@ -70,12 +70,12 @@ Na tela de dashboard, o projeto **"Padaria Horizonte Azul Ltda."** (reportType: 
 Na tela de dashboard, o projeto **"Metalúrgica Serra Clara S.A."** (reportType: AET) estará listado.
 
 - Empresa: Metalúrgica Serra Clara S.A.
-- CNPJ: 98.765.432/0001-10
-- Unidade: Planta Industrial Contagem
+- CNPJ: 55.666.777/0001-88
+- Unidade: Planta Contagem
 - Local: Contagem – MG
 - Avaliador: Ricardo Menezes Duarte (CREA-MG 123456/D)
 - Data: 20/01/2026
-- Função: Operador de Usinagem CNC
+- Função: Operador de Máquina CNC
 
 ---
 
@@ -96,7 +96,7 @@ Acesse o preview da AEP (Padaria Horizonte Azul Ltda.) e verifique:
   - [ ] Não indica AET
   - [ ] Inventário de riscos: 2 riscos (Biomecânico, Organizacional)
   - [ ] Matriz de risco: P, G, Score, Nível e Referência Normativa visíveis
-- [ ] **Função 2 — Auxiliar de Produção de Panificação**
+- [ ] **Função 2 — Auxiliar de Produção**
   - [ ] GHE: GHE-02 Produção de Panificação
   - [ ] Número de colaboradores: 3
   - [ ] Indica necessidade de AET
@@ -107,7 +107,7 @@ Acesse o preview da AEP (Padaria Horizonte Azul Ltda.) e verifique:
 
 ## 7. Checklist funcional AET
 
-Acesse o preview da AET (Metalúrgica Serra Clara S.A.) e verifique:
+Acesse o preview da AET (Metalúrgica Serra Clara S.A. — CNPJ 55.666.777/0001-88) e verifique:
 
 - [ ] **Capa** — razão social, CNPJ, avaliador, data, localidade
 - [ ] **Sumário** — seções listadas
@@ -136,7 +136,55 @@ Acesse o preview da AET (Metalúrgica Serra Clara S.A.) e verifique:
 
 ---
 
-## 8. Pendências conhecidas
+## 8. Validação dos cadastros base
+
+Esta seção cobre a verificação manual de que os dados mockados estão corretamente carregados nos menus de cadastros e que o fluxo de criação de projetos a partir deles funciona.
+
+> **Pré-requisito:** limpar o localforage antes do teste (veja Seção 2) para garantir que os mocks sejam semeados do zero.
+
+### 8.1 Cadastros — Empresas
+
+- [ ] Empresa **Padaria Horizonte Azul Ltda.** aparece no menu Empresas
+  - CNPJ: `11.222.333/0001-44` · Município: Recife/PE · Grau de Risco: 2
+- [ ] Empresa **Metalúrgica Serra Clara S.A.** aparece no menu Empresas
+  - CNPJ: `55.666.777/0001-88` · Município: Contagem/MG · Grau de Risco: 3
+
+### 8.2 Cadastros — Unidades
+
+- [ ] Unidade **Loja Matriz** aparece vinculada à Padaria Horizonte Azul
+  - Endereço: Rua das Palmeiras, 250 – Boa Vista – Recife/PE
+- [ ] Unidade **Planta Contagem** aparece vinculada à Metalúrgica Serra Clara
+  - Endereço: Avenida Industrial, 1450 – Cinco – Contagem/MG
+
+### 8.3 Cadastros — Setores
+
+- [ ] Setor **Atendimento ao Balcão** aparece vinculado à Padaria Horizonte (unidade: Loja Matriz)
+- [ ] Setor **Produção** aparece vinculado à Padaria Horizonte (unidade: Loja Matriz)
+- [ ] Setor **Usinagem** aparece vinculado à Metalúrgica Serra Clara (unidade: Planta Contagem)
+
+### 8.4 Cadastros — Funções/Cargos
+
+- [ ] Função **Atendente de Balcão** aparece vinculada ao setor Atendimento ao Balcão (CBO 5244-05)
+- [ ] Função **Auxiliar de Produção** aparece vinculada ao setor Produção (CBO 8483-05)
+- [ ] Função **Operador de Máquina CNC** aparece vinculada ao setor Usinagem (CBO 7323-10)
+
+### 8.5 Fluxo — Criação de projetos a partir dos cadastros
+
+- [ ] Ao criar novo projeto, o dropdown **Selecionar Cliente Cadastrado** lista Padaria Horizonte e Metalúrgica Serra Clara
+- [ ] Ao selecionar **Padaria Horizonte**, os campos Razão Social, CNPJ, Endereço, Local, Grau de Risco e Produto são preenchidos automaticamente
+- [ ] Após selecionar a empresa, o campo **Unidade** exibe dropdown com "Loja Matriz"
+- [ ] Ao selecionar Loja Matriz, Endereço e Local são atualizados com os dados da unidade
+- [ ] Ao criar novo projeto **AEP** com Padaria e navegar para "Nova Função":
+  - [ ] O campo **Nome da Função** exibe dropdown com "Atendente de Balcão" e "Auxiliar de Produção"
+  - [ ] Ao selecionar "Atendente de Balcão", os campos Nome, Setor ("Atendimento ao Balcão") e Unidade ("Loja Matriz") são preenchidos
+  - [ ] O campo de texto ao lado do dropdown ainda permite digitação manual
+- [ ] Ao criar novo projeto **AET** com Metalúrgica Serra Clara e navegar para "Nova Função":
+  - [ ] O campo **Nome da Função** exibe dropdown com "Operador de Máquina CNC"
+  - [ ] Ao selecionar, os campos Nome, Setor ("Usinagem") e Unidade ("Planta Contagem") são preenchidos
+
+---
+
+## 9. Pendências conhecidas
 
 | Item | Status |
 |------|--------|

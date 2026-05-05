@@ -28,7 +28,7 @@ interface AETContextType {
   duplicateFunction: (projectId: string, functionId: string) => Promise<string>;
   exportProjectJSON: (projectId: string) => string | null;
   importProjectJSON: (json: string) => Promise<string | null>;
-  resetDevelopmentData?: () => Promise<void>;
+  resetDevelopmentData: () => Promise<void>;
   clients: Client[];
   addClient: (client: Omit<Client, 'id'>) => Promise<string>;
   updateClient: (id: string, client: Partial<Client>) => Promise<void>;
@@ -396,12 +396,10 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
   const shiftCRUD = makeCRUD('aet_shifts', shifts, setShifts);
 
-  const resetDevelopmentData = (import.meta as any).env?.DEV
-    ? async () => {
-        await localforage.clear();
-        window.location.reload();
-      }
-    : undefined;
+  const resetDevelopmentData = async () => {
+    await localforage.clear();
+    window.location.reload();
+  };
 
   return (
     <AETContext.Provider value={{
