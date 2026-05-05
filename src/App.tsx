@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AETProvider } from './context/AETContext';
 import { Layout } from './components/Layout';
 import { Dashboard } from './screens/Dashboard';
@@ -30,7 +30,9 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/aep" replace />} />
+            <Route path="aep" element={<Dashboard reportType="AEP" />} />
+            <Route path="aet" element={<Dashboard reportType="AET" />} />
             <Route path="project/:id" element={<ProjectView />} />
             <Route path="project/:id/function/:funcId" element={<FunctionForm />} />
             <Route path="clients" element={<Clients />} />

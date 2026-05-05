@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
-  FileText, Home, BookOpen, ChevronDown, ChevronRight, Settings,
+  FileText, BookOpen, ChevronDown, ChevronRight, Settings,
   List, FlaskConical, Building2,
   HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock
 } from 'lucide-react';
@@ -37,6 +37,7 @@ const PARAM_GROUPS = [
 export const Layout = () => {
   const location = useLocation();
   const isParametros = location.pathname.startsWith('/parameters');
+  const isProjects = location.pathname === '/aep' || location.pathname === '/aet';
   const [parametrosOpen, setParametrosOpen] = useState(isParametros);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -88,9 +89,10 @@ export const Layout = () => {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Menu</p>
+          <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Projetos</p>
           <div className="space-y-0.5">
-            <NavLink to="/" icon={Home} label="Projetos" active={location.pathname === '/'} />
+            <NavLink to="/aep" icon={FileText} label="Projetos AEP" active={location.pathname === '/aep'} accent="amber" />
+            <NavLink to="/aet" icon={BookOpen} label="Projetos AET" active={location.pathname === '/aet'} />
           </div>
 
           {/* Parâmetros com submenu agrupado */}
@@ -157,16 +159,17 @@ interface NavLinkProps {
   label: string;
   active: boolean;
   small?: boolean;
+  accent?: 'teal' | 'amber';
 }
 
-const NavLink: React.FC<NavLinkProps> = ({ to, icon: Icon, label, active, small }) => (
+const NavLink: React.FC<NavLinkProps> = ({ to, icon: Icon, label, active, small, accent = 'teal' }) => (
   <Link
     to={to}
     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium ${
       small ? 'text-[13px]' : 'text-sm'
     } ${
       active
-        ? 'active text-teal-300'
+        ? accent === 'amber' ? 'active text-amber-300' : 'active text-teal-300'
         : 'text-slate-400 hover:text-white'
     }`}
   >
