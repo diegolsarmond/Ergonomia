@@ -5,9 +5,12 @@ import { Card, CardContent } from '../components/ui/Card';
 import { FormGroup, Input, Textarea, Select, Checkbox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
-import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION } from '../types';
+import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION, ErgonomicRisk, NHO11MeasurementPoint } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ImageUpload } from '../components/ImageUpload';
+import { createEmptyErgonomicRisk } from '../domain/risks/riskFactory';
+import { calculateRiskScore, isValidationError } from '../domain/risks/riskMatrix';
+import { calculateNHO11Simple, isNHO11ValidationError } from '../domain/nho11/nho11Calculator';
 
 const TABS = [
   'Identificação',
@@ -93,6 +96,14 @@ export const FunctionForm = () => {
   const [error, setError] = useState<string | null>(null);
 
   if (!project || (!isNew && !initialData.id)) return <div className="p-8">Função não encontrada.</div>;
+
+  const nhoPoints = formData.illumination.measurementPoints || [];
+  const nhoRefLux = formData.illumination.referenceLux || 0;
+  const nhoResult = (() => {
+    if (nhoPoints.length === 0 || nhoRefLux <= 0) return null;
+    const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: nhoRefLux, points: nhoPoints });
+    return isNHO11ValidationError(r) ? null : r;
+  })();
 
   const set = (field: keyof AETFunction, value: any) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -194,6 +205,29 @@ export const FunctionForm = () => {
   const removeImprovement = (idx: number) =>
     set('improvements', (formData.improvements || []).filter((_, i) => i !== idx));
 
+  // ── ErgonomicRisk helpers ────────────────────────────────────────────────
+  const addRisk = () =>
+    set('risks', [...(formData.risks || []), createEmptyErgonomicRisk()]);
+
+  const updateRisk = (idx: number, field: keyof ErgonomicRisk, value: any) => {
+    const list = [...(formData.risks || [])];
+    const risk = { ...list[idx], [field]: value };
+    if (field === 'probability' || field === 'severity') {
+      const p = field === 'probability' ? Number(value) : Number(risk.probability);
+      const s = field === 'severity'    ? Number(value) : Number(risk.severity);
+      const result = calculateRiskScore(p, s);
+      if (!isValidationError(result)) {
+        risk.score     = result.score;
+        risk.riskLevel = result.level;
+      }
+    }
+    list[idx] = risk;
+    set('risks', list);
+  };
+
+  const removeRisk = (idx: number) =>
+    set('risks', (formData.risks || []).filter((_, i) => i !== idx));
+
   // ── Scientific method helpers ────────────────────────────────────────────
   const addMethod = () =>
     set('scientificMethods', [
@@ -225,6 +259,56 @@ export const FunctionForm = () => {
 
   const removeChecklistItem = (idx: number) =>
     setIllum('checklist', (formData.illumination.checklist || []).filter((_, i) => i !== idx));
+
+  // ── NHO 11 measurement-point helpers ─────────────────────────────────────
+
+  const recalcAndSetNHO11 = (points: NHO11MeasurementPoint[], refLux: number) => {
+    if (points.length > 0 && refLux > 0) {
+      const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: refLux, points });
+      if (!isNHO11ValidationError(r)) {
+        setFormData(prev => ({
+          ...prev,
+          illumination: {
+            ...prev.illumination,
+            measurementPoints: points,
+            referenceLux: refLux,
+            resultLux: String(r.averageLux),
+            interpretation: r.interpretationText,
+            conclusion: r.conclusion,
+            conclusionText: r.conclusion === 'adequada'
+              ? `Iluminância média de ${r.averageLux} lux está adequada conforme NHO 11 – Fundacentro.`
+              : `Iluminância média de ${r.averageLux} lux está abaixo do limiar mínimo de ${r.tolerance10Percent} lux. É necessária intervenção.`,
+          },
+        }));
+        return;
+      }
+    }
+    setFormData(prev => ({
+      ...prev,
+      illumination: { ...prev.illumination, measurementPoints: points, referenceLux: refLux },
+    }));
+  };
+
+  const addMeasurementPoint = () => {
+    const points = [...(formData.illumination.measurementPoints || [])];
+    points.push({ id: uuidv4(), label: `Ponto ${points.length + 1}`, lux: 0 });
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0);
+  };
+
+  const updateMeasurementPoint = (idx: number, field: 'label' | 'lux', value: string | number) => {
+    const points = [...(formData.illumination.measurementPoints || [])];
+    (points[idx] as any)[field] = value;
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0);
+  };
+
+  const removeMeasurementPoint = (idx: number) => {
+    const points = (formData.illumination.measurementPoints || []).filter((_, i) => i !== idx);
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0);
+  };
+
+  const setRefLux = (val: number) => {
+    recalcAndSetNHO11(formData.illumination.measurementPoints || [], val);
+  };
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -1032,18 +1116,111 @@ export const FunctionForm = () => {
                 </FormGroup>
               </div>
 
-              <SectionTitle>Medição</SectionTitle>
-              <div className="grid grid-cols-3 gap-4">
-                <FormGroup label="Valor Medido (lux)">
-                  <Input value={formData.illumination.resultLux} onChange={(e) => setIllum('resultLux', e.target.value)} placeholder="Ex: 450" />
-                </FormGroup>
-                <FormGroup label="Valor de Referência (lux)">
-                  <Input value={formData.illumination.referenceValue} onChange={(e) => setIllum('referenceValue', e.target.value)} placeholder="Ex: 500 lux (NBR ISO/CIE 8995-1)" />
-                </FormGroup>
-                <FormGroup label="Fórmula utilizada">
-                  <Input value={formData.illumination.formula} onChange={(e) => setIllum('formula', e.target.value)} />
-                </FormGroup>
+              <SectionTitle>Pontos de Medição NHO 11</SectionTitle>
+              <FormGroup label="Valor de Referência (lux)">
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.illumination.referenceLux || ''}
+                    onChange={(e) => setRefLux(Number(e.target.value))}
+                    placeholder="Ex: 500"
+                    className="w-36"
+                  />
+                  <span className="text-xs text-slate-500">Conforme NBR ISO/CIE 8995-1 para o tipo de atividade</span>
+                </div>
+              </FormGroup>
+
+              {(formData.illumination.measurementPoints || []).length === 0 && (
+                <div className="empty-state !py-6">
+                  <p className="text-slate-400 text-sm">Nenhum ponto adicionado. Clique em "Adicionar Ponto" para registrar as medições.</p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {(formData.illumination.measurementPoints || []).map((pt, idx) => (
+                  <div key={pt.id} className="flex items-end gap-3 border border-slate-200 rounded-xl p-3 bg-slate-50/50 hover:border-slate-300 transition-colors">
+                    <span className="text-xs font-bold text-slate-400 mb-2 w-5 shrink-0">{idx + 1}</span>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Identificação do ponto</p>
+                      <Input
+                        value={pt.label}
+                        onChange={(e) => updateMeasurementPoint(idx, 'label', e.target.value)}
+                        placeholder="Ex: Centro do posto, Bancada lateral..."
+                      />
+                    </div>
+                    <div className="w-32 shrink-0">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Lux</p>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={pt.lux === 0 ? '' : pt.lux}
+                        onChange={(e) => updateMeasurementPoint(idx, 'lux', Number(e.target.value))}
+                        placeholder="0"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeMeasurementPoint(idx)}
+                      className="text-red-400 hover:text-red-600 cursor-pointer transition-colors mb-1 shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
+
+              <Button type="button" variant="secondary" onClick={addMeasurementPoint}>
+                <Plus className="w-4 h-4 mr-1" /> Adicionar Ponto de Medição
+              </Button>
+
+              {nhoResult && (
+                <>
+                  <SectionTitle>Resultado Calculado (NHO 11)</SectionTitle>
+                  <div className="border border-teal-200 rounded-xl p-5 bg-teal-50/30">
+                    <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">E_med (média)</p>
+                        <p className="text-xl font-bold text-slate-800">{nhoResult.averageLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Mín / Máx</p>
+                        <p className="text-xl font-bold text-slate-800">{nhoResult.minMeasuredLux} / {nhoResult.maxMeasuredLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Relação max/min</p>
+                        <p className="text-xl font-bold text-slate-800">{nhoResult.ratioMaxMin}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Limiar mínimo (90%)</p>
+                        <p className="text-xl font-bold text-slate-800">{nhoResult.tolerance10Percent} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">70% da média</p>
+                        <p className="text-xl font-bold text-slate-800">{nhoResult.seventyPercentAverage} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Conclusão</p>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                          nhoResult.conclusion === 'adequada'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          {nhoResult.conclusion === 'adequada' ? 'ADEQUADA' : 'INADEQUADA'}
+                        </span>
+                      </div>
+                    </div>
+                    {nhoResult.conclusion === 'inadequada' && (
+                      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-sm text-amber-800">
+                          Iluminância abaixo do limiar mínimo. Adicione um item ao checklist abaixo com a ação corretiva e o responsável.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               <SectionTitle>Resultado e Conclusão</SectionTitle>
               <RadioGroup
@@ -1062,6 +1239,19 @@ export const FunctionForm = () => {
               <FormGroup label="Texto da conclusão">
                 <Textarea value={formData.illumination.conclusionText} onChange={(e) => setIllum('conclusionText', e.target.value)} rows={2} />
               </FormGroup>
+
+              <SectionTitle>Dados Complementares</SectionTitle>
+              <div className="grid grid-cols-3 gap-4">
+                <FormGroup label="Valor Medido (lux)">
+                  <Input value={formData.illumination.resultLux} onChange={(e) => setIllum('resultLux', e.target.value)} placeholder="Preenchido automaticamente" />
+                </FormGroup>
+                <FormGroup label="Referência Normativa (texto)">
+                  <Input value={formData.illumination.referenceValue} onChange={(e) => setIllum('referenceValue', e.target.value)} placeholder="Ex: 500 lux (NBR ISO/CIE 8995-1)" />
+                </FormGroup>
+                <FormGroup label="Fórmula utilizada">
+                  <Input value={formData.illumination.formula} onChange={(e) => setIllum('formula', e.target.value)} />
+                </FormGroup>
+              </div>
 
               <SectionTitle>Contexto da Avaliação</SectionTitle>
               <FormGroup label="Descrição do Ambiente">
@@ -1247,84 +1437,118 @@ export const FunctionForm = () => {
           {/* ── Tab 7: Riscos e Melhorias ──────────────────────────────────── */}
           {activeTab === 7 && (
             <div className="space-y-4">
+
+              {/* ── Inventário novo (ErgonomicRisk) ── */}
               <SectionTitle>Inventário de Risco Ergonômico</SectionTitle>
-              {(formData.improvements || []).map((imp, idx) => (
-                <div key={imp.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
-                  <button
-                    type="button"
-                    onClick={() => removeImprovement(idx)}
-                    className="absolute top-2 right-2 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <p className="text-sm font-semibold text-slate-600">Item {String(idx + 1).padStart(2, '0')}</p>
 
-                  <FormGroup label="Identificação do Perigo">
-                    <Textarea value={imp.hazard} onChange={(e) => updateImprovement(idx, 'hazard', e.target.value)} rows={2} />
-                  </FormGroup>
-
-                  <SectionTitle>Avaliação do Risco Bruto</SectionTitle>
-                  <div className="grid grid-cols-3 gap-3">
-                    <FormGroup label="Probabilidade">
-                      <Select value={imp.probability} onChange={(e) => updateImprovement(idx, 'probability', e.target.value)}>
-                        <option value="">Selecione...</option>
-                        <option value="1 – Improvável">1 – Improvável</option>
-                        <option value="2 – Possível">2 – Possível</option>
-                        <option value="3 – Provável">3 – Provável</option>
-                        <option value="4 – Frequente">4 – Frequente</option>
-                      </Select>
-                    </FormGroup>
-                    <FormGroup label="Severidade / Gravidade">
-                      <Select value={imp.severity} onChange={(e) => updateImprovement(idx, 'severity', e.target.value)}>
-                        <option value="">Selecione...</option>
-                        <option value="1 – Leve">1 – Leve</option>
-                        <option value="2 – Moderada">2 – Moderada</option>
-                        <option value="4 – Grave">4 – Grave</option>
-                        <option value="8 – Gravíssima">8 – Gravíssima</option>
-                      </Select>
-                    </FormGroup>
-                    <FormGroup label="Pontuação / Nível de Risco Bruto">
-                      <Input value={imp.grossRiskLevel} onChange={(e) => updateImprovement(idx, 'grossRiskLevel', e.target.value)} placeholder="Ex: 8" />
-                    </FormGroup>
-                  </div>
-                  <FormGroup label="Classificação do Risco">
-                    <Select value={imp.riskClassification} onChange={(e) => updateImprovement(idx, 'riskClassification', e.target.value)}>
-                      <option value="">Selecione...</option>
-                      <option value="Trivial / Tolerável">Trivial / Tolerável</option>
-                      <option value="Baixo">Baixo</option>
-                      <option value="Moderado">Moderado</option>
-                      <option value="Substancial">Substancial</option>
-                      <option value="Alto / Intolerável">Alto / Intolerável</option>
-                    </Select>
-                  </FormGroup>
-
-                  <SectionTitle>Medidas de Melhoria</SectionTitle>
-                  <FormGroup label="Ação Recomendada">
-                    <Textarea value={imp.actions} onChange={(e) => updateImprovement(idx, 'actions', e.target.value)} rows={2} />
-                  </FormGroup>
-                  <div className="grid grid-cols-3 gap-3">
-                    <FormGroup label="Responsável">
-                      <Input value={imp.responsible} onChange={(e) => updateImprovement(idx, 'responsible', e.target.value)} />
-                    </FormGroup>
-                    <FormGroup label="Prazo">
-                      <Input type="date" value={imp.deadline} onChange={(e) => updateImprovement(idx, 'deadline', e.target.value)} />
-                    </FormGroup>
-                    <FormGroup label="Probabilidade de Atenuação">
-                      <Select value={imp.attenuationProbability} onChange={(e) => updateImprovement(idx, 'attenuationProbability', e.target.value)}>
-                        <option value="">Selecione...</option>
-                        <option value="Alta">Alta</option>
-                        <option value="Média">Média</option>
-                        <option value="Baixa">Baixa</option>
-                      </Select>
-                    </FormGroup>
-                  </div>
-                  <FormGroup label="Observações">
-                    <Input value={imp.observations} onChange={(e) => updateImprovement(idx, 'observations', e.target.value)} />
-                  </FormGroup>
+              {(formData.risks || []).length === 0 && (
+                <div className="empty-state !py-8">
+                  <p className="text-slate-400 text-sm">Nenhum risco cadastrado. Clique em "Adicionar risco" para começar.</p>
                 </div>
-              ))}
-              <Button type="button" variant="secondary" onClick={addImprovement}>
-                <Plus className="w-4 h-4 mr-1" /> Adicionar Item ao Inventário
+              )}
+
+              {(formData.risks || []).map((risk, idx) => {
+                const levelColors: Record<string, string> = {
+                  'BAIXO':      'bg-green-100 text-green-700 border-green-300',
+                  'MODERADO':   'bg-yellow-100 text-yellow-700 border-yellow-300',
+                  'ALTO RISCO': 'bg-orange-100 text-orange-700 border-orange-300',
+                  'CRÍTICO':    'bg-red-100 text-red-700 border-red-300',
+                };
+                const levelCls = levelColors[risk.riskLevel] ?? 'bg-slate-100 text-slate-600 border-slate-300';
+
+                return (
+                  <div key={risk.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => removeRisk(idx)}
+                      className="absolute top-2 right-2 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm font-semibold text-slate-600">Risco {String(idx + 1).padStart(2, '0')}</p>
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${levelCls}`}>
+                        {risk.riskLevel} — Score {risk.score}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormGroup label="Agente de Risco">
+                        <Input value={risk.agent} onChange={e => updateRisk(idx, 'agent', e.target.value)} placeholder="Ex: Postura inadequada" />
+                      </FormGroup>
+                      <FormGroup label="Fator de Risco">
+                        <Input value={risk.riskFactor} onChange={e => updateRisk(idx, 'riskFactor', e.target.value)} placeholder="Ex: Flexão de tronco frequente" />
+                      </FormGroup>
+                    </div>
+
+                    <FormGroup label="Possível Agravo à Saúde">
+                      <Input value={risk.possibleHealthEffect} onChange={e => updateRisk(idx, 'possibleHealthEffect', e.target.value)} placeholder="Ex: LER/DORT, lombalgia" />
+                    </FormGroup>
+
+                    <FormGroup label="Situação Encontrada">
+                      <Textarea value={risk.foundSituation} onChange={e => updateRisk(idx, 'foundSituation', e.target.value)} rows={2} placeholder="Descreva o que foi observado no posto de trabalho..." />
+                    </FormGroup>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormGroup label="Controle Existente">
+                        <Textarea value={risk.existingControl} onChange={e => updateRisk(idx, 'existingControl', e.target.value)} rows={2} placeholder="Medidas já adotadas pela empresa..." />
+                      </FormGroup>
+                      <FormGroup label="Proposta de Melhoria">
+                        <Textarea value={risk.improvementProposal} onChange={e => updateRisk(idx, 'improvementProposal', e.target.value)} rows={2} placeholder="Ações recomendadas..." />
+                      </FormGroup>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 items-end">
+                      <FormGroup label="Probabilidade (1–5)">
+                        <Select
+                          value={String(risk.probability)}
+                          onChange={e => updateRisk(idx, 'probability', Number(e.target.value))}
+                        >
+                          <option value="1">1 – Improvável</option>
+                          <option value="2">2 – Possível</option>
+                          <option value="3">3 – Provável</option>
+                          <option value="4">4 – Frequente</option>
+                          <option value="5">5 – Muito Frequente</option>
+                        </Select>
+                      </FormGroup>
+                      <FormGroup label="Gravidade (1–5)">
+                        <Select
+                          value={String(risk.severity)}
+                          onChange={e => updateRisk(idx, 'severity', Number(e.target.value))}
+                        >
+                          <option value="1">1 – Leve</option>
+                          <option value="2">2 – Moderada</option>
+                          <option value="3">3 – Grave</option>
+                          <option value="4">4 – Muito Grave</option>
+                          <option value="5">5 – Catastrófica</option>
+                        </Select>
+                      </FormGroup>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1.5">Score (P × G)</p>
+                        <div className={`flex items-center justify-center h-10 rounded-xl border font-bold text-sm ${levelCls}`}>
+                          {risk.score} — {risk.riskLevel}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <FormGroup label="Referência Normativa">
+                        <Input value={risk.normativeReference} onChange={e => updateRisk(idx, 'normativeReference', e.target.value)} placeholder="Ex: NR-17, ISO 11228" />
+                      </FormGroup>
+                      <FormGroup label="Responsável">
+                        <Input value={risk.responsible ?? ''} onChange={e => updateRisk(idx, 'responsible', e.target.value)} />
+                      </FormGroup>
+                      <FormGroup label="Prazo">
+                        <Input type="date" value={risk.deadline ?? ''} onChange={e => updateRisk(idx, 'deadline', e.target.value)} />
+                      </FormGroup>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <Button type="button" variant="secondary" onClick={addRisk}>
+                <Plus className="w-4 h-4 mr-1" /> Adicionar Risco Ergonômico
               </Button>
 
               <SectionTitle>Fotos – Evidências de Risco</SectionTitle>
@@ -1333,6 +1557,38 @@ export const FunctionForm = () => {
                 onChange={(imgs: AETImage[]) => set('images', imgs)}
                 category="risk_evidence"
               />
+
+              {/* ── Seção legada (AETImprovement) ── */}
+              {(formData.improvements || []).length > 0 && (
+                <>
+                  <div className="mt-8 pt-6 border-t-2 border-dashed border-slate-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 bg-slate-200 text-slate-500 rounded-full">Legado</span>
+                      <p className="text-sm text-slate-400">Registros do formato anterior — migre para o novo inventário acima e depois remova.</p>
+                    </div>
+                    {(formData.improvements || []).map((imp, idx) => (
+                      <div key={imp.id} className="border border-dashed border-slate-300 rounded-xl p-4 bg-white/60 space-y-3 relative mb-3 opacity-70">
+                        <button type="button" onClick={() => removeImprovement(idx)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 cursor-pointer transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <p className="text-xs font-semibold text-slate-500">Item legado {String(idx + 1).padStart(2, '0')} — {imp.hazard || '(sem perigo)'}</p>
+                        <FormGroup label="Identificação do Perigo">
+                          <Textarea value={imp.hazard} onChange={e => updateImprovement(idx, 'hazard', e.target.value)} rows={2} />
+                        </FormGroup>
+                        <div className="grid grid-cols-2 gap-3">
+                          <FormGroup label="Responsável">
+                            <Input value={imp.responsible} onChange={e => updateImprovement(idx, 'responsible', e.target.value)} />
+                          </FormGroup>
+                          <FormGroup label="Prazo">
+                            <Input type="date" value={imp.deadline} onChange={e => updateImprovement(idx, 'deadline', e.target.value)} />
+                          </FormGroup>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
             </div>
           )}
 

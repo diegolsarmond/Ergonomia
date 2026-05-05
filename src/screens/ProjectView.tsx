@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer } from 'lucide-react';
+import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X } from 'lucide-react';
+import { validateReport } from '../domain/reports/reportValidation';
+import type { ReportValidationResult } from '../domain/reports/reportValidationTypes';
 
 export const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +14,10 @@ export const ProjectView = () => {
   const project = getProject(id!);
 
   const [isPrinting, setIsPrinting] = useState(false);
+  const [validationModal, setValidationModal] = useState<{
+    result: ReportValidationResult;
+    mode: 'errors' | 'warnings';
+  } | null>(null);
 
   if (!project) return (
     <div className="flex items-center justify-center h-full">
@@ -23,10 +29,22 @@ export const ProjectView = () => {
     navigate(`/project/${project.id}/function/new`);
   };
 
-  const handlePrintDirectly = () => {
+  const doPrint = () => {
     setIsPrinting(true);
-    // Hide iframe after a reasonable timeout assuming print dialog will be opened by the iframe content
     setTimeout(() => setIsPrinting(false), 5000);
+  };
+
+  const handlePrintDirectly = () => {
+    const result = validateReport(project);
+    if (result.errors.length > 0) {
+      setValidationModal({ result, mode: 'errors' });
+      return;
+    }
+    if (result.warnings.length > 0) {
+      setValidationModal({ result, mode: 'warnings' });
+      return;
+    }
+    doPrint();
   };
 
   const handleDuplicate = async (funcId: string) => {
@@ -179,6 +197,74 @@ export const ProjectView = () => {
           style={{ position: 'absolute', width: '0', height: '0', border: 'none' }}
           title="Print Preview"
         />
+      )}
+
+      {/* ── Validation modal ───────────────────────────────────────── */}
+      {validationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
+            {/* Header */}
+            <div className={`flex items-center gap-3 px-6 py-4 rounded-t-2xl ${validationModal.mode === 'errors' ? 'bg-red-50 border-b border-red-100' : 'bg-amber-50 border-b border-amber-100'}`}>
+              {validationModal.mode === 'errors'
+                ? <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+                : <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-sm ${validationModal.mode === 'errors' ? 'text-red-700' : 'text-amber-700'}`}>
+                  {validationModal.mode === 'errors' ? 'Relatório incompleto — impressão bloqueada' : 'Atenção — campos recomendados ausentes'}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {validationModal.mode === 'errors'
+                    ? `${validationModal.result.errors.length} pendência(s) obrigatória(s) encontrada(s).`
+                    : `${validationModal.result.warnings.length} aviso(s). Você pode continuar mesmo assim.`}
+                </p>
+              </div>
+              <button onClick={() => setValidationModal(null)} className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Issue list */}
+            <div className="overflow-y-auto px-6 py-4 space-y-2 flex-1">
+              {validationModal.mode === 'errors' && validationModal.result.errors.map((issue, i) => (
+                <div key={i} className="flex gap-2.5 items-start">
+                  <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-slate-700">{issue.message}</p>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">{issue.path}</p>
+                  </div>
+                </div>
+              ))}
+              {validationModal.result.warnings.length > 0 && (
+                <>
+                  {validationModal.mode === 'errors' && validationModal.result.warnings.length > 0 && (
+                    <p className="text-xs text-slate-400 pt-2 font-medium uppercase tracking-wide">Avisos adicionais</p>
+                  )}
+                  {validationModal.result.warnings.map((issue, i) => (
+                    <div key={i} className="flex gap-2.5 items-start">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-slate-700">{issue.message}</p>
+                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">{issue.path}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+              <Button variant="outline" onClick={() => setValidationModal(null)}>
+                {validationModal.mode === 'errors' ? 'Fechar' : 'Cancelar'}
+              </Button>
+              {validationModal.mode === 'warnings' && (
+                <Button onClick={() => { setValidationModal(null); doPrint(); }} className="!bg-amber-500 hover:!bg-amber-600 !text-white">
+                  Continuar mesmo assim
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

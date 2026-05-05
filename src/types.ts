@@ -1,5 +1,6 @@
 import type { RiskLevel } from './domain/risks/riskTypes';
-export type { RiskLevel };
+import type { NHO11MeasurementPoint } from './domain/nho11/nho11Types';
+export type { RiskLevel, NHO11MeasurementPoint };
 
 // ── Parameter / System entities ─────────────────────────────────────────────
 
@@ -172,6 +173,8 @@ export interface AETIllumination {
   conclusion: 'adequada' | 'inadequada' | '';
   conclusionText: string;
   checklist: IlluminationChecklistItem[];
+  measurementPoints: NHO11MeasurementPoint[];
+  referenceLux: number;
 }
 
 export interface AETScientificMethod {
@@ -441,6 +444,8 @@ export const EMPTY_ILLUMINATION: AETIllumination = {
   conclusion: '',
   conclusionText: '',
   checklist: [],
+  measurementPoints: [],
+  referenceLux: 0,
 };
 
 export const EMPTY_FUNCTION: AETFunction = {
