@@ -580,9 +580,43 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
               <SectionTitle>2.3 Ferramentas e Materiais</SectionTitle>
               <FormGroup label="Descrição de Ferramentas e Materiais">
+                {equipmentCatalog.filter(e => e.active).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {equipmentCatalog.filter(e => e.active).map(e => {
+                      const selected = aep.workCharacterization.toolsAndMaterials.description.includes(e.name);
+                      return (
+                        <label key={e.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox checked={selected} onChange={() => {
+                            const cur = aep.workCharacterization.toolsAndMaterials.description.split(', ').filter(Boolean);
+                            const nxt = selected ? cur.filter(v => v !== e.name) : [...cur, e.name];
+                            setTools('description', nxt.join(', '));
+                          }} />
+                          {e.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
                 <Textarea value={aep.workCharacterization.toolsAndMaterials.description} onChange={e => setTools('description', e.target.value)} rows={3} placeholder="Liste as ferramentas, equipamentos e materiais utilizados." />
               </FormGroup>
               <FormGroup label="EPIs Utilizados">
+                {epiCatalog.filter(e => e.active).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {epiCatalog.filter(e => e.active).map(e => {
+                      const selected = aep.workCharacterization.toolsAndMaterials.epis.includes(e.name);
+                      return (
+                        <label key={e.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox checked={selected} onChange={() => {
+                            const cur = aep.workCharacterization.toolsAndMaterials.epis.split(', ').filter(Boolean);
+                            const nxt = selected ? cur.filter(v => v !== e.name) : [...cur, e.name];
+                            setTools('epis', nxt.join(', '));
+                          }} />
+                          {e.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
                 <Textarea value={aep.workCharacterization.toolsAndMaterials.epis} onChange={e => setTools('epis', e.target.value)} rows={2} placeholder="Ex: Calçado de segurança, luvas, óculos..." />
               </FormGroup>
               <FormGroup label="Outros Recursos">
