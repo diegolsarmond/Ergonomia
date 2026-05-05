@@ -364,6 +364,8 @@ export interface AETFunction {
   conclusion?: string;
   requiresAET?: boolean;
   requiresAETJustification?: string;
+  // Structured AEP assessment (planilha AEP 2026)
+  aep?: AEPFunctionAssessment;
 }
 
 export interface AEPFunctionFields {
@@ -380,6 +382,279 @@ export interface AEPFunctionFields {
   conclusion: string;
   requiresAET: boolean;
   requiresAETJustification: string;
+}
+
+// ── AEP — Structured Assessment (planilha "AEP 2026 modelo") ─────────────────
+
+export type BiomechanicalAssessment = 'OK' | 'Atenção' | 'Crítico' | 'N.A.' | '';
+
+export interface BiomechanicalItem {
+  factor: string;
+  assessment: BiomechanicalAssessment;
+  description: string;
+}
+
+export interface EnvironmentalComfortItem {
+  lightingComplaint: 'Sim' | 'Não' | '';
+  lightingValue: string;
+  lightingDescription: string;
+  noiseComplaint: 'Sim' | 'Não' | '';
+  noiseValue: string;
+  noiseDescription: string;
+  temperatureComplaint: 'Sim' | 'Não' | '';
+  temperatureValue: string;
+  temperatureDescription: string;
+}
+
+export interface PsychosocialQuestion {
+  id: string;
+  group: string;
+  question: string;
+  score: number | '';
+  scaleLabel: string;
+  inverted: boolean;
+  comments: string;
+}
+
+export interface AETTrigger {
+  id: string;
+  answer: 'Sim' | 'Não' | '';
+  description: string;
+}
+
+export interface RACIAction {
+  id: string;
+  riskFactor: string;
+  action: string;
+  responsible: string;
+  accountable: string;
+  consulted: string;
+  informed: string;
+  deadline: string;
+  priority: 'Baixa' | 'Média' | 'Alta' | 'Crítica' | '';
+  status: 'Pendente' | 'Em andamento' | 'Concluído' | 'Cancelado' | '';
+}
+
+export interface ScientificToolItem {
+  id: string;
+  toolName: string;
+  result: string;
+  interpretation: string;
+  recommendation: string;
+  imageDataUrl?: string;
+}
+
+export interface PhotoRecord {
+  id: string;
+  imageDataUrl: string;
+  description: string;
+}
+
+export interface AEPFunctionAssessment {
+  // 1. Identificação
+  identification: {
+    unitBranch: string;
+    sectorArea: string;
+    contemplatedFunctions: string;
+    evaluatedActivity: string;
+    code: string;
+  };
+
+  // 2. Caracterização do Trabalho
+  workCharacterization: {
+    processDescription: string;
+    workCycleDescription: string;
+    workOrganization: {
+      workday: string;
+      scale: string;
+      overtime: string;
+      lunchBreak: string;
+      otherBreaks: string;
+      taskRotation: string;
+      safetyDialogues: string;
+    };
+    toolsAndMaterials: {
+      description: string;
+      epis: string;
+      others: string;
+    };
+  };
+
+  // 3. Registro Fotográfico
+  photographicRecords: PhotoRecord[];
+  lgpdNote: string;
+
+  // 4. Biomecânica
+  biomechanics: {
+    postureAndReach: BiomechanicalItem[];
+    repetitivenessAndRhythm: BiomechanicalItem[];
+    forceAndPhysicalDemand: BiomechanicalItem[];
+    manualMaterialHandling: BiomechanicalItem[];
+    furnitureAndWorkstation: BiomechanicalItem[];
+    environmentalComfort: EnvironmentalComfortItem;
+  };
+
+  // 5. Ferramentas Científicas
+  scientificTools: ScientificToolItem[];
+
+  // 6. Psicossocial
+  psychosocialAnswers: PsychosocialQuestion[];
+  psychosocialAverages: {
+    demandRhythm: number;
+    autonomyControl: number;
+    roleClarityConflict: number;
+    socialSupportLeadership: number;
+    recognitionJusticePsychSafety: number;
+    overall: number;
+  };
+  psychosocialClassification: 'VERDE' | 'AMARELO' | 'VERMELHO' | '';
+  psychosocialInterpretation: string;
+
+  // 7. Classificação de Risco / Gatilhos AET
+  aetTriggers: AETTrigger[];
+  finalGuidance: string;
+  decisionJustification: string;
+
+  // 8. Plano de Ação RACI
+  raciActionPlan: RACIAction[];
+
+  // 9. Responsável Técnico
+  technicalResponsible: {
+    name: string;
+    registration: string;
+    formation: string;
+    company: string;
+    signatureDataUrl: string;
+  };
+}
+
+const LGPD_NOTE =
+  'Nota LGPD: As fotografias priorizam o posto de trabalho e a biomecânica da tarefa. Em caso de identificação de indivíduos, os rostos devem ser desfocados para preservar a privacidade e atender à Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018).';
+
+export function createEmptyAEPFunctionAssessment(): AEPFunctionAssessment {
+  return {
+    identification: {
+      unitBranch: '',
+      sectorArea: '',
+      contemplatedFunctions: '',
+      evaluatedActivity: '',
+      code: '',
+    },
+    workCharacterization: {
+      processDescription: '',
+      workCycleDescription: '',
+      workOrganization: {
+        workday: '',
+        scale: '',
+        overtime: '',
+        lunchBreak: '',
+        otherBreaks: '',
+        taskRotation: '',
+        safetyDialogues: '',
+      },
+      toolsAndMaterials: {
+        description: '',
+        epis: '',
+        others: '',
+      },
+    },
+    photographicRecords: [],
+    lgpdNote: LGPD_NOTE,
+    biomechanics: {
+      postureAndReach: [
+        { factor: 'Ombro elevado ou abdução sustentada (60°)', assessment: '', description: '' },
+        { factor: 'Punho em desvio/torção frequente ou prolongado', assessment: '', description: '' },
+        { factor: 'Preensão forte / pinça prolongada', assessment: '', description: '' },
+        { factor: 'Flexão/rotação de tronco repetida ou sustentada', assessment: '', description: '' },
+        { factor: 'Pescoço fletido/rodado por tempo prolongado', assessment: '', description: '' },
+        { factor: 'Trabalho acima da linha dos ombros', assessment: '', description: '' },
+        { factor: 'Trabalho com braços estendidos / alcance longo', assessment: '', description: '' },
+        { factor: 'Postura estática prolongada (sentado ou em pé)', assessment: '', description: '' },
+      ],
+      repetitivenessAndRhythm: [
+        { factor: 'Repetição alta de movimentos (mesmo gesto)', assessment: '', description: '' },
+        { factor: 'Ritmo imposto por máquina/esteira/sistema', assessment: '', description: '' },
+        { factor: 'Pressão por tempo / metas agressivas', assessment: '', description: '' },
+        { factor: 'Pouca margem para variações no método de trabalho', assessment: '', description: '' },
+      ],
+      forceAndPhysicalDemand: [
+        { factor: 'Força manual elevada (aperto, torção, empurrar/puxar)', assessment: '', description: '' },
+        { factor: 'Empurrar/puxar carrinhos (peso/rolagem/piso)', assessment: '', description: '' },
+        { factor: 'Sustentação de cargas/braços por tempo prolongado', assessment: '', description: '' },
+        { factor: 'Ferramenta inadequada (peso, vibração, pega)', assessment: '', description: '' },
+      ],
+      manualMaterialHandling: [
+        { factor: 'Levantamento/abaixamento frequente de cargas', assessment: '', description: '' },
+        { factor: 'Transporte manual de cargas por longas distâncias', assessment: '', description: '' },
+        { factor: 'Ajuda mecânica disponível e utilizada?', assessment: '', description: '' },
+      ],
+      furnitureAndWorkstation: [
+        { factor: 'Altura de bancada/mesa adequada à tarefa e biotipo', assessment: '', description: '' },
+        { factor: 'Espaço para pernas/joelhos (quando sentado)', assessment: '', description: '' },
+        { factor: 'Possibilidade de alternância postural (sentado/em pé)', assessment: '', description: '' },
+        { factor: 'Assento adequado (ajustes, estofamento, encosto)', assessment: '', description: '' },
+        { factor: 'Apoio para pés (quando necessário)', assessment: '', description: '' },
+        { factor: 'Monitor/teclado/mouse posicionados adequadamente (admin)', assessment: '', description: '' },
+        { factor: 'Layout favorece fluxo sem posturas forçadas', assessment: '', description: '' },
+      ],
+      environmentalComfort: {
+        lightingComplaint: '',
+        lightingValue: '',
+        lightingDescription: '',
+        noiseComplaint: '',
+        noiseValue: '',
+        noiseDescription: '',
+        temperatureComplaint: '',
+        temperatureValue: '',
+        temperatureDescription: '',
+      },
+    },
+    scientificTools: [],
+    psychosocialAnswers: [
+      { id: 'psy-1', group: 'Demandas / Ritmo', question: 'Preciso trabalhar muito rápido para dar conta das minhas tarefas.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-2', group: 'Demandas / Ritmo', question: 'Tenho um volume de trabalho acima do que consigo fazer no tempo disponível.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-3', group: 'Demandas / Ritmo', question: 'Meu trabalho exige esforço emocional frequente (lidar com conflitos, reclamações, pressão).', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-4', group: 'Autonomia / Controle', question: 'Tenho liberdade para escolher como executar minhas tarefas.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-5', group: 'Autonomia / Controle', question: 'Consigo influenciar a ordem/prioridade das minhas atividades.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-6', group: 'Clareza / Conflito de Papéis', question: 'Sei exatamente o que é esperado de mim no trabalho.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-7', group: 'Clareza / Conflito de Papéis', question: 'Recebo demandas conflitantes (ex: qualidade vs. velocidade; segurança vs. produção).', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-8', group: 'Apoio Social e Liderança', question: 'Posso contar com apoio dos colegas quando preciso.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-9', group: 'Apoio Social e Liderança', question: 'Minha liderança ajuda a resolver obstáculos do trabalho.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-10', group: 'Apoio Social e Liderança', question: 'Sou tratado com respeito no ambiente de trabalho.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-11', group: 'Reconhecimento, Justiça e Segurança Psicológica', question: 'Sinto que meu trabalho é reconhecido de forma justa.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-12', group: 'Reconhecimento, Justiça e Segurança Psicológica', question: 'Tenho receio de falar sobre problemas/erros/riscos sem sofrer punição.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-13', group: 'Reconhecimento, Justiça e Segurança Psicológica', question: 'Já sofri algum tipo de assédio?', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+    ],
+    psychosocialAverages: {
+      demandRhythm: 0,
+      autonomyControl: 0,
+      roleClarityConflict: 0,
+      socialSupportLeadership: 0,
+      recognitionJusticePsychSafety: 0,
+      overall: 0,
+    },
+    psychosocialClassification: '',
+    psychosocialInterpretation: '',
+    aetTriggers: [
+      { id: 'trig-1', answer: '', description: 'Suspeita de adoecimento ou queixas osteomusculares recorrentes relacionadas diretamente ao posto de trabalho.' },
+      { id: 'trig-2', answer: '', description: 'Movimentação Manual de Cargas (MMC) relevante e frequente, sem a disponibilidade ou uso adequado de auxílios mecânicos ou engenharia.' },
+      { id: 'trig-3', answer: '', description: 'Repetitividade de movimentos de alta frequência combinada com restrição de pausas ou ausência de rodízio de tarefas.' },
+      { id: 'trig-4', answer: '', description: 'Posturas forçadas ou estáticas sustentadas por tempo prolongado, sem possibilidade de ajustes ou alternância postural.' },
+      { id: 'trig-5', answer: '', description: 'Resultado do Bloco Psicossocial classificado como VERMELHO (Alto Risco) persistente, com impacto percebido na saúde ou segurança.' },
+      { id: 'trig-6', answer: '', description: 'Mudança significativa no processo de trabalho, layout, equipamentos ou ferramentas que possa ter introduzido novos riscos ergonômicos ou agravado os existentes.' },
+      { id: 'trig-7', answer: '', description: 'Existência de não conformidades graves identificadas em auditorias internas ou externas (MPT/MTE) relacionadas à ergonomia do posto.' },
+    ],
+    finalGuidance: '',
+    decisionJustification: '',
+    raciActionPlan: [],
+    technicalResponsible: {
+      name: '',
+      registration: '',
+      formation: '',
+      company: '',
+      signatureDataUrl: '',
+    },
+  };
 }
 
 export type ReportType = 'AEP' | 'AET';
@@ -567,4 +842,5 @@ export const EMPTY_FUNCTION: AETFunction = {
   conclusion: '',
   requiresAET: false,
   requiresAETJustification: '',
+  aep: createEmptyAEPFunctionAssessment(),
 };

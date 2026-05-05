@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import type { AETProject, AETFunction, ErgonomicRisk } from '../../types';
+import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem } from '../../types';
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
 import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES } from './components/ReportCommon';
 
@@ -101,16 +101,361 @@ const RiskMatrix: React.FC<{ risks: ErgonomicRisk[] }> = ({ risks }) => {
   );
 };
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const assessColor: Record<string, { bg: string; color: string }> = {
+  'OK':      { bg: '#dcfce7', color: '#14532d' },
+  'Atenção': { bg: '#fef9c3', color: '#713f12' },
+  'Crítico': { bg: '#fee2e2', color: '#7f1d1d' },
+  'N.A.':    { bg: '#f1f5f9', color: '#64748b' },
+};
+
+const psyClassifColor: Record<string, { bg: string; color: string }> = {
+  VERDE:    { bg: '#dcfce7', color: '#14532d' },
+  AMARELO:  { bg: '#fef9c3', color: '#713f12' },
+  VERMELHO: { bg: '#fee2e2', color: '#7f1d1d' },
+};
+
+const BiomecTable: React.FC<{ title: string; items: BiomechanicalItem[] }> = ({ title, items }) => (
+  <>
+    <h4 style={{ marginTop: '16px', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>{title}</h4>
+    <table style={{ fontSize: '0.72rem' }}>
+      <thead>
+        <tr>
+          <th style={{ width: '40%' }}>Fator de Risco</th>
+          <th style={{ width: '12%' }}>Avaliação</th>
+          <th>Descrição / Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item, i) => {
+          const ac = item.assessment ? assessColor[item.assessment] : null;
+          return (
+            <tr key={i}>
+              <td>{item.factor}</td>
+              <td style={{ textAlign: 'center' }}>
+                {item.assessment ? (
+                  <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: ac?.bg, color: ac?.color }}>
+                    {item.assessment}
+                  </span>
+                ) : '—'}
+              </td>
+              <td>{item.description || '—'}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </>
+);
+
 // ── AEP Function Section ─────────────────────────────────────────────────────
 
 const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = ({ func, sectionNum }) => {
   const risks: ErgonomicRisk[] = func.risks || [];
+  const aep = func.aep;
 
+  // ── NEW structured AEP rendering ────────────────────────────────────────
+  if (aep) {
+    const ident = aep.identification;
+    const work  = aep.workCharacterization;
+    const bio   = aep.biomechanics;
+    const env   = bio.environmentalComfort;
+    const psy   = aep.psychosocialAnswers;
+    const trigs = aep.aetTriggers;
+    const resp  = aep.technicalResponsible;
+    const raci  = aep.raciActionPlan;
+
+    return (
+      <section className="pdf-page px-12 py-10 print:break-before-page">
+        <h2>{sectionNum}. {func.name || 'Função sem nome'}</h2>
+
+        {/* 1. Identificação */}
+        <h3>1. Identificação</h3>
+        <table className="mb-4">
+          <tbody>
+            <tr>
+              <th style={{ width: '22%' }}>Função / Cargo</th>
+              <td>{func.name}</td>
+              <th style={{ width: '22%' }}>Código</th>
+              <td>{ident.code || '—'}</td>
+            </tr>
+            <tr>
+              <th>Unidade / Filial</th>
+              <td>{ident.unitBranch || func.unit || '—'}</td>
+              <th>Setor / Área</th>
+              <td>{ident.sectorArea || func.sector || '—'}</td>
+            </tr>
+            <tr>
+              <th>Funções Contempladas</th>
+              <td colSpan={3}>{ident.contemplatedFunctions || '—'}</td>
+            </tr>
+            <tr>
+              <th>Atividade Avaliada</th>
+              <td colSpan={3}>{ident.evaluatedActivity || func.demandFound || '—'}</td>
+            </tr>
+            <tr>
+              <th>Nº de Colaboradores</th>
+              <td>{func.numEmployees || '—'}</td>
+              <th>Data da Análise</th>
+              <td>{func.analysisDate ? new Date(func.analysisDate + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* 2. Caracterização do Trabalho */}
+        {(work.processDescription || work.workCycleDescription) && (
+          <>
+            <h3>2. Caracterização do Trabalho</h3>
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '8px' }}>2.1 Descrição do Processo e Ciclo de Trabalho</h4>
+            <Field label="Processo" value={work.processDescription} />
+            <Field label="Ciclo de Trabalho" value={work.workCycleDescription} />
+
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '12px' }}>2.2 Organização do Trabalho</h4>
+            <table style={{ fontSize: '0.75rem' }}>
+              <tbody>
+                <tr><th style={{ width: '25%' }}>Jornada</th><td>{work.workOrganization.workday || '—'}</td><th style={{ width: '25%' }}>Escala / Turno</th><td>{work.workOrganization.scale || '—'}</td></tr>
+                <tr><th>Horas Extras</th><td>{work.workOrganization.overtime || '—'}</td><th>Intervalo Refeição</th><td>{work.workOrganization.lunchBreak || '—'}</td></tr>
+                <tr><th>Outras Pausas</th><td>{work.workOrganization.otherBreaks || '—'}</td><th>Rodízio de Tarefas</th><td>{work.workOrganization.taskRotation || '—'}</td></tr>
+                <tr><th>Diálogos de Segurança</th><td colSpan={3}>{work.workOrganization.safetyDialogues || '—'}</td></tr>
+              </tbody>
+            </table>
+
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '12px' }}>2.3 Ferramentas e Materiais</h4>
+            <Field label="Ferramentas / Materiais" value={work.toolsAndMaterials.description} />
+            <Field label="EPIs" value={work.toolsAndMaterials.epis} />
+            {work.toolsAndMaterials.others && <Field label="Outros" value={work.toolsAndMaterials.others} />}
+          </>
+        )}
+
+        {/* 3. Registro Fotográfico */}
+        {aep.photographicRecords.length > 0 && (
+          <>
+            <h3>3. Registro Fotográfico</h3>
+            <p style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '12px' }}>{aep.lgpdNote}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {aep.photographicRecords.map((photo, i) => (
+                <div key={photo.id} style={{ textAlign: 'center' }}>
+                  {photo.imageDataUrl && (
+                    <img src={photo.imageDataUrl} alt={photo.description || `Foto ${i + 1}`}
+                      style={{ width: '100%', height: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }} />
+                  )}
+                  {photo.description && <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '4px' }}>{photo.description}</p>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* 4. Biomecânica */}
+        <h3>4. Biomecânica</h3>
+        <BiomecTable title="4.1 Posturas e Alcances"          items={bio.postureAndReach} />
+        <BiomecTable title="4.2 Repetitividade e Ritmo"        items={bio.repetitivenessAndRhythm} />
+        <BiomecTable title="4.3 Força e Exigência Física"      items={bio.forceAndPhysicalDemand} />
+        <BiomecTable title="4.4 Movimentação Manual de Cargas" items={bio.manualMaterialHandling} />
+        <BiomecTable title="4.5 Mobiliário e Posto de Trabalho" items={bio.furnitureAndWorkstation} />
+
+        <h4 style={{ marginTop: '16px', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>4.6 Conforto Ambiental</h4>
+        <table style={{ fontSize: '0.72rem' }}>
+          <thead><tr><th>Fator</th><th>Queixa</th><th>Valor Medido</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <tr><td>Iluminação</td><td>{env.lightingComplaint || '—'}</td><td>{env.lightingValue || '—'}</td><td>{env.lightingDescription || '—'}</td></tr>
+            <tr><td>Ruído</td><td>{env.noiseComplaint || '—'}</td><td>{env.noiseValue || '—'}</td><td>{env.noiseDescription || '—'}</td></tr>
+            <tr><td>Temperatura</td><td>{env.temperatureComplaint || '—'}</td><td>{env.temperatureValue || '—'}</td><td>{env.temperatureDescription || '—'}</td></tr>
+          </tbody>
+        </table>
+
+        {/* 5. Ferramentas Científicas */}
+        {aep.scientificTools.length > 0 && (
+          <>
+            <h3>5. Ferramentas Científicas</h3>
+            {aep.scientificTools.map((tool, i) => (
+              <div key={tool.id} style={{ marginBottom: '12px' }}>
+                <p style={{ fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>{i + 1}. {tool.toolName}</p>
+                <Field label="Resultado" value={tool.result} />
+                <Field label="Interpretação" value={tool.interpretation} />
+                <Field label="Recomendação" value={tool.recommendation} />
+                {tool.imageDataUrl && (
+                  <img src={tool.imageDataUrl} alt={tool.toolName}
+                    style={{ maxWidth: '280px', marginTop: '6px', borderRadius: '4px', border: '1px solid #e5e7eb' }} />
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* 6. Psicossocial */}
+        {psy.some(q => q.score !== '') && (
+          <>
+            <h3>6. Avaliação Psicossocial</h3>
+            <table style={{ fontSize: '0.68rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '22%' }}>Grupo</th>
+                  <th>Fator Psicossocial</th>
+                  <th style={{ width: '8%' }}>Pontuação</th>
+                  <th style={{ width: '20%' }}>Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {psy.map(q => (
+                  <tr key={q.id}>
+                    <td>{q.group}</td>
+                    <td>{q.question}{q.inverted ? ' (invertida)' : ''}</td>
+                    <td style={{ textAlign: 'center' }}>{q.score !== '' ? String(q.score) : '—'}</td>
+                    <td>{q.comments || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {aep.psychosocialClassification && (
+              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>
+                  Média Geral: {aep.psychosocialAverages.overall.toFixed(2)}
+                </span>
+                <span style={{
+                  display: 'inline-block', padding: '2px 14px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.78rem',
+                  background: psyClassifColor[aep.psychosocialClassification]?.bg,
+                  color: psyClassifColor[aep.psychosocialClassification]?.color,
+                }}>
+                  {aep.psychosocialClassification}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#6b7280', fontStyle: 'italic' }}>{aep.psychosocialInterpretation}</span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 7. Classificação de Risco / Gatilhos AET */}
+        {trigs.some(t => t.answer !== '') && (
+          <>
+            <h3>7. Classificação de Risco — Gatilhos para AET</h3>
+            <table style={{ fontSize: '0.72rem' }}>
+              <thead><tr><th style={{ width: '5%' }}>#</th><th>Gatilho</th><th style={{ width: '10%' }}>Resposta</th></tr></thead>
+              <tbody>
+                {trigs.map((t, i) => (
+                  <tr key={t.id} style={{ background: t.answer === 'Sim' ? '#fef2f2' : '' }}>
+                    <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                    <td>{t.description}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700, color: t.answer === 'Sim' ? '#dc2626' : t.answer === 'Não' ? '#16a34a' : '#6b7280' }}>
+                      {t.answer || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '5px 14px', borderRadius: '9999px',
+                background: func.requiresAET ? '#dc2626' : '#22c55e', color: '#fff',
+                fontSize: '0.82rem', fontWeight: 600,
+              }}>
+                {func.requiresAET ? 'Requer AET' : 'Não requer AET'}
+              </span>
+            </div>
+            {aep.finalGuidance && <Field label="Orientação Final" value={aep.finalGuidance} />}
+            {aep.decisionJustification && <Field label="Justificativa da Decisão" value={aep.decisionJustification} />}
+          </>
+        )}
+
+        {/* 8. Plano de Ação RACI */}
+        {raci.length > 0 && (
+          <>
+            <h3>8. Plano de Ação RACI</h3>
+            <table style={{ fontSize: '0.66rem' }}>
+              <thead>
+                <tr>
+                  <th>Fator de Risco</th>
+                  <th>Ação</th>
+                  <th style={{ width: '7%' }}>R</th>
+                  <th style={{ width: '7%' }}>A</th>
+                  <th style={{ width: '7%' }}>C</th>
+                  <th style={{ width: '7%' }}>I</th>
+                  <th style={{ width: '9%' }}>Prazo</th>
+                  <th style={{ width: '7%' }}>Prio.</th>
+                  <th style={{ width: '9%' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {raci.map(a => (
+                  <tr key={a.id}>
+                    <td>{a.riskFactor}</td>
+                    <td>{a.action}</td>
+                    <td>{a.responsible}</td>
+                    <td>{a.accountable}</td>
+                    <td>{a.consulted}</td>
+                    <td>{a.informed}</td>
+                    <td>{a.deadline ? new Date(a.deadline + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                    <td style={{ fontWeight: 700, color: a.priority === 'Crítica' ? '#dc2626' : a.priority === 'Alta' ? '#ea580c' : a.priority === 'Média' ? '#d97706' : '#16a34a' }}>{a.priority || '—'}</td>
+                    <td>{a.status || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* Legacy risk matrix if risks exist */}
+        {risks.length > 0 && (
+          <>
+            <h3>Inventário de Riscos Ergonômicos</h3>
+            <table className="mt-2" style={{ fontSize: '0.68rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '3%' }}>#</th><th>Agente</th><th>Fator de Risco</th>
+                  <th>Efeito à Saúde</th><th>Situação</th><th>Controle</th><th>Melhoria</th>
+                  <th style={{ width: '3%' }}>P</th><th style={{ width: '3%' }}>G</th>
+                  <th style={{ width: '4%' }}>Score</th><th style={{ width: '9%' }}>Nível</th>
+                  <th>Ref.</th><th>Responsável</th><th>Prazo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {risks.map((risk, i) => (
+                  <tr key={risk.id}>
+                    <td className="text-center font-medium">{String(i + 1).padStart(2, '0')}</td>
+                    <td>{risk.agent}</td><td>{risk.riskFactor}</td><td>{risk.possibleHealthEffect}</td>
+                    <td>{risk.foundSituation}</td><td>{risk.existingControl}</td><td>{risk.improvementProposal}</td>
+                    <td className="text-center">{risk.probability}</td><td className="text-center">{risk.severity}</td>
+                    <td className="text-center font-bold">{risk.score}</td>
+                    <td><span style={{ display: 'inline-block', padding: '1px 7px', borderRadius: '9999px', fontSize: '0.65rem', fontWeight: 700, color: '#fff', background: riskLevelColor(risk.riskLevel) }}>{risk.riskLevel}</span></td>
+                    <td>{risk.normativeReference}</td><td>{risk.responsible}</td>
+                    <td>{risk.deadline ? new Date(risk.deadline + 'T12:00:00').toLocaleDateString('pt-BR') : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <h3>Matriz de Risco</h3>
+            <RiskMatrix risks={risks} />
+          </>
+        )}
+
+        {/* 9. Responsável Técnico (por função) */}
+        {(resp.name || resp.registration) && (
+          <>
+            <h3>9. Responsável Técnico</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '20px' }}>
+              {resp.signatureDataUrl && (
+                <img src={resp.signatureDataUrl} alt="Assinatura" style={{ maxHeight: '60px', marginBottom: '8px' }} />
+              )}
+              <div style={{ borderTop: '1px solid #000', width: '220px', paddingTop: '6px', textAlign: 'center' }}>
+                {resp.name       && <p style={{ fontWeight: 600, fontSize: '0.85rem' }}>{resp.name}</p>}
+                {resp.formation  && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.formation}</p>}
+                {resp.company    && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.company}</p>}
+                {resp.registration && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.registration}</p>}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  // ── LEGACY fallback (funções sem aep estruturado) ────────────────────────
   return (
     <section className="pdf-page px-12 py-10 print:break-before-page">
       <h2>{sectionNum}. {func.name || 'Função sem nome'}</h2>
 
-      {/* ── Identificação ── */}
       <table className="mb-6">
         <tbody>
           <tr>
@@ -138,25 +483,20 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         </tbody>
       </table>
 
-      {/* ── Condições do local ── */}
       {(func.generalConditions || func.accessConditions || func.workstationOrganization) && (
         <>
           <h3>Condições do Local de Trabalho</h3>
-          <Field label="Condições Gerais"                 value={func.generalConditions} />
-          <Field label="Acesso"                           value={func.accessConditions} />
+          <Field label="Condições Gerais" value={func.generalConditions} />
+          <Field label="Acesso" value={func.accessConditions} />
           <Field label="Organização e Dimensionamento do Posto" value={func.workstationOrganization} />
         </>
       )}
-
-      {/* ── Condições ambientais ── */}
       {func.environmentalConditions && (
         <>
           <h3>Condições Ambientais</h3>
           <Field label="" value={func.environmentalConditions} />
         </>
       )}
-
-      {/* ── Fatores ergonômicos ── */}
       {(func.biomechanicalFactors || func.cognitiveFactors || func.organizationalFactors) && (
         <>
           <h3>Fatores Ergonômicos</h3>
@@ -165,8 +505,6 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
           <Field label="Organizacionais" value={func.organizationalFactors} />
         </>
       )}
-
-      {/* ── Atividade ── */}
       {(func.prescribedTask || func.cyclePrescribed || func.realTask || func.cycleReal) && (
         <>
           <h3>Descrição da Atividade</h3>
@@ -174,92 +512,42 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
             <Field label="Tarefa Prescrita" value={func.prescribedTask || func.cyclePrescribed} />
           )}
           {(func.realTask || func.cycleReal) && (
-            <Field label="Tarefa Real (Observação Sistemática)" value={func.realTask || func.cycleReal} />
+            <Field label="Tarefa Real" value={func.realTask || func.cycleReal} />
           )}
         </>
       )}
-
-      {/* ── Inventário de riscos ── */}
-      {risks.length > 0 ? (
+      {risks.length > 0 && (
         <>
           <h3>Inventário de Riscos Ergonômicos</h3>
           <table className="mt-2" style={{ fontSize: '0.68rem' }}>
             <thead>
               <tr>
-                <th style={{ width: '3%' }}>#</th>
-                <th>Agente</th>
-                <th>Fator de Risco</th>
-                <th>Possível Efeito à Saúde</th>
-                <th>Situação Encontrada</th>
-                <th>Controle Existente</th>
-                <th>Proposta de Melhoria</th>
-                <th style={{ width: '3%' }}>P</th>
-                <th style={{ width: '3%' }}>G</th>
-                <th style={{ width: '4%' }}>Score</th>
-                <th style={{ width: '9%' }}>Nível</th>
-                <th>Ref. Normativa</th>
-                <th>Responsável</th>
-                <th>Prazo</th>
+                <th style={{ width: '3%' }}>#</th><th>Agente</th><th>Fator de Risco</th>
+                <th>Efeito à Saúde</th><th>Situação</th><th>Controle</th><th>Melhoria</th>
+                <th style={{ width: '3%' }}>P</th><th style={{ width: '3%' }}>G</th>
+                <th style={{ width: '4%' }}>Score</th><th style={{ width: '9%' }}>Nível</th>
+                <th>Ref.</th><th>Responsável</th><th>Prazo</th>
               </tr>
             </thead>
             <tbody>
               {risks.map((risk, i) => (
                 <tr key={risk.id}>
                   <td className="text-center font-medium">{String(i + 1).padStart(2, '0')}</td>
-                  <td>{risk.agent}</td>
-                  <td>{risk.riskFactor}</td>
-                  <td>{risk.possibleHealthEffect}</td>
-                  <td>{risk.foundSituation}</td>
-                  <td>{risk.existingControl}</td>
-                  <td>{risk.improvementProposal}</td>
-                  <td className="text-center">{risk.probability}</td>
-                  <td className="text-center">{risk.severity}</td>
+                  <td>{risk.agent}</td><td>{risk.riskFactor}</td><td>{risk.possibleHealthEffect}</td>
+                  <td>{risk.foundSituation}</td><td>{risk.existingControl}</td><td>{risk.improvementProposal}</td>
+                  <td className="text-center">{risk.probability}</td><td className="text-center">{risk.severity}</td>
                   <td className="text-center font-bold">{risk.score}</td>
-                  <td>
-                    <span style={{
-                      display: 'inline-block', padding: '1px 7px', borderRadius: '9999px',
-                      fontSize: '0.65rem', fontWeight: 700, color: '#fff',
-                      background: riskLevelColor(risk.riskLevel),
-                    }}>
-                      {risk.riskLevel}
-                    </span>
-                  </td>
-                  <td>{risk.normativeReference}</td>
-                  <td>{risk.responsible}</td>
+                  <td><span style={{ display: 'inline-block', padding: '1px 7px', borderRadius: '9999px', fontSize: '0.65rem', fontWeight: 700, color: '#fff', background: riskLevelColor(risk.riskLevel) }}>{risk.riskLevel}</span></td>
+                  <td>{risk.normativeReference}</td><td>{risk.responsible}</td>
                   <td>{risk.deadline ? new Date(risk.deadline + 'T12:00:00').toLocaleDateString('pt-BR') : ''}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-          {/* ── Matriz de risco ── */}
           <h3>Matriz de Risco</h3>
           <RiskMatrix risks={risks} />
-
-          {/* ── Evidências fotográficas ── */}
-          {risks.some(r => r.evidenceImageDataUrl) && (
-            <>
-              <h4>Evidências Fotográficas</h4>
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                {risks.filter(r => r.evidenceImageDataUrl).map((risk) => (
-                  <div key={risk.id} className="text-center">
-                    <img src={risk.evidenceImageDataUrl} alt={risk.riskFactor}
-                      className="w-full h-auto rounded border border-gray-200" />
-                    <p className="text-xs text-gray-500 mt-1 font-medium">{risk.riskFactor}</p>
-                    <p className="text-xs text-gray-400">{risk.agent}</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
         </>
-      ) : (
-        <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontStyle: 'italic', marginTop: '8px' }}>
-          Nenhum risco ergonômico identificado para esta função.
-        </p>
       )}
-
-      {/* ── Conclusão ── */}
       <>
         <h3>Conclusão</h3>
         {func.conclusion

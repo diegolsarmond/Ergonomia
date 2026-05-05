@@ -5,6 +5,7 @@ import {
   EMPTY_FUNCTION,
   EMPTY_ILLUMINATION,
   ReportType,
+  createEmptyAEPFunctionAssessment,
 } from '../types';
 
 // ── Illumination ─────────────────────────────────────────────────────────────
@@ -50,6 +51,10 @@ export function normalizeFunction(raw: any): AETFunction {
     conclusion:               base.conclusion               ?? '',
     requiresAET:              base.requiresAET              ?? false,
     requiresAETJustification: base.requiresAETJustification ?? '',
+    // Structured AEP assessment — merge with defaults so old functions get the full shape
+    aep: base.aep
+      ? { ...createEmptyAEPFunctionAssessment(), ...base.aep }
+      : createEmptyAEPFunctionAssessment(),
   };
 }
 
@@ -103,7 +108,8 @@ export function normalizeProjectsOnLoad(
           typeof f.illumination?.referenceLux !== 'number' ||
           !f.illumination?.modelType ||
           !Array.isArray(f.risks) ||
-          f.ghe === undefined,
+          f.ghe === undefined ||
+          f.aep === undefined,
       );
     if (needsUpdate) {
       changed = true;

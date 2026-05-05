@@ -34,7 +34,7 @@ function makeProject(overrides: Partial<AETProject> = {}): AETProject {
   };
 }
 
-// Valid AEP function — EMPTY_FUNCTION has cyclePrescribed='VIDE PGR' already set
+// Valid AEP function — structured (new path)
 function makeAEPFunction(overrides: Partial<AETFunction> = {}): AETFunction {
   return {
     ...EMPTY_FUNCTION,
@@ -45,6 +45,23 @@ function makeAEPFunction(overrides: Partial<AETFunction> = {}): AETFunction {
     demandFound: 'Análise concluída',
     conclusion: 'adequada',
     realTask: 'Tarefa real observada',
+    // aep comes from EMPTY_FUNCTION (structured path)
+    ...overrides,
+  };
+}
+
+// Legacy AEP function — no structured aep (legacy path)
+function makeLegacyAEPFunction(overrides: Partial<AETFunction> = {}): AETFunction {
+  return {
+    ...EMPTY_FUNCTION,
+    id: 'f1',
+    name: 'Operador',
+    numEmployees: '5',
+    ghe: 'GHE-01',
+    demandFound: 'Análise concluída',
+    conclusion: 'adequada',
+    realTask: 'Tarefa real observada',
+    aep: undefined,
     ...overrides,
   };
 }
@@ -65,48 +82,19 @@ function makeAETFunction(overrides: Partial<AETFunction> = {}): AETFunction {
   };
 }
 
-// ── AEP validation ───────────────────────────────────────────────────────────
+// ── AEP validation (structured path — fn.aep defined) ────────────────────────
 
-describe('validateReport — AEP', () => {
+describe('validateReport — AEP (structured)', () => {
   it('valid AEP project => isValid true, no errors', () => {
     const result = validateReport(makeProject({ functions: [makeAEPFunction()] }));
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
-  it('missing GHE => error on functions[0].ghe', () => {
-    const result = validateReport(makeProject({ functions: [makeAEPFunction({ ghe: '' })] }));
+  it('missing name => error on functions[0].name', () => {
+    const result = validateReport(makeProject({ functions: [makeAEPFunction({ name: '' })] }));
     expect(result.isValid).toBe(false);
-    expect(result.errors.some(e => e.path === 'functions[0].ghe')).toBe(true);
-  });
-
-  it('missing conclusion => error on functions[0].conclusion', () => {
-    const result = validateReport(makeProject({ functions: [makeAEPFunction({ conclusion: '' })] }));
-    expect(result.errors.some(e => e.path === 'functions[0].conclusion')).toBe(true);
-  });
-
-  it('missing both prescribedTask and cyclePrescribed => error on functions[0].prescribedTask', () => {
-    const fn = makeAEPFunction({ prescribedTask: '', cyclePrescribed: '' });
-    const result = validateReport(makeProject({ functions: [fn] }));
-    expect(result.errors.some(e => e.path === 'functions[0].prescribedTask')).toBe(true);
-  });
-
-  it('cyclePrescribed alone satisfies the prescribed-task requirement', () => {
-    const fn = makeAEPFunction({ prescribedTask: '', cyclePrescribed: 'VIDE PGR' });
-    const result = validateReport(makeProject({ functions: [fn] }));
-    expect(result.errors.some(e => e.path === 'functions[0].prescribedTask')).toBe(false);
-  });
-
-  it('missing both realTask and cycleReal => error on functions[0].realTask', () => {
-    const fn = makeAEPFunction({ realTask: '', cycleReal: '' });
-    const result = validateReport(makeProject({ functions: [fn] }));
-    expect(result.errors.some(e => e.path === 'functions[0].realTask')).toBe(true);
-  });
-
-  it('cycleReal alone satisfies the real-task requirement', () => {
-    const fn = makeAEPFunction({ realTask: '', cycleReal: 'Operador executa ciclo de 3 min' });
-    const result = validateReport(makeProject({ functions: [fn] }));
-    expect(result.errors.some(e => e.path === 'functions[0].realTask')).toBe(false);
+    expect(result.errors.some(e => e.path === 'functions[0].name')).toBe(true);
   });
 
   it('no functions => error on functions', () => {
@@ -120,8 +108,60 @@ describe('validateReport — AEP', () => {
     expect(result.errors.some(e => e.path === 'companyName')).toBe(true);
   });
 
+  it('no biomechanics assessed => warning (not error)', () => {
+    const result = validateReport(makeProject({ functions: [makeAEPFunction()] }));
+    // EMPTY_FUNCTION.aep has no assessments filled, so warning expected
+    expect(result.isValid).toBe(true);
+    expect(result.warnings.some(w => w.path.includes('biomechanics'))).toBe(true);
+  });
+});
+
+// ── AEP validation (legacy path — fn.aep undefined) ──────────────────────────
+
+describe('validateReport — AEP (legacy)', () => {
+  it('valid legacy AEP function => isValid true, no errors', () => {
+    const result = validateReport(makeProject({ functions: [makeLegacyAEPFunction()] }));
+    expect(result.isValid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('missing GHE => error on functions[0].ghe', () => {
+    const result = validateReport(makeProject({ functions: [makeLegacyAEPFunction({ ghe: '' })] }));
+    expect(result.isValid).toBe(false);
+    expect(result.errors.some(e => e.path === 'functions[0].ghe')).toBe(true);
+  });
+
+  it('missing conclusion => error on functions[0].conclusion', () => {
+    const result = validateReport(makeProject({ functions: [makeLegacyAEPFunction({ conclusion: '' })] }));
+    expect(result.errors.some(e => e.path === 'functions[0].conclusion')).toBe(true);
+  });
+
+  it('missing both prescribedTask and cyclePrescribed => error on functions[0].prescribedTask', () => {
+    const fn = makeLegacyAEPFunction({ prescribedTask: '', cyclePrescribed: '' });
+    const result = validateReport(makeProject({ functions: [fn] }));
+    expect(result.errors.some(e => e.path === 'functions[0].prescribedTask')).toBe(true);
+  });
+
+  it('cyclePrescribed alone satisfies the prescribed-task requirement', () => {
+    const fn = makeLegacyAEPFunction({ prescribedTask: '', cyclePrescribed: 'VIDE PGR' });
+    const result = validateReport(makeProject({ functions: [fn] }));
+    expect(result.errors.some(e => e.path === 'functions[0].prescribedTask')).toBe(false);
+  });
+
+  it('missing both realTask and cycleReal => error on functions[0].realTask', () => {
+    const fn = makeLegacyAEPFunction({ realTask: '', cycleReal: '' });
+    const result = validateReport(makeProject({ functions: [fn] }));
+    expect(result.errors.some(e => e.path === 'functions[0].realTask')).toBe(true);
+  });
+
+  it('cycleReal alone satisfies the real-task requirement', () => {
+    const fn = makeLegacyAEPFunction({ realTask: '', cycleReal: 'Operador executa ciclo de 3 min' });
+    const result = validateReport(makeProject({ functions: [fn] }));
+    expect(result.errors.some(e => e.path === 'functions[0].realTask')).toBe(false);
+  });
+
   it('no risks => warning (not error)', () => {
-    const fn = makeAEPFunction({ risks: [] });
+    const fn = makeLegacyAEPFunction({ risks: [] });
     const result = validateReport(makeProject({ functions: [fn] }));
     expect(result.isValid).toBe(true);
     expect(result.warnings.some(w => w.path.includes('risks'))).toBe(true);

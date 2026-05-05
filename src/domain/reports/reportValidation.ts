@@ -24,36 +24,58 @@ function validateAEPFunction(fn: AETFunction, idx: number, errors: ValidationIss
   const prefix = `functions[${idx}]`;
   const label  = fn.name ? `"${fn.name}"` : `#${idx + 1}`;
 
-  required(fn.name,         `${prefix}.name`,         `Função ${label}: nome é obrigatório.`,              errors);
-  required(fn.numEmployees, `${prefix}.numEmployees`,  `Função ${label}: número de colaboradores é obrigatório.`, errors);
-  required(fn.ghe,          `${prefix}.ghe`,           `Função ${label}: GHE é obrigatório.`,              errors);
-  required(fn.demandFound,  `${prefix}.demandFound`,   `Função ${label}: demanda encontrada é obrigatória.`, errors);
-  required(fn.conclusion,   `${prefix}.conclusion`,    `Função ${label}: conclusão é obrigatória.`,        errors);
+  required(fn.name, `${prefix}.name`, `Função ${label}: nome é obrigatório.`, errors);
 
-  const hasPrescribed = !!(fn.prescribedTask?.trim() || fn.cyclePrescribed?.trim());
-  if (!hasPrescribed) {
-    errors.push({
-      path: `${prefix}.prescribedTask`,
-      message: `Função ${label}: tarefa prescrita ou ciclo prescrito é obrigatório.`,
-      severity: 'error',
-    });
+  if (!fn.numEmployees?.trim()) {
+    warnings.push({ path: `${prefix}.numEmployees`, message: `Função ${label}: número de colaboradores não informado.`, severity: 'warning' });
   }
 
-  const hasReal = !!(fn.realTask?.trim() || fn.cycleReal?.trim());
-  if (!hasReal) {
-    errors.push({
-      path: `${prefix}.realTask`,
-      message: `Função ${label}: tarefa real ou ciclo real é obrigatório.`,
-      severity: 'error',
-    });
-  }
+  // Structured AEP assessment validation
+  const aep = fn.aep;
+  if (aep) {
+    const hasActivity = !!(aep.identification.evaluatedActivity?.trim() || fn.demandFound?.trim());
+    if (!hasActivity) {
+      warnings.push({ path: `${prefix}.aep.identification.evaluatedActivity`, message: `Função ${label}: atividade avaliada não informada.`, severity: 'warning' });
+    }
 
-  if (!fn.risks || fn.risks.length === 0) {
-    warnings.push({
-      path: `${prefix}.risks`,
-      message: `Função ${label}: nenhum risco ergonômico cadastrado.`,
-      severity: 'warning',
-    });
+    const hasProcess = !!(aep.workCharacterization.processDescription?.trim() || fn.prescribedTask?.trim());
+    if (!hasProcess) {
+      warnings.push({ path: `${prefix}.aep.workCharacterization.processDescription`, message: `Função ${label}: descrição do processo não informada.`, severity: 'warning' });
+    }
+
+    const allItems = [
+      ...aep.biomechanics.postureAndReach,
+      ...aep.biomechanics.repetitivenessAndRhythm,
+      ...aep.biomechanics.forceAndPhysicalDemand,
+      ...aep.biomechanics.manualMaterialHandling,
+      ...aep.biomechanics.furnitureAndWorkstation,
+    ];
+    const hasAnyBiomecAssessment = allItems.some(i => i.assessment !== '');
+    if (!hasAnyBiomecAssessment) {
+      warnings.push({ path: `${prefix}.aep.biomechanics`, message: `Função ${label}: nenhum item de biomecânica avaliado.`, severity: 'warning' });
+    }
+
+    const hasAnyTrigger = aep.aetTriggers.some(t => t.answer !== '');
+    if (!hasAnyTrigger) {
+      warnings.push({ path: `${prefix}.aep.aetTriggers`, message: `Função ${label}: gatilhos de AET não respondidos.`, severity: 'warning' });
+    }
+  } else {
+    // Legacy AEP validation
+    required(fn.ghe,         `${prefix}.ghe`,         `Função ${label}: GHE é obrigatório.`,               errors);
+    required(fn.demandFound, `${prefix}.demandFound`,  `Função ${label}: demanda encontrada é obrigatória.`, errors);
+    required(fn.conclusion,  `${prefix}.conclusion`,   `Função ${label}: conclusão é obrigatória.`,          errors);
+
+    const hasPrescribed = !!(fn.prescribedTask?.trim() || fn.cyclePrescribed?.trim());
+    if (!hasPrescribed) {
+      errors.push({ path: `${prefix}.prescribedTask`, message: `Função ${label}: tarefa prescrita ou ciclo prescrito é obrigatório.`, severity: 'error' });
+    }
+    const hasReal = !!(fn.realTask?.trim() || fn.cycleReal?.trim());
+    if (!hasReal) {
+      errors.push({ path: `${prefix}.realTask`, message: `Função ${label}: tarefa real ou ciclo real é obrigatório.`, severity: 'error' });
+    }
+    if (!fn.risks || fn.risks.length === 0) {
+      warnings.push({ path: `${prefix}.risks`, message: `Função ${label}: nenhum risco ergonômico cadastrado.`, severity: 'warning' });
+    }
   }
 }
 

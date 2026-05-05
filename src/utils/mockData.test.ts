@@ -152,6 +152,71 @@ describe('mock projects — validateReport', () => {
   });
 });
 
+// ── AEP structured assessment ────────────────────────────────────────────────
+
+describe('AEP structured assessment (aep field)', () => {
+  it('AEP functions have aep field defined', () => {
+    const project = createMockAEPProject();
+    for (const fn of project.functions) {
+      expect(fn.aep).toBeDefined();
+    }
+  });
+
+  it('AEP functions cover 9 sections (identification, workCharacterization, photographicRecords, biomechanics, scientificTools, psychosocialAnswers, aetTriggers, raciActionPlan, technicalResponsible)', () => {
+    const fn = createMockAEPProject().functions[0];
+    const aep = fn.aep!;
+    expect(aep.identification).toBeDefined();
+    expect(aep.workCharacterization).toBeDefined();
+    expect(aep.photographicRecords).toBeDefined();
+    expect(aep.biomechanics).toBeDefined();
+    expect(aep.scientificTools).toBeDefined();
+    expect(aep.psychosocialAnswers).toBeDefined();
+    expect(aep.aetTriggers).toBeDefined();
+    expect(aep.raciActionPlan).toBeDefined();
+    expect(aep.technicalResponsible).toBeDefined();
+  });
+
+  it('biomechanics contains all 6 groups', () => {
+    const bio = createMockAEPProject().functions[0].aep!.biomechanics;
+    expect(bio.postureAndReach.length).toBeGreaterThanOrEqual(8);
+    expect(bio.repetitivenessAndRhythm.length).toBeGreaterThanOrEqual(4);
+    expect(bio.forceAndPhysicalDemand.length).toBeGreaterThanOrEqual(4);
+    expect(bio.manualMaterialHandling.length).toBeGreaterThanOrEqual(3);
+    expect(bio.furnitureAndWorkstation.length).toBeGreaterThanOrEqual(7);
+    expect(bio.environmentalComfort).toBeDefined();
+  });
+
+  it('psychosocialAnswers has exactly 13 questions', () => {
+    const answers = createMockAEPProject().functions[0].aep!.psychosocialAnswers;
+    expect(answers).toHaveLength(13);
+  });
+
+  it('aetTriggers has exactly 7 triggers', () => {
+    const triggers = createMockAEPProject().functions[0].aep!.aetTriggers;
+    expect(triggers).toHaveLength(7);
+  });
+
+  it('AEP f1 (Atendente) does not require AET', () => {
+    expect(createMockAEPProject().functions[0].requiresAET).toBe(false);
+  });
+
+  it('AEP f2 (Auxiliar de Produção) requires AET', () => {
+    expect(createMockAEPProject().functions[1].requiresAET).toBe(true);
+  });
+
+  it('AEP f2 has at least one trigger answered Sim', () => {
+    const triggers = createMockAEPProject().functions[1].aep!.aetTriggers;
+    expect(triggers.some(t => t.answer === 'Sim')).toBe(true);
+  });
+
+  it('psychosocialClassification is AMARELO for both mock AEP functions', () => {
+    const project = createMockAEPProject();
+    for (const fn of project.functions) {
+      expect(fn.aep!.psychosocialClassification).toBe('AMARELO');
+    }
+  });
+});
+
 // ── Risk scores ──────────────────────────────────────────────────────────────
 
 describe('mock projects — risk scores are correct', () => {

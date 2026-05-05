@@ -11,6 +11,7 @@ import { ImageUpload } from '../components/ImageUpload';
 import { createEmptyErgonomicRisk } from '../domain/risks/riskFactory';
 import { calculateRiskScore, isValidationError } from '../domain/risks/riskMatrix';
 import { calculateNHO11Simple, isNHO11ValidationError } from '../domain/nho11/nho11Calculator';
+import { AEPFunctionForm } from './AEPFunctionForm';
 
 const TABS = [
   'Identificação',
@@ -96,6 +97,28 @@ export const FunctionForm = () => {
   const [error, setError] = useState<string | null>(null);
 
   if (!project || (!isNew && !initialData.id)) return <div className="p-8">Função não encontrada.</div>;
+
+  // ── AEP: delegate to dedicated form ────────────────────────────────────────
+  if (project.reportType === 'AEP') {
+    const handleAEPSave = async (data: AETFunction) => {
+      if (isNew) {
+        const newId = await addFunction(id!, data);
+        navigate(`/project/${id}`);
+        void newId;
+      } else {
+        await updateFunction(id!, funcId!, data);
+        navigate(`/project/${id}`);
+      }
+    };
+    return (
+      <AEPFunctionForm
+        project={project}
+        funcId={funcId!}
+        initialData={initialData}
+        onSave={handleAEPSave}
+      />
+    );
+  }
 
   const nhoPoints    = formData.illumination.measurementPoints || [];
   const nhoRefLux    = formData.illumination.referenceLux || 0;
