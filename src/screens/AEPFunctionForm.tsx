@@ -762,7 +762,20 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     </Button>
                   </div>
                   <FormGroup label="Nome da Ferramenta / Método">
-                    <Input value={tool.toolName} onChange={e => updateTool(idx, 'toolName', e.target.value)} placeholder="Ex: RULA, REBA, NIOSH..." />
+                    <datalist id={`methods-list-${idx}`}>
+                      {scientificMethodTemplates.map(m => <option key={m.id} value={m.name} />)}
+                    </datalist>
+                    <input
+                      list={`methods-list-${idx}`}
+                      value={tool.toolName}
+                      onChange={e => {
+                        updateTool(idx, 'toolName', e.target.value);
+                        const tpl = scientificMethodTemplates.find(m => m.name === e.target.value);
+                        if (tpl) updateTool(idx, 'interpretation', tpl.description);
+                      }}
+                      placeholder="Ex: RULA, REBA, NIOSH..."
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-none"
+                    />
                   </FormGroup>
                   <div className="grid grid-cols-2 gap-3">
                     <FormGroup label="Resultado">

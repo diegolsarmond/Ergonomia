@@ -78,10 +78,10 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { 
-    getProject, addFunction, updateFunction, checklistQuestions, 
-    scientificMethodTemplates, equipment, epis, surveyQuestions, 
-    shifts, addShift, companies, units, sectors, jobRoles 
+  const {
+    getProject, addFunction, updateFunction, checklistQuestions,
+    scientificMethodTemplates, equipment, epis, surveyQuestions,
+    shifts, addShift, pauses, companies, units, sectors, jobRoles
   } = useAET();
   const navigate = useNavigate();
 
@@ -460,10 +460,38 @@ export const FunctionForm = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormGroup label="Unidade">
-                    <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
+                    {companyUnits.length > 0 ? (
+                      <div className="flex gap-2">
+                        <Select
+                          className="flex-1"
+                          value={companyUnits.find(u => u.name === formData.unit)?.id || ''}
+                          onChange={e => { const u = companyUnits.find(x => x.id === e.target.value); if (u) set('unit', u.name); }}
+                        >
+                          <option value="">Selecionar...</option>
+                          {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </Select>
+                        <Input className="flex-1" value={formData.unit} onChange={(e) => set('unit', e.target.value)} placeholder="Ou digitar" />
+                      </div>
+                    ) : (
+                      <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
+                    )}
                   </FormGroup>
                   <FormGroup label="Setor">
-                    <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
+                    {companySectors.length > 0 ? (
+                      <div className="flex gap-2">
+                        <Select
+                          className="flex-1"
+                          value={companySectors.find(s => s.name === formData.sector)?.id || ''}
+                          onChange={e => { const s = companySectors.find(x => x.id === e.target.value); if (s) set('sector', s.name); }}
+                        >
+                          <option value="">Selecionar...</option>
+                          {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </Select>
+                        <Input className="flex-1" value={formData.sector} onChange={(e) => set('sector', e.target.value)} placeholder="Ou digitar" />
+                      </div>
+                    ) : (
+                      <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
+                    )}
                   </FormGroup>
                 </div>
 
@@ -617,6 +645,27 @@ export const FunctionForm = () => {
 
               <SectionTitle>Pausas e Organização</SectionTitle>
               <FormGroup label="Pausas Eletivas">
+                {pauses.filter(p => p.active).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {pauses.filter(p => p.active).map(p => {
+                      const label = p.duration ? `${p.name} (${p.duration} ${p.durationUnit})` : p.name;
+                      const selected = (formData.pauses || '').includes(p.name);
+                      return (
+                        <label key={p.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox
+                            checked={selected}
+                            onChange={() => {
+                              const cur = (formData.pauses || '').split(', ').filter(Boolean);
+                              const nxt = selected ? cur.filter(v => v !== p.name) : [...cur, label];
+                              set('pauses', nxt.join(', '));
+                            }}
+                          />
+                          {label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
                 <Textarea value={formData.pauses} onChange={(e) => set('pauses', e.target.value)} rows={2} placeholder="Descreva as pausas disponíveis" />
               </FormGroup>
               <RadioGroup
