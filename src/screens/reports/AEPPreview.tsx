@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import type { AETProject, AETFunction, ErgonomicRisk } from '../../types';
-import { DEFAULT_INTRO_ERGONOMIA, DEFAULT_INTRO_OBJETIVO, DEFAULT_INTRO_METODOLOGIA } from '../../types';
+import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
 import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES } from './components/ReportCommon';
 
 // ── Risk Matrix ──────────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
       {risks.length > 0 ? (
         <>
           <h3>Inventário de Riscos Ergonômicos</h3>
-          <table className="mt-2" style={{ fontSize: '0.75rem' }}>
+          <table className="mt-2" style={{ fontSize: '0.68rem' }}>
             <thead>
               <tr>
                 <th style={{ width: '3%' }}>#</th>
@@ -193,10 +193,11 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
                 <th>Situação Encontrada</th>
                 <th>Controle Existente</th>
                 <th>Proposta de Melhoria</th>
-                <th style={{ width: '4%' }}>P</th>
-                <th style={{ width: '4%' }}>G</th>
-                <th style={{ width: '5%' }}>Score</th>
-                <th style={{ width: '10%' }}>Nível</th>
+                <th style={{ width: '3%' }}>P</th>
+                <th style={{ width: '3%' }}>G</th>
+                <th style={{ width: '4%' }}>Score</th>
+                <th style={{ width: '9%' }}>Nível</th>
+                <th>Ref. Normativa</th>
                 <th>Responsável</th>
                 <th>Prazo</th>
               </tr>
@@ -217,12 +218,13 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
                   <td>
                     <span style={{
                       display: 'inline-block', padding: '1px 7px', borderRadius: '9999px',
-                      fontSize: '0.7rem', fontWeight: 700, color: '#fff',
+                      fontSize: '0.65rem', fontWeight: 700, color: '#fff',
                       background: riskLevelColor(risk.riskLevel),
                     }}>
                       {risk.riskLevel}
                     </span>
                   </td>
+                  <td>{risk.normativeReference}</td>
                   <td>{risk.responsible}</td>
                   <td>{risk.deadline ? new Date(risk.deadline + 'T12:00:00').toLocaleDateString('pt-BR') : ''}</td>
                 </tr>
@@ -297,9 +299,9 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
     ? new Date(project.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     : '';
 
-  const introErgonomia   = project.introErgonomia   || DEFAULT_INTRO_ERGONOMIA;
-  const introObjetivo    = project.introObjetivo    || DEFAULT_INTRO_OBJETIVO;
-  const introMetodologia = project.introMetodologia || DEFAULT_INTRO_METODOLOGIA;
+  const introErgonomia   = project.introErgonomia   || DEFAULT_AEP_INTRO_ERGONOMIA;
+  const introObjetivo    = project.introObjetivo    || DEFAULT_AEP_INTRO_OBJETIVO;
+  const introMetodologia = project.introMetodologia || DEFAULT_AEP_INTRO_METODOLOGIA;
 
   const hasAnnexes = project.functions.some(f => f.images?.length > 0);
   const funcCount  = project.functions.length;

@@ -1,6 +1,6 @@
 import type { RiskLevel } from './domain/risks/riskTypes';
-import type { NHO11MeasurementPoint } from './domain/nho11/nho11Types';
-export type { RiskLevel, NHO11MeasurementPoint };
+import type { NHO11MeasurementPoint, NHO11ModelType } from './domain/nho11/nho11Types';
+export type { RiskLevel, NHO11MeasurementPoint, NHO11ModelType };
 
 // ── Parameter / System entities ─────────────────────────────────────────────
 
@@ -170,7 +170,8 @@ export interface AETIllumination {
   resultLux: string;
   interpretation: string;
   normativeReference: string;
-  conclusion: 'adequada' | 'inadequada' | '';
+  modelType: NHO11ModelType;
+  conclusion: 'adequada' | 'inadequada' | 'não_aplicável' | '';
   conclusionText: string;
   checklist: IlluminationChecklistItem[];
   measurementPoints: NHO11MeasurementPoint[];
@@ -415,14 +416,31 @@ export interface AETProject {
 
 // ── Default values ──────────────────────────────────────────────────────────
 
-export const DEFAULT_INTRO_ERGONOMIA =
+const ERGONOMIA_CONCEPT =
   'A Ergonomia é o conjunto de conhecimentos científicos relativos ao homem e necessários para a concepção de ferramentas, máquinas e dispositivos que possam ser utilizados com o máximo de conforto, segurança e eficiência. Conforme a Associação Brasileira de Ergonomia (ABERGO), trata-se de uma disciplina científica que estuda as interações entre os seres humanos e outros elementos de um sistema.';
 
-export const DEFAULT_INTRO_OBJETIVO =
+// AEP — Análise Ergonômica Preliminar
+export const DEFAULT_AEP_INTRO_ERGONOMIA = ERGONOMIA_CONCEPT;
+
+export const DEFAULT_AEP_INTRO_OBJETIVO =
+  'Esta AEP tem como objetivo realizar uma avaliação ergonômica preliminar das condições de trabalho nos postos avaliados, identificando os principais fatores de risco ergonômico, priorizando-os por meio de matriz de risco e propondo ações corretivas e preventivas, em conformidade com a NR-17 (Ergonomia) e demais normas aplicáveis.';
+
+export const DEFAULT_AEP_INTRO_METODOLOGIA =
+  'A metodologia adotada para esta AEP compreende: visitas técnicas ao ambiente de trabalho; observação direta e registro fotográfico dos postos de trabalho; entrevistas com trabalhadores e gestores; identificação e classificação dos fatores de risco ergonômico; e avaliação por meio da Matriz de Risco (Probabilidade × Gravidade), com elaboração de plano de ação prioritário.';
+
+// AET — Análise Ergonômica do Trabalho
+export const DEFAULT_AET_INTRO_ERGONOMIA = ERGONOMIA_CONCEPT;
+
+export const DEFAULT_AET_INTRO_OBJETIVO =
   'Esta AET tem como objetivo atender ao disposto na NR-17 (Ergonomia), identificar e avaliar os fatores ergonômicos presentes nos postos de trabalho, propondo melhorias que visem à promoção da saúde, ao conforto, à segurança e ao desempenho dos trabalhadores.';
 
-export const DEFAULT_INTRO_METODOLOGIA =
+export const DEFAULT_AET_INTRO_METODOLOGIA =
   'A metodologia adotada compreende: visitas técnicas ao ambiente de trabalho; entrevistas com trabalhadores e gestores; registros fotográficos e filmagens; observação sistemática das atividades; medições de iluminância conforme NHO 11 (Fundacentro); e aplicação de métodos científicos validados (RULA, REBA, NIOSH, entre outros) com auxílio de softwares especializados.';
+
+// Aliases para compatibilidade — apontam para AET (tipo padrão)
+export const DEFAULT_INTRO_ERGONOMIA  = DEFAULT_AET_INTRO_ERGONOMIA;
+export const DEFAULT_INTRO_OBJETIVO   = DEFAULT_AET_INTRO_OBJETIVO;
+export const DEFAULT_INTRO_METODOLOGIA = DEFAULT_AET_INTRO_METODOLOGIA;
 
 export const EMPTY_ILLUMINATION: AETIllumination = {
   location: '',
@@ -441,6 +459,7 @@ export const EMPTY_ILLUMINATION: AETIllumination = {
   resultLux: '',
   interpretation: '',
   normativeReference: 'NHO 11 – Fundacentro; ABNT NBR ISO/CIE 8995-1:2013',
+  modelType: 'SIMPLE_AVERAGE',
   conclusion: '',
   conclusionText: '',
   checklist: [],

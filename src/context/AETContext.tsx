@@ -2,11 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import localforage from 'localforage';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  AETProject, AETFunction, EMPTY_FUNCTION, ChecklistQuestion, ScientificMethodTemplate,
+  AETProject, AETFunction, ChecklistQuestion, ScientificMethodTemplate,
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate, Shift,
-  ReportType,
 } from '../types';
+import { normalizeFunction, normalizeProject, normalizeProjectsOnLoad } from '../domain/normalize';
 import { createMockProject } from '../utils/mockData';
 import { Client, MOCK_CLIENTS } from '../data/mockClients';
 import {
@@ -130,14 +130,11 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stored = [createMockProject()];
         await localforage.setItem('aet_projects', stored);
       }
-      // Migration: add reportType to projects that predate this field
+      // Normalize all projects (fills missing fields, guarantees arrays, AEP fields, etc.)
       {
-        let projectsMigrated = false;
-        stored = stored.map((p: any) => {
-          if (!p.reportType) { projectsMigrated = true; return { ...p, reportType: 'AET' as ReportType }; }
-          return p;
-        });
-        if (projectsMigrated) await localforage.setItem('aet_projects', stored);
+        const { projects: normalized, changed } = normalizeProjectsOnLoad(stored);
+        if (changed) await localforage.setItem('aet_projects', normalized);
+        stored = normalized as any;
       }
       setProjects(stored);
 
@@ -241,7 +238,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addProject = async (projectData: Omit<AETProject, 'id' | 'functions'>) => {
-    const newProject: AETProject = { ...projectData, id: uuidv4(), functions: [] } as AETProject;
+    const newProject = normalizeProject({ ...projectData, id: uuidv4(), functions: [] });
     await saveToStorage([...projects, newProject]);
     return newProject.id;
   };
@@ -253,7 +250,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addFunction = async (projectId: string, funcData: Partial<AETFunction>) => {
     console.log('Context: addFunction starting...', { projectId });
-    const newFunc: AETFunction = { ...EMPTY_FUNCTION, ...funcData, id: uuidv4() };
+    const newFunc = normalizeFunction({ ...funcData, id: uuidv4() });
     
     return new Promise<string>((resolve, reject) => {
       setProjects(prev => {
@@ -326,11 +323,14 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   const importProjectJSON = async (json: string): Promise<string | null> => {
     try {
-      const parsed = JSON.parse(json) as AETProject;
-      parsed.id = uuidv4();
-      parsed.companyName = `${parsed.companyName} (Importado)`;
-      await saveToStorage([...projects, parsed]);
-      return parsed.id;
+      const raw = JSON.parse(json);
+      const imported = normalizeProject({
+        ...raw,
+        id: uuidv4(),
+        companyName: `${raw.companyName ?? ''} (Importado)`,
+      });
+      await saveToStorage([...projects, imported]);
+      return imported.id;
     } catch { return null; }
   };
 

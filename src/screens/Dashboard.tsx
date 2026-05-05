@@ -5,7 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea } from '../components/ui/Forms';
 import { Plus, Trash2, Upload, Building2, FolderOpen, Calendar, MapPin, Hash } from 'lucide-react';
-import { DEFAULT_INTRO_ERGONOMIA, DEFAULT_INTRO_OBJETIVO, DEFAULT_INTRO_METODOLOGIA, ReportType } from '../types';
+import {
+  DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA,
+  DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA,
+  ReportType,
+} from '../types';
 
 export const Dashboard = () => {
   const { projects, companies, units, loading, addProject, deleteProject, importProjectJSON } = useAET();
@@ -20,11 +24,30 @@ export const Dashboard = () => {
     evaluatorName: '', evaluatorFormation: '', evaluatorCrefito: '', evaluatorCompany: '',
     date: new Date().toISOString().split('T')[0],
     consultoriaLogoDataUrl: '', companyLogoDataUrl: '', responsibleLogoDataUrl: '', evaluatorSignatureDataUrl: '',
-    introErgonomia: DEFAULT_INTRO_ERGONOMIA,
-    introObjetivo: DEFAULT_INTRO_OBJETIVO,
-    introMetodologia: DEFAULT_INTRO_METODOLOGIA,
+    introErgonomia: DEFAULT_AET_INTRO_ERGONOMIA,
+    introObjetivo: DEFAULT_AET_INTRO_OBJETIVO,
+    introMetodologia: DEFAULT_AET_INTRO_METODOLOGIA,
   });
   const f = (field: string, value: string) => setFormData(prev => ({ ...prev, [field]: value }));
+
+  const ALL_DEFAULTS = [
+    DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA,
+    DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA,
+  ];
+
+  const handleReportTypeChange = (newType: ReportType) => {
+    const isDefault = (v: string) => ALL_DEFAULTS.includes(v);
+    const ergDefault   = newType === 'AEP' ? DEFAULT_AEP_INTRO_ERGONOMIA   : DEFAULT_AET_INTRO_ERGONOMIA;
+    const objDefault   = newType === 'AEP' ? DEFAULT_AEP_INTRO_OBJETIVO     : DEFAULT_AET_INTRO_OBJETIVO;
+    const metaDefault  = newType === 'AEP' ? DEFAULT_AEP_INTRO_METODOLOGIA  : DEFAULT_AET_INTRO_METODOLOGIA;
+    setFormData(prev => ({
+      ...prev,
+      reportType:      newType,
+      introErgonomia:  isDefault(prev.introErgonomia)  ? ergDefault  : prev.introErgonomia,
+      introObjetivo:   isDefault(prev.introObjetivo)   ? objDefault  : prev.introObjetivo,
+      introMetodologia: isDefault(prev.introMetodologia) ? metaDefault : prev.introMetodologia,
+    }));
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">
@@ -168,7 +191,7 @@ export const Dashboard = () => {
                   <select
                     className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
                     value={formData.reportType}
-                    onChange={e => setFormData(prev => ({ ...prev, reportType: e.target.value as ReportType }))}
+                    onChange={e => handleReportTypeChange(e.target.value as ReportType)}
                     required
                   >
                     <option value="AET">AET – Análise Ergonômica do Trabalho</option>

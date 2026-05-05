@@ -142,6 +142,7 @@ export const createMockProject = (): AETProject => ({
           { id: 'mp4', label: 'Caixa de material', lux: 180 },
         ],
         referenceLux: 300,
+        modelType: 'SIMPLE_AVERAGE',
       },
       scientificMethods: [
         { id: 'sm-1', methodName: 'RULA', description: 'O método RULA (Rapid Upper Limb Assessment) avalia a exposição dos trabalhadores a fatores de risco para membros superiores.', result: '5', riskClassification: 'Amarelo – Risco Moderado', interpretation: 'Investigar e implantar mudanças. Risco moderado para membros superiores com possibilidade de desconforto musculoesquelético a médio prazo.', imageDataUrl: '', recommendations: 'Adequar altura da mesa de alimentação. Reduzir flexão de punho na alimentação.' },
@@ -272,6 +273,7 @@ export const createMockProject = (): AETProject => ({
           { id: 'mp7', label: 'Ponto 3 (bancada)', lux: 410 },
         ],
         referenceLux: 300,
+        modelType: 'SIMPLE_AVERAGE',
       },
       scientificMethods: [
         { id: 'sm-3', methodName: 'NIOSH', description: 'Equação de NIOSH para avaliação de levantamento manual de cargas.', result: 'IL = 1,8', riskClassification: 'Laranja – Risco Substancial', interpretation: 'Índice de Levantamento acima de 1,0, indicando risco relevante de lombalgia. Intervenção necessária.', imageDataUrl: '', recommendations: 'Reduzir peso das caixas para máx. 10kg ou utilizar auxílio mecânico para paletização.' },

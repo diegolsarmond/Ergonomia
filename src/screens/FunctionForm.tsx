@@ -5,7 +5,7 @@ import { Card, CardContent } from '../components/ui/Card';
 import { FormGroup, Input, Textarea, Select, Checkbox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
-import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION, ErgonomicRisk, NHO11MeasurementPoint } from '../types';
+import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION, ErgonomicRisk, NHO11MeasurementPoint, NHO11ModelType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ImageUpload } from '../components/ImageUpload';
 import { createEmptyErgonomicRisk } from '../domain/risks/riskFactory';
@@ -97,11 +97,16 @@ export const FunctionForm = () => {
 
   if (!project || (!isNew && !initialData.id)) return <div className="p-8">Função não encontrada.</div>;
 
-  const nhoPoints = formData.illumination.measurementPoints || [];
-  const nhoRefLux = formData.illumination.referenceLux || 0;
+  const nhoPoints    = formData.illumination.measurementPoints || [];
+  const nhoRefLux    = formData.illumination.referenceLux || 0;
+  const nhoModelType: NHO11ModelType = formData.illumination.modelType ?? 'SIMPLE_AVERAGE';
   const nhoResult = (() => {
+    if (nhoModelType === 'OUTDOOR_NOT_APPLICABLE') {
+      const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: 0, points: [], modelType: nhoModelType });
+      return isNHO11ValidationError(r) ? null : r;
+    }
     if (nhoPoints.length === 0 || nhoRefLux <= 0) return null;
-    const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: nhoRefLux, points: nhoPoints });
+    const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: nhoRefLux, points: nhoPoints, modelType: nhoModelType });
     return isNHO11ValidationError(r) ? null : r;
   })();
 
@@ -262,21 +267,25 @@ export const FunctionForm = () => {
 
   // ── NHO 11 measurement-point helpers ─────────────────────────────────────
 
-  const recalcAndSetNHO11 = (points: NHO11MeasurementPoint[], refLux: number) => {
-    if (points.length > 0 && refLux > 0) {
-      const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: refLux, points });
+  const recalcAndSetNHO11 = (points: NHO11MeasurementPoint[], refLux: number, modelType: NHO11ModelType = 'SIMPLE_AVERAGE') => {
+    const canCalc = modelType === 'OUTDOOR_NOT_APPLICABLE' || (points.length > 0 && refLux > 0);
+    if (canCalc) {
+      const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: refLux, points, modelType });
       if (!isNHO11ValidationError(r)) {
         setFormData(prev => ({
           ...prev,
           illumination: {
             ...prev.illumination,
+            modelType,
             measurementPoints: points,
             referenceLux: refLux,
-            resultLux: String(r.averageLux),
+            resultLux: r.conclusion === 'não_aplicável' ? 'N/A' : String(r.averageLux),
             interpretation: r.interpretationText,
             conclusion: r.conclusion,
             conclusionText: r.conclusion === 'adequada'
               ? `Iluminância média de ${r.averageLux} lux está adequada conforme NHO 11 – Fundacentro.`
+              : r.conclusion === 'não_aplicável'
+              ? 'Ambiente externo – avaliação de iluminância por NHO 11 não se aplica neste tipo de ambiente.'
               : `Iluminância média de ${r.averageLux} lux está abaixo do limiar mínimo de ${r.tolerance10Percent} lux. É necessária intervenção.`,
           },
         }));
@@ -285,29 +294,37 @@ export const FunctionForm = () => {
     }
     setFormData(prev => ({
       ...prev,
-      illumination: { ...prev.illumination, measurementPoints: points, referenceLux: refLux },
+      illumination: { ...prev.illumination, modelType, measurementPoints: points, referenceLux: refLux },
     }));
+  };
+
+  const handleModelTypeChange = (newModelType: NHO11ModelType) => {
+    if (newModelType === 'OUTDOOR_NOT_APPLICABLE') {
+      recalcAndSetNHO11([], 0, newModelType);
+    } else {
+      recalcAndSetNHO11(formData.illumination.measurementPoints || [], formData.illumination.referenceLux || 0, newModelType);
+    }
   };
 
   const addMeasurementPoint = () => {
     const points = [...(formData.illumination.measurementPoints || [])];
     points.push({ id: uuidv4(), label: `Ponto ${points.length + 1}`, lux: 0 });
-    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0);
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0, nhoModelType);
   };
 
   const updateMeasurementPoint = (idx: number, field: 'label' | 'lux', value: string | number) => {
     const points = [...(formData.illumination.measurementPoints || [])];
     (points[idx] as any)[field] = value;
-    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0);
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0, nhoModelType);
   };
 
   const removeMeasurementPoint = (idx: number) => {
     const points = (formData.illumination.measurementPoints || []).filter((_, i) => i !== idx);
-    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0);
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0, nhoModelType);
   };
 
   const setRefLux = (val: number) => {
-    recalcAndSetNHO11(formData.illumination.measurementPoints || [], val);
+    recalcAndSetNHO11(formData.illumination.measurementPoints || [], val, nhoModelType);
   };
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -1117,106 +1134,142 @@ export const FunctionForm = () => {
               </div>
 
               <SectionTitle>Pontos de Medição NHO 11</SectionTitle>
-              <FormGroup label="Valor de Referência (lux)">
-                <div className="flex items-center gap-3">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.illumination.referenceLux || ''}
-                    onChange={(e) => setRefLux(Number(e.target.value))}
-                    placeholder="Ex: 500"
-                    className="w-36"
-                  />
-                  <span className="text-xs text-slate-500">Conforme NBR ISO/CIE 8995-1 para o tipo de atividade</span>
-                </div>
+              <FormGroup label="Modelo de Medição">
+                <Select
+                  value={nhoModelType}
+                  onChange={(e) => handleModelTypeChange(e.target.value as NHO11ModelType)}
+                >
+                  <option value="SIMPLE_AVERAGE">Média Simples (E_med = Σ(Ei) / n)</option>
+                  <option value="RECTANGULAR_REGULAR_GRID">Grade Retangular Regular</option>
+                  <option value="RECTANGULAR_SINGLE_LINE">Linha Única Retangular</option>
+                  <option value="CENTRAL_LUMINAIRE">Luminária Central</option>
+                  <option value="OUTDOOR_NOT_APPLICABLE">Ambiente Externo (não aplicável)</option>
+                </Select>
               </FormGroup>
 
-              {(formData.illumination.measurementPoints || []).length === 0 && (
-                <div className="empty-state !py-6">
-                  <p className="text-slate-400 text-sm">Nenhum ponto adicionado. Clique em "Adicionar Ponto" para registrar as medições.</p>
+              {nhoModelType === 'OUTDOOR_NOT_APPLICABLE' ? (
+                <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-500">
+                    Ambiente externo selecionado — a metodologia NHO 11 não se aplica. Medições em ambientes externos são variáveis e dependentes de condições climáticas e sazonais.
+                  </p>
                 </div>
-              )}
-
-              <div className="space-y-2">
-                {(formData.illumination.measurementPoints || []).map((pt, idx) => (
-                  <div key={pt.id} className="flex items-end gap-3 border border-slate-200 rounded-xl p-3 bg-slate-50/50 hover:border-slate-300 transition-colors">
-                    <span className="text-xs font-bold text-slate-400 mb-2 w-5 shrink-0">{idx + 1}</span>
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Identificação do ponto</p>
-                      <Input
-                        value={pt.label}
-                        onChange={(e) => updateMeasurementPoint(idx, 'label', e.target.value)}
-                        placeholder="Ex: Centro do posto, Bancada lateral..."
-                      />
-                    </div>
-                    <div className="w-32 shrink-0">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Lux</p>
+              ) : (
+                <>
+                  <FormGroup label="Valor de Referência (lux)">
+                    <div className="flex items-center gap-3">
                       <Input
                         type="number"
                         min="0"
-                        value={pt.lux === 0 ? '' : pt.lux}
-                        onChange={(e) => updateMeasurementPoint(idx, 'lux', Number(e.target.value))}
-                        placeholder="0"
+                        value={formData.illumination.referenceLux || ''}
+                        onChange={(e) => setRefLux(Number(e.target.value))}
+                        placeholder="Ex: 500"
+                        className="w-36"
                       />
+                      <span className="text-xs text-slate-500">Conforme NBR ISO/CIE 8995-1 para o tipo de atividade</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeMeasurementPoint(idx)}
-                      className="text-red-400 hover:text-red-600 cursor-pointer transition-colors mb-1 shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  </FormGroup>
 
-              <Button type="button" variant="secondary" onClick={addMeasurementPoint}>
-                <Plus className="w-4 h-4 mr-1" /> Adicionar Ponto de Medição
-              </Button>
+                  {(formData.illumination.measurementPoints || []).length === 0 && (
+                    <div className="empty-state !py-6">
+                      <p className="text-slate-400 text-sm">Nenhum ponto adicionado. Clique em "Adicionar Ponto" para registrar as medições.</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {(formData.illumination.measurementPoints || []).map((pt, idx) => (
+                      <div key={pt.id} className="flex items-end gap-3 border border-slate-200 rounded-xl p-3 bg-slate-50/50 hover:border-slate-300 transition-colors">
+                        <span className="text-xs font-bold text-slate-400 mb-2 w-5 shrink-0">{idx + 1}</span>
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Identificação do ponto</p>
+                          <Input
+                            value={pt.label}
+                            onChange={(e) => updateMeasurementPoint(idx, 'label', e.target.value)}
+                            placeholder="Ex: Centro do posto, Bancada lateral..."
+                          />
+                        </div>
+                        <div className="w-32 shrink-0">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Lux</p>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={pt.lux === 0 ? '' : pt.lux}
+                            onChange={(e) => updateMeasurementPoint(idx, 'lux', Number(e.target.value))}
+                            placeholder="0"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeMeasurementPoint(idx)}
+                          className="text-red-400 hover:text-red-600 cursor-pointer transition-colors mb-1 shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button type="button" variant="secondary" onClick={addMeasurementPoint}>
+                    <Plus className="w-4 h-4 mr-1" /> Adicionar Ponto de Medição
+                  </Button>
+                </>
+              )}
 
               {nhoResult && (
                 <>
                   <SectionTitle>Resultado Calculado (NHO 11)</SectionTitle>
                   <div className="border border-teal-200 rounded-xl p-5 bg-teal-50/30">
-                    <div className="grid grid-cols-3 gap-4 mb-4">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">E_med (média)</p>
-                        <p className="text-xl font-bold text-slate-800">{nhoResult.averageLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                    {nhoResult.conclusion === 'não_aplicável' ? (
+                      <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                        <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-600 mb-1">Não Aplicável — Ambiente Externo</p>
+                          <p className="text-sm text-slate-500">{nhoResult.interpretationText}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Mín / Máx</p>
-                        <p className="text-xl font-bold text-slate-800">{nhoResult.minMeasuredLux} / {nhoResult.maxMeasuredLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Relação max/min</p>
-                        <p className="text-xl font-bold text-slate-800">{nhoResult.ratioMaxMin}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Limiar mínimo (90%)</p>
-                        <p className="text-xl font-bold text-slate-800">{nhoResult.tolerance10Percent} <span className="text-sm font-normal text-slate-500">lux</span></p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">70% da média</p>
-                        <p className="text-xl font-bold text-slate-800">{nhoResult.seventyPercentAverage} <span className="text-sm font-normal text-slate-500">lux</span></p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Conclusão</p>
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
-                          nhoResult.conclusion === 'adequada'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {nhoResult.conclusion === 'adequada' ? 'ADEQUADA' : 'INADEQUADA'}
-                        </span>
-                      </div>
-                    </div>
-                    {nhoResult.conclusion === 'inadequada' && (
-                      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-800">
-                          Iluminância abaixo do limiar mínimo. Adicione um item ao checklist abaixo com a ação corretiva e o responsável.
-                        </p>
-                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">E_med (média)</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.averageLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Mín / Máx</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.minMeasuredLux} / {nhoResult.maxMeasuredLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Relação max/min</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.ratioMaxMin}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Limiar mínimo (90%)</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.tolerance10Percent} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">70% da média</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.seventyPercentAverage} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Conclusão</p>
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                              nhoResult.conclusion === 'adequada'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {nhoResult.conclusion === 'adequada' ? 'ADEQUADA' : 'INADEQUADA'}
+                            </span>
+                          </div>
+                        </div>
+                        {nhoResult.conclusion === 'inadequada' && (
+                          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <p className="text-sm text-amber-800">
+                              Iluminância abaixo do limiar mínimo. Adicione um item ao checklist abaixo com a ação corretiva e o responsável.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </>
@@ -1228,8 +1281,9 @@ export const FunctionForm = () => {
                 name="illuminationConclusion"
                 value={formData.illumination.conclusion}
                 options={[
-                  { value: 'adequada', label: 'Iluminação Adequada' },
-                  { value: 'inadequada', label: 'Iluminação Inadequada' },
+                  { value: 'adequada',      label: 'Iluminação Adequada' },
+                  { value: 'inadequada',    label: 'Iluminação Inadequada' },
+                  { value: 'não_aplicável', label: 'Não Aplicável' },
                 ]}
                 onChange={(v) => setIllum('conclusion', v)}
               />

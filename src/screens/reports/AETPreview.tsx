@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import type { AETProject, AETFunction, AETImprovement, AETEquipmentItem, AETEPIItem } from '../../types';
-import { DEFAULT_INTRO_ERGONOMIA, DEFAULT_INTRO_OBJETIVO, DEFAULT_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, PieChart, riskColor, ReportToolbar, PDF_STYLES } from './components/ReportCommon';
+import type { AETProject, AETFunction, AETImprovement, AETEquipmentItem, AETEPIItem, ErgonomicRisk } from '../../types';
+import { DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA } from '../../types';
+import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES } from './components/ReportCommon';
 
 // ── AET Function Section ─────────────────────────────────────────────────────
 
@@ -360,7 +360,56 @@ const FunctionSection: React.FC<FunctionSectionProps> = ({ func, sectionNum }) =
       </>
     )}
 
-    {func.improvements.length > 0 && (
+    {(func.risks && func.risks.length > 0) ? (
+      <>
+        <h3>Propostas de Melhorias – Inventário de Risco Ergonômico</h3>
+        <table className="mt-2" style={{ fontSize: '0.72rem' }}>
+          <thead>
+            <tr>
+              <th style={{ width: '3%' }}>#</th>
+              <th>Agente</th>
+              <th>Fator de Risco</th>
+              <th>Possível Agravo</th>
+              <th>Situação Encontrada</th>
+              <th>Controle Existente</th>
+              <th>Proposta de Melhoria</th>
+              <th style={{ width: '3%' }}>P</th>
+              <th style={{ width: '3%' }}>G</th>
+              <th style={{ width: '4%' }}>Score</th>
+              <th style={{ width: '9%' }}>Nível</th>
+              <th>Ref. Normativa</th>
+              <th>Responsável</th>
+              <th>Prazo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {func.risks.map((risk: ErgonomicRisk, i: number) => (
+              <tr key={risk.id}>
+                <td className="text-center font-medium">{String(i + 1).padStart(2, '0')}</td>
+                <td>{risk.agent}</td>
+                <td>{risk.riskFactor}</td>
+                <td>{risk.possibleHealthEffect}</td>
+                <td>{risk.foundSituation}</td>
+                <td>{risk.existingControl}</td>
+                <td>{risk.improvementProposal}</td>
+                <td className="text-center">{risk.probability}</td>
+                <td className="text-center">{risk.severity}</td>
+                <td className="text-center font-bold">{risk.score}</td>
+                <td>
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold text-white"
+                    style={{ backgroundColor: riskLevelColor(risk.riskLevel) }}>
+                    {risk.riskLevel}
+                  </span>
+                </td>
+                <td>{risk.normativeReference}</td>
+                <td>{risk.responsible ?? ''}</td>
+                <td>{risk.deadline ? new Date(risk.deadline + 'T12:00:00').toLocaleDateString('pt-BR') : ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </>
+    ) : func.improvements.length > 0 ? (
       <>
         <h3>Propostas de Melhorias – Inventário de Risco Ergonômico</h3>
         <table className="mt-2">
@@ -394,7 +443,7 @@ const FunctionSection: React.FC<FunctionSectionProps> = ({ func, sectionNum }) =
           </tbody>
         </table>
       </>
-    )}
+    ) : null}
   </section>
 );
 
@@ -413,9 +462,9 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
     ? new Date(project.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     : '';
 
-  const introErgonomia  = project.introErgonomia  || DEFAULT_INTRO_ERGONOMIA;
-  const introObjetivo   = project.introObjetivo   || DEFAULT_INTRO_OBJETIVO;
-  const introMetodologia = project.introMetodologia || DEFAULT_INTRO_METODOLOGIA;
+  const introErgonomia   = project.introErgonomia   || DEFAULT_AET_INTRO_ERGONOMIA;
+  const introObjetivo    = project.introObjetivo    || DEFAULT_AET_INTRO_OBJETIVO;
+  const introMetodologia = project.introMetodologia || DEFAULT_AET_INTRO_METODOLOGIA;
 
   return (
     <>

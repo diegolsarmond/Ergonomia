@@ -1,3 +1,17 @@
+// ── Model type ────────────────────────────────────────────────────────────────
+
+/**
+ * Tipos de modelo de medição conforme NHO 11 – Fundacentro.
+ * Cada tipo define como os pontos são distribuídos e como E_med é calculado.
+ * SIMPLE_AVERAGE é o comportamento padrão (Σ(Ei)/n).
+ */
+export type NHO11ModelType =
+  | 'SIMPLE_AVERAGE'
+  | 'RECTANGULAR_REGULAR_GRID'
+  | 'RECTANGULAR_SINGLE_LINE'
+  | 'CENTRAL_LUMINAIRE'
+  | 'OUTDOOR_NOT_APPLICABLE';
+
 // ── Measurement point ────────────────────────────────────────────────────────
 
 export interface NHO11MeasurementPoint {
@@ -15,6 +29,8 @@ export interface NHO11CalculationInput {
   taskType: string;
   referenceLux: number;
   points: NHO11MeasurementPoint[];
+  /** Defaults to SIMPLE_AVERAGE when omitted */
+  modelType?: NHO11ModelType;
 }
 
 // ── Calculation result ───────────────────────────────────────────────────────
@@ -31,7 +47,7 @@ export interface NHO11CalculationResult {
   /** Razão max/min — mede a uniformidade da iluminância no plano */
   ratioMaxMin: number;
   isAdequateByAverage: boolean;
-  conclusion: 'adequada' | 'inadequada';
+  conclusion: 'adequada' | 'inadequada' | 'não_aplicável';
   interpretationText: string;
 }
 
