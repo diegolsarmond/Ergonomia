@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, AETImprovement, AETEquipmentItem, AETEPIItem, ErgonomicRisk } from '../../types';
 import { DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage } from './components/ReportCommon';
+import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, useSectionPages } from './components/ReportCommon';
 
 // ── AET Function Section ─────────────────────────────────────────────────────
 
@@ -11,7 +11,7 @@ interface FunctionSectionProps {
 }
 
 const FunctionSection: React.FC<FunctionSectionProps> = ({ func, sectionNum }) => (
-  <section className="pdf-page px-12 py-10 print:break-before-page">
+  <section className="px-12 py-10 print:break-before-page">
 
     <h2>{sectionNum}. {func.name || 'Função sem nome'}</h2>
     <table className="mb-4">
@@ -466,12 +466,21 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
   const introObjetivo    = project.introObjetivo    || DEFAULT_AET_INTRO_OBJETIVO;
   const introMetodologia = project.introMetodologia || DEFAULT_AET_INTRO_METODOLOGIA;
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sectionIds = [
+    'aet-intro',
+    ...project.functions.map(f => `aet-func-${f.id}`),
+    'aet-resp',
+    'aet-anexos',
+  ];
+  const pages = useSectionPages(containerRef, sectionIds, [project]);
+
   return (
     <>
       <ReportToolbar projectId={project.id} />
 
       <div className="w-full overflow-x-auto print:overflow-visible bg-gray-100 print:bg-transparent">
-        <div className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none print:w-full shadow-lg print:shadow-none">
+        <div ref={containerRef} className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none print:w-full shadow-lg print:shadow-none">
 
           {/* ── Capa ── */}
           <CoverPage
@@ -486,17 +495,17 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           <section className="pdf-page px-12 py-16 print:break-after-page">
             <h2>Sumário</h2>
             <div className="space-y-2 mt-4">
-              <TocLine num="1" title="Introdução" />
-              <TocLine num="1.1" title="Ergonomia" indent />
-              <TocLine num="1.2" title="Análise Global da Empresa" indent />
-              <TocLine num="1.3" title="Objetivo" indent />
-              <TocLine num="1.4" title="Metodologia" indent />
-              <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" />
+              <TocLine num="1" title="Introdução" page={pages['aet-intro']} />
+              <TocLine num="1.1" title="Ergonomia" indent page={pages['aet-intro']} />
+              <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aet-intro']} />
+              <TocLine num="1.3" title="Objetivo" indent page={pages['aet-intro']} />
+              <TocLine num="1.4" title="Metodologia" indent page={pages['aet-intro']} />
+              <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" page={pages[`aet-func-${project.functions[0]?.id}`]} />
               {project.functions.map((func, idx) => (
-                <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent />
+                <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aet-func-${func.id}`]} />
               ))}
-              <TocLine num="3" title="Responsabilidade Técnica" />
-              <TocLine num="4" title="Anexos" />
+              <TocLine num="3" title="Responsabilidade Técnica" page={pages['aet-resp']} />
+              <TocLine num="4" title="Anexos" page={pages['aet-anexos']} />
             </div>
           </section>
 
@@ -519,7 +528,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                 <td className="p-0">
 
                   {/* ── 1. Introdução ── */}
-                  <section className="pdf-page px-12 py-8 print:break-after-page">
+                  <section id="aet-intro" className="pdf-page px-12 py-8 print:break-after-page">
                     <h2>1. Introdução</h2>
                     <h3>1.1 Ergonomia</h3>
                     <p className="field-value">{introErgonomia}</p>
@@ -542,11 +551,13 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
 
                   {/* ── Funções ── */}
                   {project.functions.map((func, fIdx) => (
-                    <FunctionSection key={func.id} func={func} sectionNum={`2.${fIdx + 1}`} />
+                    <div key={func.id} id={`aet-func-${func.id}`}>
+                      <FunctionSection func={func} sectionNum={`2.${fIdx + 1}`} />
+                    </div>
                   ))}
 
                   {/* ── 3. Responsabilidade Técnica ── */}
-                  <section className="pdf-page px-12 py-14 print:break-before-page">
+                  <section id="aet-resp" className="pdf-page px-12 py-14 print:break-before-page">
                     <h2>3. Responsabilidade Técnica</h2>
                     <div className="mt-16 flex flex-col items-center justify-center">
                       <div className="flex flex-col items-center w-full max-w-sm text-center">
@@ -565,7 +576,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
 
                   {/* ── 4. Anexos ── */}
                   {project.functions.some((f) => f.images?.length > 0) && (
-                    <section className="pdf-page px-12 py-14 print:break-before-page">
+                    <section id="aet-anexos" className="pdf-page px-12 py-14 print:break-before-page">
                       <h2>4. Anexos – Registros Fotográficos</h2>
                       {project.functions.map((func) => {
                         if (!func.images?.length) return null;

@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem } from '../../types';
+import React, { useEffect, useRef } from 'react';
+import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem, IlluminanceMeasurement } from '../../types';
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage } from './components/ReportCommon';
+import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, useSectionPages, PALETTE } from './components/ReportCommon';
 
 // ── Risk Matrix ──────────────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ const psyClassifColor: Record<string, { bg: string; color: string }> = {
 
 const BiomecTable: React.FC<{ title: string; items: BiomechanicalItem[] }> = ({ title, items }) => (
   <>
-    <h4 style={{ marginTop: '16px', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>{title}</h4>
+    <h4>{title}</h4>
     <table style={{ fontSize: '0.72rem' }}>
       <thead>
         <tr>
@@ -149,6 +149,278 @@ const BiomecTable: React.FC<{ title: string; items: BiomechanicalItem[] }> = ({ 
   </>
 );
 
+// ── Illuminance Measurement Section ─────────────────────────────────────────
+
+// Row type labels for the measurement grid
+const ROW_TYPE_LABEL: Record<string, string> = { r: 'r', q: 'q', p: 'p', t: 't' };
+const HATCH_BG = 'repeating-linear-gradient(45deg, #e5e7eb 0, #e5e7eb 2px, #f9fafb 2px, #f9fafb 8px)';
+
+const IlluminanceSection: React.FC<{ measurements: IlluminanceMeasurement[] }> = ({ measurements }) => {
+  if (!measurements || measurements.length === 0) return null;
+
+  return (
+    <>
+      <h4>Medições de Iluminância</h4>
+      {measurements.map((m, idx) => {
+        const calc  = m.calculationResult;
+        const eval_ = m.evaluationResult;
+
+        const situacaoColor = eval_?.status === 'Adequado'
+          ? { bg: '#dcfce7', color: '#14532d', label: 'Adequado' }
+          : eval_?.status === 'Inadequado'
+          ? { bg: '#fee2e2', color: '#7f1d1d', label: 'Abaixo do recomendado' }
+          : { bg: '#f1f5f9', color: '#64748b', label: '—' };
+
+        // Use measurementRows (normative model) with fallback to gridPoints
+        const mRows = m.measurementRows ?? [];
+        const maxCols = m.gridParameters?.maxCols ?? 8;
+        const hasMRows = mRows.length > 0 && mRows.some(r => r.values.some(v => v !== null));
+
+        // Fallback: simple gridPoints
+        const gRows = m.gridConfig?.rows ?? 4;
+        const gCols = m.gridConfig?.cols ?? 8;
+        const hasGrid = !hasMRows && m.gridPoints?.some(p => p.lux !== null && !p.notApplicable);
+
+        // Responsive column widths: total cols = 1 label + maxCols data + 3 summary (N/M/P)
+        const totalMCols = 1 + maxCols + 3;
+        const labelW = `${Math.round(100 / totalMCols * 1.4)}%`;
+        const dataW  = `${Math.round(100 / totalMCols * 0.9)}%`;
+        const sumW   = `${Math.round(100 / totalMCols * 0.9)}%`;
+        const totalGCols = 1 + gCols;
+        const gLabelW = `${Math.round(100 / totalGCols * 1.4)}%`;
+        const gDataW  = `${Math.round(100 / totalGCols * 0.9)}%`;
+
+        const foundIssues  = m.inconsistencyItems?.filter(i => i.found) ?? [];
+        const failedChecks = m.verificationItems?.filter(v => v.answer === 'Sim') ?? [];
+
+        const lmin = m.recommendedMinLux ?? 0;
+        const tolerance10 = lmin > 0 ? Math.round(lmin * 0.9) : null;
+
+        return (
+          <div key={m.id} style={{ marginBottom: '28px', borderTop: idx > 0 ? `2px solid ${PALETTE.border}` : undefined, paddingTop: idx > 0 ? '20px' : undefined }}>
+
+            {/* Title */}
+            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: PALETTE.dark, marginBottom: '2px' }}>
+              {idx + 1}. {m.posto || `Medição ${idx + 1}`}
+            </p>
+            {(m.environment || m.environmentType) && (
+              <p style={{ fontSize: '0.78rem', color: PALETTE.muted, marginBottom: '6px' }}>
+                {[m.environment, m.environmentType].filter(Boolean).join(' · ')}
+              </p>
+            )}
+
+            {/* ── Tabela 1: parâmetros (= header do modelo) ── */}
+            <table style={{ fontSize: '0.75rem', marginBottom: '6px' }}>
+              <tbody>
+                <tr>
+                  <th style={{ width: '28%' }}>Lux Mínimo Recomendado</th>
+                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{lmin || '—'}</td>
+                  <th style={{ width: '10%' }}>IRC/Ra</th>
+                  <td style={{ textAlign: 'center' }}>{m.ircRa || '—'}</td>
+                  <th style={{ width: '22%' }}>Escala de Iluminância</th>
+                  <td style={{ textAlign: 'center' }}>{m.scale === 'NA' ? 'NA' : (m.scale || '—')}</td>
+                </tr>
+                {(m.equipmentData?.deviceName || m.measurementDate) && (
+                  <tr>
+                    <th>Luxímetro</th>
+                    <td>{m.equipmentData?.deviceName || '—'}</td>
+                    <th>Calibração</th>
+                    <td>{m.equipmentData?.calibrationDate || '—'}</td>
+                    <th>Data / Responsável</th>
+                    <td style={{ fontSize: '0.68rem' }}>
+                      {m.measurementDate ? new Date(m.measurementDate + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
+                      {m.responsibleUser ? ` · ${m.responsibleUser}` : ''}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            {/* ── Parâmetros N / M ── */}
+            {m.gridParameters && (
+              <p style={{ fontSize: '0.7rem', color: PALETTE.muted, marginBottom: '4px' }}>
+                N = quantidade de luminárias por fila ({m.gridParameters.N}) &nbsp;·&nbsp; M = número de filas ({m.gridParameters.M})
+                {m.gridParameters.W ? ` &nbsp;·&nbsp; W = ${m.gridParameters.W} m` : ''}
+                {m.gridParameters.L ? ` &nbsp;·&nbsp; L = ${m.gridParameters.L} m` : ''}
+              </p>
+            )}
+
+            {/* ── Malha normativa (measurementRows) ── */}
+            {hasMRows && (
+              <table style={{ fontSize: '0.68rem', marginBottom: '8px', tableLayout: 'fixed', width: '100%' }}>
+                <colgroup>
+                  <col style={{ width: labelW }} />
+                  {Array.from({ length: maxCols }, (_, c) => <col key={c} style={{ width: dataW }} />)}
+                  <col style={{ width: sumW }} />
+                  <col style={{ width: sumW }} />
+                  <col style={{ width: sumW }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'center' }}>Linha</th>
+                    {Array.from({ length: maxCols }, (_, c) => (
+                      <th key={c} style={{ textAlign: 'center' }}>p{c + 1}</th>
+                    ))}
+                    <th style={{ textAlign: 'center' }}>N</th>
+                    <th style={{ textAlign: 'center' }}>M</th>
+                    <th style={{ textAlign: 'center' }}>P</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mRows.map((row) => {
+                    const label = `${ROW_TYPE_LABEL[row.rowType] ?? row.rowType}${row.index + 1}`;
+                    const hasData = row.values.slice(0, row.activeCols).some(v => v !== null);
+                    const rowAvg = calc?.rowAverages?.find(ra => ra.type === row.rowType && ra.index === row.index);
+                    return (
+                      <tr key={row.id}>
+                        <td style={{ textAlign: 'center', fontWeight: 600, color: PALETTE.primary, background: PALETTE.light }}>{label}</td>
+                        {Array.from({ length: maxCols }, (_, c) => {
+                          const active = c < row.activeCols;
+                          const na = row.naFlags?.[c];
+                          const val = active ? row.values[c] : null;
+                          return (
+                            <td key={c} style={{
+                              textAlign: 'center',
+                              background: (!active || na) ? HATCH_BG : undefined,
+                              color: na ? '#9ca3af' : 'inherit',
+                            }}>
+                              {!active ? '' : na ? 'N.A.' : (val !== null && val !== undefined ? val : '')}
+                            </td>
+                          );
+                        })}
+                        {/* N / M / P summary columns — only show avg for last row */}
+                        <td style={{ textAlign: 'center', background: HATCH_BG }} />
+                        <td style={{ textAlign: 'center', background: HATCH_BG }} />
+                        <td style={{ textAlign: 'center', fontWeight: rowAvg ? 700 : undefined, color: rowAvg ? PALETTE.dark : undefined }}>
+                          {rowAvg ? Math.round(rowAvg.avg) : ''}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
+            {/* ── Malha simples (gridPoints fallback) ── */}
+            {hasGrid && (
+              <table style={{ fontSize: '0.68rem', marginBottom: '8px', tableLayout: 'fixed', width: '100%' }}>
+                <colgroup>
+                  <col style={{ width: gLabelW }} />
+                  {Array.from({ length: gCols }, (_, c) => <col key={c} style={{ width: gDataW }} />)}
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'center' }}>Linha</th>
+                    {Array.from({ length: gCols }, (_, c) => (
+                      <th key={c} style={{ textAlign: 'center' }}>p{c + 1}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: gRows }, (_, r) => (
+                    <tr key={r}>
+                      <td style={{ textAlign: 'center', fontWeight: 600, color: PALETTE.primary, background: PALETTE.light }}>{r + 1}</td>
+                      {Array.from({ length: gCols }, (_, c) => {
+                        const pt = m.gridPoints.find(p => p.row === r && p.col === c);
+                        return (
+                          <td key={c} style={{ textAlign: 'center', background: pt?.notApplicable ? HATCH_BG : undefined, color: pt?.notApplicable ? '#9ca3af' : 'inherit' }}>
+                            {pt?.notApplicable ? 'N.A.' : (pt?.lux !== null && pt?.lux !== undefined ? pt.lux : '')}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* ── Tabela de resultados (= modelo proposto) ── */}
+            {calc && (
+              <table style={{ fontSize: '0.75rem', marginBottom: '8px' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '52%', fontWeight: 600 }}>Iluminância Média (IM), calculada em função da área definida</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700, width: '10%' }}>{Math.round(calc.averageLux)}</td>
+                    <td style={{ fontWeight: 600, width: '12%' }}>Situação:</td>
+                    <td style={{ background: situacaoColor.bg, color: situacaoColor.color, fontWeight: 700, textAlign: 'center' }}>
+                      {situacaoColor.label}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>10% Tolerância</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{tolerance10 ?? Math.round(calc.toleranceMinLux)}</td>
+                    <td style={{ fontWeight: 600 }}>Normativa</td>
+                    <td style={{ color: PALETTE.muted, fontStyle: 'italic', fontSize: '0.7rem' }}>
+                      {eval_?.toleranceCheck ? 'Conforme' : 'Cálculo conforme orientação'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>70% Iluminância Média</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{Math.round(calc.seventyPercentAverage)}</td>
+                    <td style={{ fontWeight: 600 }}>Normativa</td>
+                    <td style={{ color: PALETTE.muted, fontStyle: 'italic', fontSize: '0.7rem' }}>
+                      {eval_?.seventyPercentCheck ? 'Conforme' : 'Cálculo conforme orientação'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>Relação 5:1</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{Math.round(calc.uniformityRatio)}</td>
+                    <td style={{ fontWeight: 600 }}>Normativa</td>
+                    <td style={{ color: PALETTE.muted, fontStyle: 'italic', fontSize: '0.7rem' }}>
+                      {eval_?.uniformityCheck ? 'Conforme' : 'Cálculo conforme orientação'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>Áreas de tarefa de trabalho contínuo</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{Math.round(calc.taskAreaValue)}</td>
+                    <td style={{ fontWeight: 600 }}>Normativa</td>
+                    <td style={{ color: PALETTE.muted, fontStyle: 'italic', fontSize: '0.7rem' }}>
+                      {eval_?.taskAreaCheck ? 'Conforme' : 'Exigência mínima normativa'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
+
+            {/* ── Figura da geometria ── */}
+            {m.gridSchemaImageDataUrl && (
+              <div style={{ marginTop: '8px', textAlign: 'center' }}>
+                <p style={{ fontSize: '0.7rem', color: PALETTE.muted, marginBottom: '4px', fontStyle: 'italic' }}>
+                  Figura {m.gridParameters?.geometryType} — {m.environment || 'Ambiente de trabalho'}
+                </p>
+                <img src={m.gridSchemaImageDataUrl} alt="Esquema da malha"
+                  style={{ maxWidth: '260px', borderRadius: '4px', border: `1px solid ${PALETTE.border}` }} />
+              </div>
+            )}
+
+            {/* ── Inconsistências / Verificação ── */}
+            {foundIssues.length > 0 && (
+              <div style={{ marginTop: '8px' }}>
+                <p style={{ fontSize: '0.72rem', fontWeight: 600, color: PALETTE.muted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '3px' }}>Inconsistências Identificadas</p>
+                <table style={{ fontSize: '0.72rem' }}>
+                  <thead><tr><th>Inconsistência</th><th>Observações</th></tr></thead>
+                  <tbody>{foundIssues.map(i => <tr key={i.id}><td>{i.title}</td><td>{i.observations || '—'}</td></tr>)}</tbody>
+                </table>
+              </div>
+            )}
+            {failedChecks.length > 0 && (
+              <div style={{ marginTop: '8px' }}>
+                <p style={{ fontSize: '0.72rem', fontWeight: 600, color: PALETTE.muted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '3px' }}>Verificação — Itens com Ocorrência</p>
+                <table style={{ fontSize: '0.72rem' }}>
+                  <thead><tr><th>Item</th><th>Observações</th></tr></thead>
+                  <tbody>{failedChecks.map(v => <tr key={v.id}><td>{v.question}</td><td>{v.observations || '—'}</td></tr>)}</tbody>
+                </table>
+              </div>
+            )}
+
+            {m.observations && <Field label="Observações" value={m.observations} />}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
 // ── AEP Function Section ─────────────────────────────────────────────────────
 
 const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = ({ func, sectionNum }) => {
@@ -167,7 +439,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
     const raci  = aep.raciActionPlan;
 
     return (
-      <section className="pdf-page px-12 py-10 print:break-before-page">
+      <section className="px-12 py-10 print:break-before-page">
         <h2>{sectionNum}. {func.name || 'Função sem nome'}</h2>
 
         {/* 1. Identificação */}
@@ -206,12 +478,12 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 2. Caracterização do Trabalho */}
         {(work.processDescription || work.workCycleDescription) && (
           <>
-            <h3>2. Caracterização do Trabalho</h3>
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '8px' }}>2.1 Descrição do Processo e Ciclo de Trabalho</h4>
-            <Field label="Descrição" value={work.processDescription} />
-            {work.workCycleDescription && <Field label="Ciclo de Trabalho" value={work.workCycleDescription} />}
+            <h3 style={{ marginTop: '32px' }}>2. Caracterização do Trabalho</h3>
+            <h4>2.1 Descrição do Processo e Ciclo de Trabalho</h4>
+            <Field label="Processo" value={work.processDescription} />
+            <Field label="Ciclo de Trabalho" value={work.workCycleDescription} />
 
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '12px' }}>2.2 Organização do Trabalho</h4>
+            <h4>2.2 Organização do Trabalho</h4>
             <table style={{ fontSize: '0.75rem' }}>
               <tbody>
                 <tr><th style={{ width: '25%' }}>Jornada</th><td>{work.workOrganization.workday || '—'}</td><th style={{ width: '25%' }}>Escala / Turno</th><td>{work.workOrganization.scale || '—'}</td></tr>
@@ -221,7 +493,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
               </tbody>
             </table>
 
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '12px' }}>2.3 Ferramentas e Materiais</h4>
+            <h4>2.3 Ferramentas e Materiais</h4>
             <Field label="Ferramentas / Materiais" value={work.toolsAndMaterials.description} />
             <Field label="EPIs" value={work.toolsAndMaterials.epis} />
             {work.toolsAndMaterials.others && <Field label="Outros" value={work.toolsAndMaterials.others} />}
@@ -231,7 +503,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 3. Registro Fotográfico */}
         {aep.photographicRecords.length > 0 && (
           <>
-            <h3>3. Registro Fotográfico</h3>
+            <h3 style={{ marginTop: '32px' }}>3. Registro Fotográfico</h3>
             <p style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '12px' }}>{aep.lgpdNote}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               {aep.photographicRecords.map((photo, i) => (
@@ -248,14 +520,14 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         )}
 
         {/* 4. Biomecânica */}
-        <h3>4. Biomecânica</h3>
+        <h3 style={{ marginTop: '32px' }}>4. Biomecânica</h3>
         <BiomecTable title="4.1 Posturas e Alcances"          items={bio.postureAndReach} />
         <BiomecTable title="4.2 Repetitividade e Ritmo"        items={bio.repetitivenessAndRhythm} />
         <BiomecTable title="4.3 Força e Exigência Física"      items={bio.forceAndPhysicalDemand} />
         <BiomecTable title="4.4 Movimentação Manual de Cargas" items={bio.manualMaterialHandling} />
         <BiomecTable title="4.5 Mobiliário e Posto de Trabalho" items={bio.furnitureAndWorkstation} />
 
-        <h4 style={{ marginTop: '16px', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>4.6 Conforto Ambiental</h4>
+        <h4>4.6 Conforto Ambiental</h4>
         <table style={{ fontSize: '0.72rem' }}>
           <thead><tr><th>Fator</th><th>Queixa</th><th>Valor Medido</th><th>Descrição</th></tr></thead>
           <tbody>
@@ -266,28 +538,27 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         </table>
 
         {/* 5. Ferramentas Científicas */}
-        {aep.scientificTools.length > 0 && (
-          <>
-            <h3>5. Ferramentas Científicas</h3>
-            {aep.scientificTools.map((tool, i) => (
-              <div key={tool.id} style={{ marginBottom: '12px' }}>
-                <p style={{ fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>{i + 1}. {tool.toolName}</p>
-                <Field label="Resultado" value={tool.result} />
-                <Field label="Interpretação" value={tool.interpretation} />
-                <Field label="Recomendação" value={tool.recommendation} />
-                {tool.imageDataUrl && (
-                  <img src={tool.imageDataUrl} alt={tool.toolName}
-                    style={{ maxWidth: '280px', marginTop: '6px', borderRadius: '4px', border: '1px solid #e5e7eb' }} />
-                )}
-              </div>
-            ))}
-          </>
+        {(aep.scientificTools.length > 0 || (aep.illuminanceMeasurements?.length ?? 0) > 0) && (
+          <h3 style={{ marginTop: '32px' }}>5. Ferramentas Científicas</h3>
         )}
+        {aep.scientificTools.map((tool, i) => (
+          <div key={tool.id} style={{ marginBottom: '12px' }}>
+            <p style={{ fontWeight: 600, fontSize: '0.85rem', color: PALETTE.dark }}>{i + 1}. {tool.toolName}</p>
+            <Field label="Resultado" value={tool.result} />
+            <Field label="Interpretação" value={tool.interpretation} />
+            <Field label="Recomendação" value={tool.recommendation} />
+            {tool.imageDataUrl && (
+              <img src={tool.imageDataUrl} alt={tool.toolName}
+                style={{ maxWidth: '280px', marginTop: '6px', borderRadius: '4px', border: `1px solid ${PALETTE.border}` }} />
+            )}
+          </div>
+        ))}
+        <IlluminanceSection measurements={aep.illuminanceMeasurements ?? []} />
 
         {/* 6. Psicossocial */}
         {psy.some(q => q.score !== '') && (
           <>
-            <h3>6. Avaliação Psicossocial</h3>
+            <h3 style={{ marginTop: '32px' }}>6. Avaliação Psicossocial</h3>
             <table style={{ fontSize: '0.68rem' }}>
               <thead>
                 <tr>
@@ -329,7 +600,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 7. Classificação de Risco / Gatilhos AET */}
         {trigs.some(t => t.answer !== '') && (
           <>
-            <h3>7. Classificação de Risco — Gatilhos para AET</h3>
+            <h3 style={{ marginTop: '32px' }}>7. Classificação de Risco — Gatilhos para AET</h3>
             <table style={{ fontSize: '0.72rem' }}>
               <thead><tr><th style={{ width: '5%' }}>#</th><th>Gatilho</th><th style={{ width: '10%' }}>Resposta</th></tr></thead>
               <tbody>
@@ -362,7 +633,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 8. Plano de Ação RACI */}
         {raci.length > 0 && (
           <>
-            <h3>8. Plano de Ação RACI</h3>
+            <h3 style={{ marginTop: '32px' }}>8. Plano de Ação RACI</h3>
             <table style={{ fontSize: '0.66rem' }}>
               <thead>
                 <tr>
@@ -430,30 +701,13 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
           </>
         )}
 
-        {/* 9. Responsável Técnico (por função) */}
-        {(resp.name || resp.registration) && (
-          <>
-            <h3>9. Responsável Técnico</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '20px' }}>
-              {resp.signatureDataUrl && (
-                <img src={resp.signatureDataUrl} alt="Assinatura" style={{ maxHeight: '60px', marginBottom: '8px' }} />
-              )}
-              <div style={{ borderTop: '1px solid #000', width: '220px', paddingTop: '6px', textAlign: 'center' }}>
-                {resp.name       && <p style={{ fontWeight: 600, fontSize: '0.85rem' }}>{resp.name}</p>}
-                {resp.formation  && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.formation}</p>}
-                {resp.company    && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.company}</p>}
-                {resp.registration && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.registration}</p>}
-              </div>
-            </div>
-          </>
-        )}
       </section>
     );
   }
 
   // ── LEGACY fallback (funções sem aep estruturado) ────────────────────────
   return (
-    <section className="pdf-page px-12 py-10 print:break-before-page">
+    <section className="px-12 py-10 print:break-before-page">
       <h2>{sectionNum}. {func.name || 'Função sem nome'}</h2>
 
       <table className="mb-6">
@@ -596,12 +850,21 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
   const respNum    = funcCount > 0 ? `${funcCount + 2}` : '3';
   const anexosNum  = funcCount > 0 ? `${funcCount + 3}` : '4';
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sectionIds = [
+    'aep-intro',
+    ...project.functions.map(f => `aep-func-${f.id}`),
+    'aep-resp',
+    'aep-anexos',
+  ];
+  const pages = useSectionPages(containerRef, sectionIds, [project]);
+
   return (
     <>
       <ReportToolbar projectId={project.id} />
 
       <div className="w-full overflow-x-auto print:overflow-visible bg-gray-100 print:bg-transparent">
-        <div className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none print:w-full shadow-lg print:shadow-none">
+        <div ref={containerRef} className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none print:w-full shadow-lg print:shadow-none">
 
           {/* ══ CAPA ══ */}
           <CoverPage
@@ -616,17 +879,17 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           <section className="pdf-page px-12 py-16 print:break-after-page">
             <h2>Sumário</h2>
             <div className="space-y-2 mt-4">
-              <TocLine num="1" title="Introdução" />
-              <TocLine num="1.1" title="Ergonomia" indent />
-              <TocLine num="1.2" title="Análise Global da Empresa" indent />
-              <TocLine num="1.3" title="Objetivo" indent />
-              <TocLine num="1.4" title="Metodologia" indent />
-              <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" />
+              <TocLine num="1" title="Introdução" page={pages['aep-intro']} />
+              <TocLine num="1.1" title="Ergonomia" indent page={pages['aep-intro']} />
+              <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aep-intro']} />
+              <TocLine num="1.3" title="Objetivo" indent page={pages['aep-intro']} />
+              <TocLine num="1.4" title="Metodologia" indent page={pages['aep-intro']} />
+              <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" page={pages[`aep-func-${project.functions[0]?.id}`]} />
               {project.functions.map((func, idx) => (
-                <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent />
+                <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aep-func-${func.id}`]} />
               ))}
-              <TocLine num={respNum}    title="Responsabilidade Técnica" />
-              {hasAnnexes && <TocLine num={anexosNum} title="Anexos – Registros Fotográficos" />}
+              <TocLine num={respNum}    title="Responsabilidade Técnica" page={pages['aep-resp']} />
+              {hasAnnexes && <TocLine num={anexosNum} title="Anexos – Registros Fotográficos" page={pages['aep-anexos']} />}
             </div>
           </section>
 
@@ -651,7 +914,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                 <td className="p-0">
 
                   {/* ── 1. Introdução ── */}
-                  <section className="pdf-page px-12 py-8 print:break-after-page">
+                  <section id="aep-intro" className="pdf-page px-12 py-8 print:break-after-page">
                     <h2>1. Introdução</h2>
 
                     <h3>1.1 Ergonomia</h3>
@@ -686,11 +949,13 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                     </section>
                   )}
                   {project.functions.map((func, fIdx) => (
-                    <AEPFunctionSection key={func.id} func={func} sectionNum={`2.${fIdx + 1}`} />
+                    <div key={func.id} id={`aep-func-${func.id}`}>
+                      <AEPFunctionSection func={func} sectionNum={`2.${fIdx + 1}`} />
+                    </div>
                   ))}
 
                   {/* ── Responsabilidade Técnica ── */}
-                  <section className="pdf-page px-12 py-14 print:break-before-page">
+                  <section id="aep-resp" className="pdf-page px-12 py-14 print:break-before-page">
                     <h2>{respNum}. Responsabilidade Técnica</h2>
                     <div className="mt-16 flex flex-col items-center justify-center">
                       <div className="flex flex-col items-center w-full max-w-sm text-center">
@@ -716,7 +981,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
 
                   {/* ── Anexos ── */}
                   {hasAnnexes && (
-                    <section className="pdf-page px-12 py-14 print:break-before-page">
+                    <section id="aep-anexos" className="pdf-page px-12 py-14 print:break-before-page">
                       <h2>{anexosNum}. Anexos – Registros Fotográficos</h2>
                       {project.functions.map((func) => {
                         if (!func.images?.length) return null;

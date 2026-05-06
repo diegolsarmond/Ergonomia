@@ -34,7 +34,6 @@ const AEP_TABS = [
   '6. Psicossocial',
   '7. Classif. de Risco',
   '8. Plano RACI',
-  '9. Responsável',
 ];
 
 const ASSESSMENT_OPTIONS: { value: BiomechanicalAssessment; label: string; color: string }[] = [
@@ -505,11 +504,6 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
   const removePhoto = (idx: number) =>
     setAep(a => ({ ...a, photographicRecords: a.photographicRecords.filter((_, i) => i !== idx) }));
-
-  // ── Responsible ──────────────────────────────────────────────────────────
-
-  const setResponsible = (field: keyof AEPFunctionAssessment['technicalResponsible'], value: string) =>
-    setAep(a => ({ ...a, technicalResponsible: { ...a.technicalResponsible, [field]: value } }));
 
   // ── Save ─────────────────────────────────────────────────────────────────
 
@@ -1253,29 +1247,6 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
             </div>
           )}
 
-          {/* ── Tab 9: Responsável Técnico ── */}
-          {activeTab === 8 && (
-            <div className="space-y-4">
-              <SectionTitle>9. Responsável Técnico</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Nome">
-                  <Input value={aep.technicalResponsible.name} onChange={e => setResponsible('name', e.target.value)} placeholder={project.evaluatorName} />
-                </FormGroup>
-                <FormGroup label="Registro Profissional (CREFITO/CRP/etc.)">
-                  <Input value={aep.technicalResponsible.registration} onChange={e => setResponsible('registration', e.target.value)} placeholder={project.evaluatorCrefito} />
-                </FormGroup>
-                <FormGroup label="Formação">
-                  <Input value={aep.technicalResponsible.formation} onChange={e => setResponsible('formation', e.target.value)} placeholder={project.evaluatorFormation} />
-                </FormGroup>
-                <FormGroup label="Empresa / Consultoria">
-                  <Input value={aep.technicalResponsible.company} onChange={e => setResponsible('company', e.target.value)} placeholder={project.evaluatorCompany} />
-                </FormGroup>
-              </div>
-              <FormGroup label="Assinatura Digital">
-                <SingleImageUpload value={aep.technicalResponsible.signatureDataUrl} onChange={url => setResponsible('signatureDataUrl', url)} label="Assinatura" />
-              </FormGroup>
-            </div>
-          )}
 
         </CardContent>
       </Card>
