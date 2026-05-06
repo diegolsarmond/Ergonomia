@@ -8,12 +8,12 @@
 export type GeometryType = 'A1' | 'A2' | 'A3' | 'A4' | 'A5' | 'A6';
 
 export const GEOMETRY_LABELS: Record<GeometryType, string> = {
-  A1: 'Figura A1 — Área retangular, padrão regular, 2+ fileiras',
-  A2: 'Figura A2 — Área retangular, fileira única de luminárias',
-  A3: 'Figura A3 — Luminária individual',
-  A4: 'Figura A4 — Duas ou mais fileiras, espaçamento irregular',
-  A5: 'Figura A5 — Área não-retangular',
-  A6: 'Figura A6 — Área de tarefa específica',
+  A1: 'A1 — Área retangular, padrão regular, simetricamente espaçadas em duas ou mais fileiras',
+  A2: 'A2 — Área retangular com luminária central',
+  A3: 'A3 — Área retangular com linha única de luminárias',
+  A4: 'A4 — Área retangular com duas ou mais linhas contínuas de luminárias',
+  A5: 'A5 — Área retangular com uma linha contínua de luminárias',
+  A6: 'A6 — Área retangular com teto luminoso',
 };
 
 export type IlluminanceScale = 'lux' | 'NA';
@@ -37,6 +37,7 @@ export interface MeasurementRow {
   index: number;
   values: (number | null)[];
   activeCols: number;
+  naFlags?: boolean[];
 }
 
 // ── Parâmetros da malha ──────────────────────────────────────────────────────
@@ -239,6 +240,20 @@ export function generateMeasurementRows(params: GridParameters): MeasurementRow[
   return rows;
 }
 
+// ── Factory: gerar malha fixa (4 linhas × 8 colunas) ────────────────────────
+
+export function generateFixedRows(N: number): MeasurementRow[] {
+  const MAX = 8;
+  const active = Math.min(Math.max(1, N), MAX);
+  const emptyFlags = new Array(MAX).fill(false);
+  return [
+    { id: 'row-r', rowType: 'r', index: 0, values: new Array(MAX).fill(null), activeCols: MAX,    naFlags: [...emptyFlags] },
+    { id: 'row-q', rowType: 'q', index: 0, values: new Array(MAX).fill(null), activeCols: active, naFlags: [...emptyFlags] },
+    { id: 'row-p', rowType: 'p', index: 0, values: new Array(MAX).fill(null), activeCols: 2,      naFlags: [...emptyFlags] },
+    { id: 'row-t', rowType: 't', index: 0, values: new Array(MAX).fill(null), activeCols: active, naFlags: [...emptyFlags] },
+  ];
+}
+
 // ── Factory: criar grid de pontos vazio ──────────────────────────────────────
 
 export function createEmptyGridPoints(rows: number, cols: number): Array<{ row: number; col: number; lux: number | null; notApplicable: boolean }> {
@@ -264,9 +279,9 @@ export function createEmptyIlluminanceMeasurement(id: string): IlluminanceMeasur
     scale: 'lux',
     normativeParameterId: '',
     gridParameters: defaultParams,
-    measurementRows: generateMeasurementRows(defaultParams),
-    gridConfig: { rows: 4, cols: 4 },
-    gridPoints: createEmptyGridPoints(4, 4),
+    measurementRows: generateFixedRows(defaultParams.N),
+    gridConfig: { rows: 4, cols: 8 },
+    gridPoints: createEmptyGridPoints(4, 8),
     gridSchemaImageDataUrl: '',
     calculationResult: null,
     evaluationResult: null,
