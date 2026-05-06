@@ -556,11 +556,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           {activeTab === 1 && (
             <div className="space-y-4">
               <SectionTitle>2.1 Descrição do Processo e Ciclo de Trabalho</SectionTitle>
-              <FormGroup label="Descrição do Processo">
-                <Textarea value={aep.workCharacterization.processDescription} onChange={e => setWork('processDescription', e.target.value)} rows={4} placeholder="Descreva o processo produtivo e as etapas da atividade." />
-              </FormGroup>
-              <FormGroup label="Descrição do Ciclo de Trabalho">
-                <Textarea value={aep.workCharacterization.workCycleDescription} onChange={e => setWork('workCycleDescription', e.target.value)} rows={4} placeholder="Descreva o ciclo de trabalho observado." />
+              <FormGroup label="Descrição">
+                <Textarea value={aep.workCharacterization.processDescription} onChange={e => setWork('processDescription', e.target.value)} rows={6} placeholder="Descreva o processo produtivo e o ciclo de trabalho." />
               </FormGroup>
 
               <SectionTitle>2.2 Organização do Trabalho</SectionTitle>
