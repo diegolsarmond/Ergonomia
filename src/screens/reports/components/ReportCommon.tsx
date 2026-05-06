@@ -158,19 +158,19 @@ export const PDF_STYLES = `
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .pdf-page { page-break-inside: avoid; }
   }
-  .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; }
-  .pdf-preview h2 { font-size: 1.05rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.1rem; text-transform: uppercase; letter-spacing: .06em; }
-  .pdf-preview h3 { font-size: .88rem; font-weight: 700; color: ${PALETTE.dark}; border-left: 3px solid ${PALETTE.primary}; padding-left: .55rem; margin-top: 1.5rem; margin-bottom: .5rem; }
-  .pdf-preview h4 { font-size: .78rem; font-weight: 600; color: ${PALETTE.muted}; padding-top: 0; margin-top: 1rem; margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .05em; }
-  .pdf-preview .field { margin-bottom: .55rem; }
-  .pdf-preview .field-label { font-weight: 600; font-size: .72rem; color: ${PALETTE.muted}; text-transform: uppercase; letter-spacing: .04em; }
-  .pdf-preview .field-value { font-size: .88rem; color: #2A3D3A; white-space: pre-wrap; }
-  .pdf-preview table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: .5rem; }
-  .pdf-preview th { background: ${PALETTE.light}; color: ${PALETTE.dark}; font-weight: 600; text-align: left; padding: .45rem .65rem; border: 1px solid ${PALETTE.border}; }
-  .pdf-preview td { padding: .45rem .65rem; border: 1px solid #D4E4E1; vertical-align: top; }
+  .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; }
+  .pdf-preview :not(.pdf-cover) > h2 { font-size: 1.25rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: .06em; }
+  .pdf-preview :not(.pdf-cover) > h3 { font-size: 1.05rem; font-weight: 700; color: ${PALETTE.dark}; border-left: 3px solid ${PALETTE.primary}; padding-left: .55rem; margin-top: 1.5rem; margin-bottom: .5rem; }
+  .pdf-preview :not(.pdf-cover) > h4 { font-size: .92rem; font-weight: 600; color: ${PALETTE.muted}; margin-top: 1rem; margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .05em; }
+  .pdf-preview .field { margin-bottom: .6rem; }
+  .pdf-preview .field-label { font-weight: 600; font-size: .82rem; color: ${PALETTE.muted}; text-transform: uppercase; letter-spacing: .04em; }
+  .pdf-preview .field-value { font-size: 1rem; color: #2A3D3A; white-space: pre-wrap; }
+  .pdf-preview :not(.pdf-cover) table { width: 100%; border-collapse: collapse; font-size: .92rem; margin-top: .5rem; }
+  .pdf-preview :not(.pdf-cover) th { background: ${PALETTE.light}; color: ${PALETTE.dark}; font-weight: 600; text-align: left; padding: .45rem .65rem; border: 1px solid ${PALETTE.border}; }
+  .pdf-preview :not(.pdf-cover) td { padding: .45rem .65rem; border: 1px solid #D4E4E1; vertical-align: top; }
   .pdf-preview .toc-line { display: flex; align-items: flex-end; gap: .4rem; padding: .25rem 0; }
   .pdf-preview .toc-dots { flex: 1; border-bottom: 1px dotted ${PALETTE.border}; position: relative; top: -3px; }
-  .pdf-preview .toc-page { font-size: .78rem; font-weight: 700; color: ${PALETTE.primary}; min-width: 1.5rem; text-align: right; flex-shrink: 0; }
+  .pdf-preview .toc-page { font-size: .82rem; font-weight: 700; color: ${PALETTE.primary}; min-width: 1.5rem; text-align: right; flex-shrink: 0; }
   .pdf-cover { container-type: inline-size; width: 100%; aspect-ratio: 210 / 297; }
   @media print { .pdf-cover { width: 100% !important; height: 100vh !important; aspect-ratio: auto !important; page-break-after: always; } }
 `;
