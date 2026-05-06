@@ -6,7 +6,7 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
-import { ImageUpload } from '../components/ImageUpload';
+import { SingleImageUpload } from '../components/SingleImageUpload';
 import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
 import type {
   AETFunction,
@@ -624,7 +624,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                         <Trash2 className="w-3.5 h-3.5 text-red-400" />
                       </Button>
                     </div>
-                    <ImageUpload
+                    <SingleImageUpload
                       value={photo.imageDataUrl}
                       onChange={url => updatePhoto(idx, 'imageDataUrl', url)}
                       label="Imagem"
@@ -761,7 +761,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   <FormGroup label="Recomendação">
                     <Textarea value={tool.recommendation} onChange={e => updateTool(idx, 'recommendation', e.target.value)} rows={2} />
                   </FormGroup>
-                  <ImageUpload value={tool.imageDataUrl || ''} onChange={url => updateTool(idx, 'imageDataUrl', url)} label="Imagem do resultado" />
+                  <SingleImageUpload value={tool.imageDataUrl || ''} onChange={url => updateTool(idx, 'imageDataUrl', url)} label="Imagem do resultado" />
                 </div>
               ))}
 
@@ -997,7 +997,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 </FormGroup>
               </div>
               <FormGroup label="Assinatura Digital">
-                <ImageUpload value={aep.technicalResponsible.signatureDataUrl} onChange={url => setResponsible('signatureDataUrl', url)} label="Assinatura" />
+                <SingleImageUpload value={aep.technicalResponsible.signatureDataUrl} onChange={url => setResponsible('signatureDataUrl', url)} label="Assinatura" />
               </FormGroup>
             </div>
           )}
