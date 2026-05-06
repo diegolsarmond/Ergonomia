@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { FormGroup, Input, Textarea, Select, Checkbox } from '../components/ui/Forms';
+import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
 import { ImageUpload } from '../components/ImageUpload';
 import type {
@@ -434,21 +434,18 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               <SectionTitle>1. Identificação</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Nome da Função / Cargo" required>
-                  {companyJobRoles.length > 0 ? (
-                    <div className="flex gap-2">
-                      <Select
-                        className="flex-1"
-                        value={companyJobRoles.find(r => r.name === formData.name)?.id || ''}
-                        onChange={e => handleApplyJobRole(e.target.value)}
-                      >
-                        <option value="">Selecionar do catálogo...</option>
-                        {companyJobRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                      </Select>
-                      <Input className="flex-1" value={formData.name} onChange={e => setField('name', e.target.value)} placeholder="Ou digitar" />
-                    </div>
-                  ) : (
-                    <Input value={formData.name} onChange={e => setField('name', e.target.value)} required />
-                  )}
+                  <Combobox
+                    listId="aepJobRolesList"
+                    options={companyJobRoles}
+                    value={formData.name}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setField('name', val);
+                      const role = companyJobRoles.find(r => r.name === val);
+                      if (role) handleApplyJobRole(role.id);
+                    }}
+                    placeholder="Digite ou selecione a função..."
+                  />
                 </FormGroup>
                 <FormGroup label="Código do Posto">
                   <Input value={aep.identification.code} onChange={e => setIdent('code', e.target.value)} />
@@ -473,21 +470,13 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   )}
                 </FormGroup>
                 <FormGroup label="Setor / Área">
-                  {companySectors.length > 0 ? (
-                    <div className="flex gap-2">
-                      <Select
-                        className="flex-1"
-                        value={companySectors.find(s => s.name === aep.identification.sectorArea)?.id || ''}
-                        onChange={e => { const s = companySectors.find(x => x.id === e.target.value); if (s) setIdent('sectorArea', s.name); }}
-                      >
-                        <option value="">Selecionar...</option>
-                        {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </Select>
-                      <Input className="flex-1" value={aep.identification.sectorArea} onChange={e => setIdent('sectorArea', e.target.value)} placeholder="Ou digitar" />
-                    </div>
-                  ) : (
-                    <Input value={aep.identification.sectorArea} onChange={e => setIdent('sectorArea', e.target.value)} />
-                  )}
+                  <Combobox
+                    listId="aepSectorsList"
+                    options={companySectors}
+                    value={aep.identification.sectorArea}
+                    onChange={e => setIdent('sectorArea', e.target.value)}
+                    placeholder="Digite ou selecione o setor..."
+                  />
                 </FormGroup>
               </div>
               <FormGroup label="Funções Contempladas">

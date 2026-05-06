@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
-import { FormGroup, Input, Textarea, Select, Checkbox } from '../components/ui/Forms';
+import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
 import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION, ErgonomicRisk, NHO11MeasurementPoint, NHO11ModelType } from '../types';
@@ -430,28 +430,18 @@ export const FunctionForm = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormGroup label="Nome da Função" required>
-                    {matchedCompany && companyJobRoles.length > 0 ? (
-                      <div className="flex gap-2">
-                        <Select 
-                          className="flex-1"
-                          value={companyJobRoles.find(r => r.name === formData.name)?.id || ''}
-                          onChange={(e) => handleApplyJobRole(e.target.value)}
-                        >
-                          <option value="">Selecione função padrão...</option>
-                          {companyJobRoles.map(r => (
-                            <option key={r.id} value={r.id}>{r.name}</option>
-                          ))}
-                        </Select>
-                        <Input 
-                          className="flex-1"
-                          value={formData.name} 
-                          onChange={(e) => set('name', e.target.value)} 
-                          placeholder="Ou digite o nome" 
-                        />
-                      </div>
-                    ) : (
-                      <Input value={formData.name} onChange={(e) => set('name', e.target.value)} placeholder="Ex: Auxiliar de Produção" />
-                    )}
+                    <Combobox
+                      listId="jobRolesList"
+                      options={companyJobRoles}
+                      value={formData.name}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        set('name', val);
+                        const role = companyJobRoles.find(r => r.name === val);
+                        if (role) handleApplyJobRole(role.id);
+                      }}
+                      placeholder="Digite ou selecione a função..."
+                    />
                   </FormGroup>
                   <FormGroup label="Nº de Colaboradores" required>
                     <Input value={formData.numEmployees} onChange={(e) => set('numEmployees', e.target.value)} />
@@ -460,38 +450,22 @@ export const FunctionForm = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormGroup label="Unidade">
-                    {companyUnits.length > 0 ? (
-                      <div className="flex gap-2">
-                        <Select
-                          className="flex-1"
-                          value={companyUnits.find(u => u.name === formData.unit)?.id || ''}
-                          onChange={e => { const u = companyUnits.find(x => x.id === e.target.value); if (u) set('unit', u.name); }}
-                        >
-                          <option value="">Selecionar...</option>
-                          {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                        </Select>
-                        <Input className="flex-1" value={formData.unit} onChange={(e) => set('unit', e.target.value)} placeholder="Ou digitar" />
-                      </div>
-                    ) : (
-                      <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
-                    )}
+                    <Combobox
+                      listId="unitsList"
+                      options={companyUnits}
+                      value={formData.unit}
+                      onChange={(e) => set('unit', e.target.value)}
+                      placeholder="Digite ou selecione a unidade..."
+                    />
                   </FormGroup>
                   <FormGroup label="Setor">
-                    {companySectors.length > 0 ? (
-                      <div className="flex gap-2">
-                        <Select
-                          className="flex-1"
-                          value={companySectors.find(s => s.name === formData.sector)?.id || ''}
-                          onChange={e => { const s = companySectors.find(x => x.id === e.target.value); if (s) set('sector', s.name); }}
-                        >
-                          <option value="">Selecionar...</option>
-                          {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </Select>
-                        <Input className="flex-1" value={formData.sector} onChange={(e) => set('sector', e.target.value)} placeholder="Ou digitar" />
-                      </div>
-                    ) : (
-                      <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
-                    )}
+                    <Combobox
+                      listId="sectorsList"
+                      options={companySectors}
+                      value={formData.sector}
+                      onChange={(e) => set('sector', e.target.value)}
+                      placeholder="Digite ou selecione o setor..."
+                    />
                   </FormGroup>
                 </div>
 
