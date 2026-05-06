@@ -104,6 +104,7 @@ export const ReportToolbar = ({ projectId }: { projectId: string }) => {
 
 export const PDF_STYLES = `
   @page { size: A4; margin: 20mm 15mm 25mm 15mm; }
+  @page :first { margin: 0; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .pdf-page { page-break-inside: avoid; } }
   .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1f2937; line-height: 1.6; }
   .pdf-preview h2 { font-size: 1.25rem; font-weight: 700; color: #0d9488; border-bottom: 2px solid #e5e7eb; padding-bottom: .5rem; margin-bottom: 1.5rem; margin-top: 1.5rem; }
@@ -117,4 +118,124 @@ export const PDF_STYLES = `
   .pdf-preview td { padding: .45rem .65rem; border: 1px solid #e5e7eb; vertical-align: top; }
   .pdf-preview .toc-line { display: flex; align-items: flex-end; gap: .5rem; padding: .2rem 0; }
   .pdf-preview .toc-dots { flex: 1; border-bottom: 1px dotted #d1d5db; position: relative; top: -3px; }
+  .pdf-cover { container-type: inline-size; width: 100%; aspect-ratio: 210 / 297; }
+  @media print { .pdf-cover { width: 100% !important; height: 100vh !important; aspect-ratio: auto !important; page-break-after: always; } }
 `;
+
+// ── CoverPage ────────────────────────────────────────────────────────────────
+
+interface CoverPageProps {
+  titleLines: string[];
+  companyLogoDataUrl?: string;
+  consultoriaLogoDataUrl?: string;
+  companyName: string;
+  monthYear: string;
+}
+
+export const CoverPage: React.FC<CoverPageProps> = ({
+  titleLines,
+  companyLogoDataUrl,
+  consultoriaLogoDataUrl,
+  companyName,
+  monthYear,
+}) => (
+  <section
+    className="pdf-cover relative overflow-hidden print:break-after-page"
+    style={{
+      fontFamily: "'Montserrat', 'Segoe UI', sans-serif",
+      color: '#1c5c60',
+      background: '#fdfdfd',
+    }}
+  >
+    {/* Top-right teal block */}
+    <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '8%', background: '#1c5c60' }} />
+    {/* Right vertical stripe */}
+    <div style={{ position: 'absolute', top: '8%', bottom: '6%', right: 0, width: '11%', background: '#1c5c60' }} />
+    {/* Left vertical guide line */}
+    <div style={{ position: 'absolute', top: 0, bottom: 0, left: '6%', width: '1px', background: '#aebac1' }} />
+    {/* Top horizontal guide line */}
+    <div style={{ position: 'absolute', top: '8%', left: 0, right: '50%', height: '1px', background: '#aebac1' }} />
+
+    {/* Client logo */}
+    <div style={{ position: 'absolute', top: '3%', left: '7.5%', width: '15cqw' }}>
+      {companyLogoDataUrl
+        ? <img src={companyLogoDataUrl} alt="Logomarca do Cliente" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
+        : <div style={{ width: '100%', aspectRatio: '2 / 1', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#9ca3af' }}>Logo Empresa</div>
+      }
+    </div>
+
+    {/* Report title */}
+    <div style={{ position: 'absolute', top: '18%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center' }}>
+      <h1 style={{
+        textAlign: 'center', fontWeight: 700, fontSize: '5.2cqw',
+        lineHeight: 1.35, letterSpacing: '0.18em', color: '#1c5c60', margin: 0,
+      }}>
+        {titleLines.map((line, i) => (
+          <React.Fragment key={i}>{line}{i < titleLines.length - 1 && <br />}</React.Fragment>
+        ))}
+      </h1>
+    </div>
+
+    {/* Company name with vertical bar decoration */}
+    <div style={{ position: 'absolute', top: '45%', bottom: '33%', left: '17%', display: 'flex', alignItems: 'center' }}>
+      <div style={{ position: 'relative', height: '100%', width: '2px', background: '#9ba7ad', marginRight: '4cqw' }}>
+        <div style={{ position: 'absolute', left: '-3px', top: 0, width: '8px', height: '8px', background: '#9ba7ad' }} />
+        <div style={{ position: 'absolute', left: '-3px', bottom: 0, width: '8px', height: '8px', background: '#9ba7ad' }} />
+      </div>
+      <h2 style={{ fontSize: '3.5cqw', fontWeight: 700, letterSpacing: '0.2em', color: '#1c5c60', margin: 0 }}>
+        {companyName || 'EMPRESA CLIENTE'}
+      </h2>
+    </div>
+
+    {/* Month / Year */}
+    <div style={{
+      position: 'absolute', bottom: '18%', left: '6%', right: '11%',
+      display: 'flex', justifyContent: 'center',
+      fontWeight: 700, fontSize: '1.4cqw', letterSpacing: '0.2em',
+      color: '#1c5c60', textTransform: 'uppercase',
+    }}>
+      {monthYear || 'MÊS E ANO'}
+    </div>
+
+    {/* Bottom horizontal guide line */}
+    <div style={{ position: 'absolute', bottom: '6%', left: 0, right: '11%', height: '1px', background: '#aebac1' }} />
+
+    {/* Consultoria logo / Ergominas brand */}
+    <div style={{
+      position: 'absolute', bottom: '4.5%', left: '6%', right: '11%',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none',
+    }}>
+      {consultoriaLogoDataUrl
+        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '30px', objectFit: 'contain' }} />
+        : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8cqw', background: '#fdfdfd', padding: '0 2cqw' }}>
+            <svg style={{ width: '4.5cqw', height: '4.5cqw' }} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <g transform="translate(50, 35) scale(0.35)">
+                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#38BDF8" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#0284C7" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#0369A1" />
+              </g>
+              <g transform="translate(30, 65) scale(0.35)">
+                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#F43F5E" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#E11D48" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#BE123C" />
+              </g>
+              <g transform="translate(70, 65) scale(0.35)">
+                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#34D399" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#10B981" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#047857" />
+              </g>
+              <g transform="translate(50, 52) scale(0.35)">
+                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#FBBF24" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#D97706" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#B45309" />
+              </g>
+            </svg>
+            <span style={{ fontWeight: 900, fontSize: '2.8cqw', letterSpacing: '0.1em', color: '#1c5c60', transform: 'translateY(0.3cqw)' }}>ERGOMINAS</span>
+          </div>
+        )
+      }
+    </div>
+
+    {/* Website URL */}
+    <div style={{
+      position: 'absolute', bottom: '2%', left: '6%', right: '11%',
+      display: 'flex', justifyContent: 'center',
+      fontWeight: 500, fontSize: '1cqw', letterSpacing: '0.35em', color: '#1c5c60',
+    }}>
+      WWW.ERGOMINAS.COM.BR
+    </div>
+  </section>
+);
