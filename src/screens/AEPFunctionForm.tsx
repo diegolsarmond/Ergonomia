@@ -5,6 +5,8 @@ import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
+import { Modal } from '../components/ui/Modal';
+import { UnitModalForm, SectorModalForm, JobRoleModalForm, EMPTY_UNIT, EMPTY_SECTOR, EMPTY_ROLE } from '../components/SharedParameterModals';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
 import { SingleImageUpload } from '../components/SingleImageUpload';
 import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
@@ -124,6 +126,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
   const {
     companies, units, sectors, jobRoles,
+    addJobRole, addUnit, addSector,
     epis: epiCatalog, equipment: equipmentCatalog,
     shifts: shiftCatalog, pauses: pauseCatalog,
     scientificMethodTemplates,
@@ -139,6 +142,40 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const companyJobRoles = matchedCompany ? jobRoles.filter(r => r.companyId === matchedCompany.id) : [];
 
   const aep = formData.aep!;
+
+  // ── Modals for creating new parameters ───────────────────────────────────
+  const [createModal, setCreateModal] = useState<{ type: 'role' | 'unit' | 'sector'; open: boolean }>({ type: 'role', open: false });
+  const [unitForm, setUnitForm] = useState({ ...EMPTY_UNIT, companyId: matchedCompany?.id || '' });
+  const [sectorForm, setSectorForm] = useState({ ...EMPTY_SECTOR, companyId: matchedCompany?.id || '' });
+  const [roleForm, setRoleForm] = useState({ ...EMPTY_ROLE, companyId: matchedCompany?.id || '' });
+
+  const handleOpenCreateModal = (type: 'role' | 'unit' | 'sector') => {
+    if (type === 'unit') setUnitForm({ ...EMPTY_UNIT, companyId: matchedCompany?.id || '' });
+    if (type === 'sector') setSectorForm({ ...EMPTY_SECTOR, companyId: matchedCompany?.id || '' });
+    if (type === 'role') setRoleForm({ ...EMPTY_ROLE, companyId: matchedCompany?.id || '' });
+    setCreateModal({ type, open: true });
+  };
+
+  const handleSaveUnit = async () => {
+    if (!unitForm.name.trim()) return;
+    await addUnit({ ...unitForm, companyId: matchedCompany?.id || '' });
+    setIdent('unitBranch', unitForm.name);
+    setCreateModal({ ...createModal, open: false });
+  };
+
+  const handleSaveSector = async () => {
+    if (!sectorForm.name.trim()) return;
+    await addSector({ ...sectorForm, companyId: matchedCompany?.id || '' });
+    setIdent('sectorArea', sectorForm.name);
+    setCreateModal({ ...createModal, open: false });
+  };
+
+  const handleSaveRole = async () => {
+    if (!roleForm.name.trim()) return;
+    await addJobRole({ ...roleForm, companyId: matchedCompany?.id || '' });
+    setFormData(prev => ({ ...prev, name: roleForm.name }));
+    setCreateModal({ ...createModal, open: false });
+  };
 
   // ── setters ──────────────────────────────────────────────────────────────
 
@@ -378,7 +415,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   );
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-6 lg:p-8 xl:p-10 pb-24">
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-6">
         <Button variant="ghost" onClick={() => navigate(`/project/${project.id}`)}>
@@ -427,17 +464,26 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               <SectionTitle>1. Identificação</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Nome da Função / Cargo" required>
-                  <div className="flex gap-2">
-                    <Select
-                      className="flex-1"
-                      value={companyJobRoles.find(r => r.name === formData.name)?.id || ''}
-                      onChange={e => { const role = companyJobRoles.find(r => r.id === e.target.value); if (role) handleApplyJobRole(role.id); }}
-                    >
-                      <option value="">Selecione função padrão...</option>
-                      {companyJobRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </Select>
-                    <Input className="flex-1" value={formData.name} onChange={e => setField('name', e.target.value)} placeholder="Ou digite o nome" />
-                  </div>
+                  <Select
+                    className="w-full"
+                    value={companyJobRoles.find(r => r.name === formData.name)?.id || (formData.name ? 'custom' : '')}
+                    onChange={e => {
+                      if (e.target.value === '__NEW__') {
+                        handleOpenCreateModal('role');
+
+                      } else if (e.target.value !== 'custom') {
+                        const role = companyJobRoles.find(r => r.id === e.target.value);
+                        if (role) handleApplyJobRole(role.id);
+                      }
+                    }}
+                  >
+                    <option value="">Selecione a função...</option>
+                    {companyJobRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    {formData.name && !companyJobRoles.find(r => r.name === formData.name) && (
+                      <option value="custom">{formData.name}</option>
+                    )}
+                    <option value="__NEW__" className="font-semibold text-teal-600">+ Criar novo...</option>
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Código do Posto">
                   <Input value={aep.identification.code} onChange={e => setIdent('code', e.target.value)} />
@@ -445,26 +491,48 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Unidade / Filial">
-                  <div className="flex gap-2">
-                    <Select
-                      className="flex-1"
-                      value={companyUnits.find(u => u.name === aep.identification.unitBranch)?.id || ''}
-                      onChange={e => { const u = companyUnits.find(x => x.id === e.target.value); if (u) setIdent('unitBranch', u.name); }}
-                    >
-                      <option value="">Selecionar...</option>
-                      {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </Select>
-                    <Input className="flex-1" value={aep.identification.unitBranch} onChange={e => setIdent('unitBranch', e.target.value)} placeholder={project.unit || 'Ou digitar'} />
-                  </div>
+                  <Select
+                    className="w-full"
+                    value={companyUnits.find(u => u.name === aep.identification.unitBranch)?.id || (aep.identification.unitBranch ? 'custom' : '')}
+                    onChange={e => {
+                      if (e.target.value === '__NEW__') {
+                        handleOpenCreateModal('unit');
+
+                      } else if (e.target.value !== 'custom') {
+                        const u = companyUnits.find(x => x.id === e.target.value);
+                        if (u) setIdent('unitBranch', u.name);
+                      }
+                    }}
+                  >
+                    <option value="">Selecione a unidade...</option>
+                    {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    {aep.identification.unitBranch && !companyUnits.find(u => u.name === aep.identification.unitBranch) && (
+                      <option value="custom">{aep.identification.unitBranch}</option>
+                    )}
+                    <option value="__NEW__" className="font-semibold text-teal-600">+ Criar novo...</option>
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Setor / Área">
-                  <Combobox
-                    listId="aepSectorsList"
-                    options={companySectors}
-                    value={aep.identification.sectorArea}
-                    onChange={e => setIdent('sectorArea', e.target.value)}
-                    placeholder="Digite ou selecione o setor..."
-                  />
+                  <Select
+                    className="w-full"
+                    value={companySectors.find(s => s.name === aep.identification.sectorArea)?.id || (aep.identification.sectorArea ? 'custom' : '')}
+                    onChange={e => {
+                      if (e.target.value === '__NEW__') {
+                        handleOpenCreateModal('sector');
+
+                      } else if (e.target.value !== 'custom') {
+                        const s = companySectors.find(x => x.id === e.target.value);
+                        if (s) setIdent('sectorArea', s.name);
+                      }
+                    }}
+                  >
+                    <option value="">Selecione o setor...</option>
+                    {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {aep.identification.sectorArea && !companySectors.find(s => s.name === aep.identification.sectorArea) && (
+                      <option value="custom">{aep.identification.sectorArea}</option>
+                    )}
+                    <option value="__NEW__" className="font-semibold text-teal-600">+ Criar novo...</option>
+                  </Select>
                 </FormGroup>
               </div>
               <FormGroup label="Funções Contempladas">
@@ -1018,6 +1086,53 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           </Button>
         )}
       </div>
+
+      {/* Modals for creating new parameters */}
+      <UnitModalForm
+        open={createModal.open && createModal.type === 'unit'}
+        onClose={() => setCreateModal({ ...createModal, open: false })}
+        title="Nova Unidade / Filial"
+        form={unitForm}
+        setForm={setUnitForm}
+        onSave={handleSaveUnit}
+        companyAddress={matchedCompany ? {
+          cep: matchedCompany.cep,
+          logradouro: matchedCompany.logradouro,
+          numero: matchedCompany.numero,
+          complemento: matchedCompany.complemento,
+          bairro: matchedCompany.bairro,
+          municipio: matchedCompany.municipio,
+          uf: matchedCompany.uf,
+        } : undefined}
+      />
+
+      <SectorModalForm
+        open={createModal.open && createModal.type === 'sector'}
+        onClose={() => setCreateModal({ ...createModal, open: false })}
+        title="Novo Setor / Área"
+        form={sectorForm}
+        setForm={setSectorForm}
+        onSave={handleSaveSector}
+        companyUnits={companyUnits}
+      />
+
+      <JobRoleModalForm
+        open={createModal.open && createModal.type === 'role'}
+        onClose={() => setCreateModal({ ...createModal, open: false })}
+        title="Novo Cargo / Função"
+        form={roleForm}
+        setForm={setRoleForm}
+        onSave={handleSaveRole}
+        companySectors={companySectors}
+        companyRoles={companyJobRoles}
+      />
+
+
+
+
+
+
+
     </div>
   );
 };

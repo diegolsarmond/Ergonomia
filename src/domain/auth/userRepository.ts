@@ -38,6 +38,8 @@ export interface CreateUserInput {
   role: UserRole;
   status?: UserStatus;
   mustChangePassword?: boolean;
+  formation?: string;
+  crefito?: string;
 }
 
 export async function createUser(input: CreateUserInput): Promise<AppUser> {
@@ -55,6 +57,8 @@ export async function createUser(input: CreateUserInput): Promise<AppUser> {
     permissions: (await getRolePermissions())[input.role],
     status: input.status ?? 'active',
     mustChangePassword: input.mustChangePassword ?? false,
+    formation: input.formation,
+    crefito: input.crefito,
     createdAt: now,
     updatedAt: now,
   };

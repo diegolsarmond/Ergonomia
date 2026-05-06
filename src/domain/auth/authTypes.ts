@@ -41,6 +41,8 @@ export interface AppUser {
   permissions: Permission[];
   status: UserStatus;
   mustChangePassword: boolean;
+  formation?: string;
+  crefito?: string;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

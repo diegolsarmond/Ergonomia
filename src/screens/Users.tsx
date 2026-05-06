@@ -44,6 +44,8 @@ interface FormState {
   status: UserStatus;
   password: string;
   mustChangePassword: boolean;
+  formation: string;
+  crefito: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -54,6 +56,8 @@ const EMPTY_FORM: FormState = {
   status: 'active',
   password: '',
   mustChangePassword: false,
+  formation: '',
+  crefito: '',
 };
 
 interface ModalProps {
@@ -73,6 +77,8 @@ function UserModal({ editing, onClose, onSaved }: ModalProps) {
           status: editing.status,
           password: '',
           mustChangePassword: editing.mustChangePassword,
+          formation: editing.formation ?? '',
+          crefito: editing.crefito ?? '',
         }
       : EMPTY_FORM,
   );
@@ -106,6 +112,8 @@ function UserModal({ editing, onClose, onSaved }: ModalProps) {
           status: form.status,
           permissions: currentRolePerms[form.role],
           mustChangePassword: form.mustChangePassword,
+          formation: form.formation,
+          crefito: form.crefito,
         };
         if (form.password) {
           const { passwordHash, passwordSalt } = await createPasswordRecord(form.password);
@@ -122,6 +130,8 @@ function UserModal({ editing, onClose, onSaved }: ModalProps) {
           role: form.role,
           status: form.status,
           mustChangePassword: form.mustChangePassword,
+          formation: form.formation,
+          crefito: form.crefito,
         });
       }
       onSaved();
@@ -180,6 +190,25 @@ function UserModal({ editing, onClose, onSaved }: ModalProps) {
               disabled={!!editing}
             />
           </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Formação">
+              <input
+                value={form.formation}
+                onChange={e => set('formation', e.target.value)}
+                className={INPUT_CLS}
+                placeholder="Ex: Fisioterapeuta"
+              />
+            </Field>
+            <Field label="Registro Profissional (CREFITO/CRP/etc.)">
+              <input
+                value={form.crefito}
+                onChange={e => set('crefito', e.target.value)}
+                className={INPUT_CLS}
+                placeholder="Ex: CREFITO-3/12345-F"
+              />
+            </Field>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Perfil">
@@ -275,7 +304,7 @@ export function Users() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 xl:p-10 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
