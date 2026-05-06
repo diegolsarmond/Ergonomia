@@ -236,6 +236,9 @@ export const MOCK_SURVEY_QUESTIONS: SurveyQuestion[] = [
 ];
 
 export const MOCK_PAUSES: StandardPause[] = [
+  { id: 'pause-60min', name: '60min.', duration: '60', durationUnit: 'minutos', description: 'Pausa padrão para refeição.', active: true },
+  { id: 'pause-15min', name: '15min.', duration: '15', durationUnit: 'minutos', description: 'Pausa para lanche ou descanso.', active: true },
+  { id: 'pause-na', name: 'N/A', duration: '0', durationUnit: 'minutos', description: 'Não se aplica.', active: true },
   { id: 'pause-1', name: 'DDS – Diálogo Diário de Segurança', duration: '10', durationUnit: 'minutos', description: 'Reunião diária de segurança no início do turno para discussão de riscos, procedimentos e comunicados.', active: true },
   { id: 'pause-2', name: 'Refeição', duration: '60', durationUnit: 'minutos', description: 'Intervalo para almoço ou jantar conforme turno. Realizado no refeitório da empresa.', active: true },
   { id: 'pause-3', name: 'Coffee Break / Lanche', duration: '15', durationUnit: 'minutos', description: 'Pausa intermediária para café e lanche. Realizada no meio do turno.', active: true },
@@ -247,13 +250,16 @@ export const MOCK_PAUSES: StandardPause[] = [
 ];
 
 export const MOCK_SHIFTS: Shift[] = [
+  { id: 'shift-6x1', name: '6x1', description: 'Trabalha 6 dias e folga 1 dia.', active: true },
+  { id: 'shift-5x2', name: '5x2', description: 'Trabalha 5 dias e folga 2 dias.', active: true },
+  { id: 'shift-12x36-new', name: '12x36', description: 'Trabalha 12 horas e folga 36 horas.', active: true },
+  { id: 'shift-outro', name: 'Outro', description: 'Outra escala não listada.', active: true },
   { id: 'shift-comercial', name: 'Turno Comercial', description: 'Horário: 08:00 às 17:00 com 1 hora de intervalo para refeição. Jornada de 8 horas diárias, de segunda a sexta-feira.', active: true },
   { id: 'shift-diurno', name: 'Turno Diurno', description: 'Horário: 07:00 às 16:48 com 48 minutos de intervalo. Jornada de 8h48 com descanso compensado semanalmente.', active: true },
   { id: 'shift-vespertino', name: 'Turno Vespertino', description: 'Horário: 14:00 às 22:00 com intervalo de 60 minutos. Utilizado em empresas com dois turnos de produção.', active: true },
   { id: 'shift-noturno', name: 'Turno Noturno', description: 'Acontece à noite. Geralmente entre 22:00 e 06:00. Sujeito a adicional noturno conforme CLT (art. 73).', active: true },
   { id: 'shift-rotativo', name: 'Turno Rotativo (Revezamento)', description: 'O trabalhador alterna entre turnos (dia/noite/tarde). Pode mudar semanalmente ou mensalmente conforme escala.', active: true },
   { id: 'shift-ininterrupto', name: 'Turno Ininterrupto de Revezamento', description: 'Usado em empresas que funcionam 24h. Equipes se alternam continuamente. Jornada reduzida (6h/dia) conforme CF/88, art. 7°, XIV.', active: true },
-  { id: 'shift-12x36', name: 'Escala 12x36', description: 'Trabalha 12 horas, folga 36 horas. Comum em serviços contínuos como saúde, segurança e indústria de processo.', active: true },
 ];
 
 export const MOCK_SCIENTIFIC_METHODS: ScientificMethodTemplate[] = [

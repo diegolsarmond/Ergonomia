@@ -52,6 +52,33 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   <div className="section-title first:!mt-0">{children}</div>
 );
 
+const ChipSelector = ({ label, value, options, onChange, placeholder }: { label: string; value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) => {
+  const values = value.split(', ').filter(Boolean);
+  return (
+    <FormGroup label={label}>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {options.map(opt => {
+          const selected = values.includes(opt);
+          return (
+            <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+              <Checkbox checked={selected} onChange={() => {
+                const nxt = selected ? values.filter(v => v !== opt) : [...values, opt];
+                onChange(nxt.join(', '));
+              }} />
+              {opt}
+            </label>
+          );
+        })}
+      </div>
+      <Input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </FormGroup>
+  );
+};
+
 function computePsychosocialAverages(answers: PsychosocialQuestion[]) {
   const scored = answers.filter(a => a.score !== '');
   const scoreOf = (ids: string[]) => {
@@ -562,55 +589,43 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
               <SectionTitle>2.2 Organização do Trabalho</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Jornada de Trabalho">
-                  <Input value={aep.workCharacterization.workOrganization.workday} onChange={e => setWorkOrg('workday', e.target.value)} placeholder="Ex: 8h diárias, 44h semanais" />
-                </FormGroup>
+                <ChipSelector
+                  label="Jornada de Trabalho"
+                  value={aep.workCharacterization.workOrganization.workday}
+                  onChange={v => setWorkOrg('workday', v)}
+                  options={['6h/Dia', '8h/Dia', '12h/Dia', 'Outro']}
+                  placeholder="Descreva a jornada..."
+                />
                 <FormGroup label="Escala / Turno">
-                  {shiftCatalog.filter(s => s.active).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {shiftCatalog.filter(s => s.active).map(s => {
-                        const selected = aep.workCharacterization.workOrganization.scale.split(', ').includes(s.name);
-                        return (
-                          <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                            <Checkbox checked={selected} onChange={() => {
-                              const cur = aep.workCharacterization.workOrganization.scale.split(', ').filter(Boolean);
-                              const nxt = selected ? cur.filter(v => v !== s.name) : [...cur, s.name];
-                              setWorkOrg('scale', nxt.join(', '));
-                            }} />
-                            {s.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <Input value={aep.workCharacterization.workOrganization.scale} onChange={e => setWorkOrg('scale', e.target.value)} placeholder="Ex: Segunda a sexta, turno diurno" />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {shiftCatalog.filter(s => s.active).map(s => {
+                      const selected = aep.workCharacterization.workOrganization.scale.split(', ').includes(s.name);
+                      return (
+                        <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox checked={selected} onChange={() => {
+                            const cur = aep.workCharacterization.workOrganization.scale.split(', ').filter(Boolean);
+                            const nxt = selected ? cur.filter(v => v !== s.name) : [...cur, s.name];
+                            setWorkOrg('scale', nxt.join(', '));
+                          }} />
+                          {s.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <Input value={aep.workCharacterization.workOrganization.scale} onChange={e => setWorkOrg('scale', e.target.value)} placeholder="Ex: 6x1, 5x2, 12x36..." />
                 </FormGroup>
                 <FormGroup label="Horas Extras">
                   <Input value={aep.workCharacterization.workOrganization.overtime} onChange={e => setWorkOrg('overtime', e.target.value)} placeholder="Ex: Eventualmente" />
                 </FormGroup>
-                <FormGroup label="Intervalo para Refeição">
-                  <Input value={aep.workCharacterization.workOrganization.lunchBreak} onChange={e => setWorkOrg('lunchBreak', e.target.value)} placeholder="Ex: 1 hora" />
-                </FormGroup>
+                <ChipSelector
+                  label="Pausa para o almoço"
+                  value={aep.workCharacterization.workOrganization.lunchBreak}
+                  onChange={v => setWorkOrg('lunchBreak', v)}
+                  options={['60min.', '15min.', 'N/A', 'Outro']}
+                  placeholder="Descreva a pausa..."
+                />
                 <FormGroup label="Outras Pausas">
-                  {pauseCatalog.filter(p => p.active).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {pauseCatalog.filter(p => p.active).map(p => {
-                        const label = p.duration ? `${p.name} (${p.duration} ${p.durationUnit})` : p.name;
-                        const selected = aep.workCharacterization.workOrganization.otherBreaks.includes(p.name);
-                        return (
-                          <label key={p.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                            <Checkbox checked={selected} onChange={() => {
-                              const cur = aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(Boolean);
-                              const nxt = selected ? cur.filter(v => v !== p.name) : [...cur, label];
-                              setWorkOrg('otherBreaks', nxt.join(', '));
-                            }} />
-                            {label}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Ex: 2 pausas de 10 min" />
+                  <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Descreva outras pausas existentes..." />
                 </FormGroup>
                 <FormGroup label="Rodízio de Tarefas">
                   <Input value={aep.workCharacterization.workOrganization.taskRotation} onChange={e => setWorkOrg('taskRotation', e.target.value)} placeholder="Ex: Não há rodízio formalizado" />
