@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FileText, BookOpen, ChevronDown, ChevronRight, Settings,
   List, FlaskConical, Building2,
-  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const PARAM_GROUPS = [
   {
@@ -34,12 +35,26 @@ const PARAM_GROUPS = [
   },
 ];
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  TECHNICAL_RESPONSIBLE: 'Resp. Técnico',
+  CONSULTANT: 'Consultor',
+  CLIENT_VIEWER: 'Visualizador',
+};
+
 export const Layout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser, logout, hasPermission } = useAuth();
   const isParametros = location.pathname.startsWith('/parameters');
   const isProjects = location.pathname === '/aep' || location.pathname === '/aet';
   const [parametrosOpen, setParametrosOpen] = useState(isParametros);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   // Close mobile menu on route change
   React.useEffect(() => {
@@ -95,8 +110,15 @@ export const Layout = () => {
             <NavLink to="/aet" icon={BookOpen} label="Projetos AET" active={location.pathname === '/aet'} />
           </div>
 
-          {/* Parâmetros com submenu agrupado */}
-          <div className="mt-5">
+          {hasPermission('USERS_VIEW') && (
+            <div className="mt-4">
+              <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Administração</p>
+              <NavLink to="/users" icon={Users} label="Usuários" active={location.pathname === '/users'} />
+            </div>
+          )}
+
+          {/* Parâmetros com submenu agrupado — visível apenas com CATALOG_VIEW */}
+          {hasPermission('CATALOG_VIEW') && <div className="mt-5">
             <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Configurações</p>
             <button
               onClick={() => setParametrosOpen((o: boolean) => !o)}
@@ -131,11 +153,26 @@ export const Layout = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </div>}
         </nav>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-white/5">
+        <div className="px-5 py-4 border-t border-white/5 space-y-3">
+          {currentUser && (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium text-slate-300 truncate">{currentUser.name}</p>
+                <p className="text-[10px] text-slate-500">{ROLE_LABELS[currentUser.role] ?? currentUser.role}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Sair"
+                className="shrink-0 p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-700 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] text-slate-500 font-medium">v2.0 — NR-17</span>

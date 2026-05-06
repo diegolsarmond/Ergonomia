@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea } from '../components/ui/Forms';
 import { Plus, Trash2, Building2, FolderOpen, Calendar, MapPin, Hash, Search } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { PermissionGuard } from '../components/auth/PermissionGuard';
 import {
   DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA,
   DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA,
@@ -17,6 +19,7 @@ interface Props {
 
 export const Dashboard: React.FC<Props> = ({ reportType }) => {
   const { projects, companies, units, loading, addProject, deleteProject, importProjectJSON } = useAET();
+  const { hasPermission } = useAuth();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
@@ -120,9 +123,11 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-sm shadow-teal-500/20">
             {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
           </div>
-          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}>
-            <Trash2 className="w-4 h-4 text-red-400" />
-          </Button>
+          <PermissionGuard permission="PROJECTS_DELETE">
+            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}>
+              <Trash2 className="w-4 h-4 text-red-400" />
+            </Button>
+          </PermissionGuard>
         </div>
 
         <h3 className="font-semibold text-slate-800 text-[15px] mb-1 truncate">{project.companyName}</h3>
@@ -156,9 +161,11 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
             <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
             <p className="text-teal-200 text-sm mt-1">{subtitle}</p>
           </div>
-          <Button onClick={openNewProjectModal} className={btnClass}>
-            <Plus className="w-5 h-5" /> Novo Projeto {reportType}
-          </Button>
+          <PermissionGuard permission={isAEP ? 'AEP_CREATE' : 'AET_CREATE'}>
+            <Button onClick={openNewProjectModal} className={btnClass}>
+              <Plus className="w-5 h-5" /> Novo Projeto {reportType}
+            </Button>
+          </PermissionGuard>
         </div>
 
         {/* Stats */}
@@ -204,9 +211,11 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
           <Building2 className="w-14 h-14 mx-auto text-slate-300 mb-4" />
           <p className="text-slate-500 text-lg font-medium mb-2">{emptyLabel}</p>
           <p className="text-slate-400 text-sm mb-6">Crie seu primeiro projeto para começar</p>
-          <Button onClick={openNewProjectModal} className={btnClass}>
-            <Plus className="w-5 h-5" /> Criar Primeiro Projeto {reportType}
-          </Button>
+          <PermissionGuard permission={isAEP ? 'AEP_CREATE' : 'AET_CREATE'}>
+            <Button onClick={openNewProjectModal} className={btnClass}>
+              <Plus className="w-5 h-5" /> Criar Primeiro Projeto {reportType}
+            </Button>
+          </PermissionGuard>
         </div>
       ) : filteredProjects.length === 0 ? (
         <div className="empty-state">

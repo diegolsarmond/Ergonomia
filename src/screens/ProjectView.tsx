@@ -6,11 +6,14 @@ import { Button } from '../components/ui/Button';
 import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X } from 'lucide-react';
 import { validateReport } from '../domain/reports/reportValidation';
 import type { ReportValidationResult } from '../domain/reports/reportValidationTypes';
+import { useAuth } from '../context/AuthContext';
+import { PermissionGuard } from '../components/auth/PermissionGuard';
 
 export const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON } = useAET();
+  const { hasPermission } = useAuth();
   const project = getProject(id!);
 
   const [isPrinting, setIsPrinting] = useState(false);
@@ -91,12 +94,16 @@ export const ProjectView = () => {
             <Button variant="outline" onClick={handleExportJSON} className="hidden !bg-white/10 !border-white/20 !text-white hover:!bg-white/20 flex-1 sm:flex-none" size="sm">
               <Download className="w-4 h-4" />Exportar
             </Button>
-            <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50 flex-1 sm:flex-none" size="sm" disabled={isPrinting}>
-              <Printer className="w-4 h-4" />{isPrinting ? 'Preparando...' : 'Imprimir'}
-            </Button>
-            <Button onClick={handleAddFunction} size="sm" className="flex-1 sm:flex-none">
-              <Plus className="w-4 h-4" />Função
-            </Button>
+            <PermissionGuard permission={project.reportType === 'AEP' ? 'AEP_PRINT' : 'AET_PRINT'}>
+              <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50 flex-1 sm:flex-none" size="sm" disabled={isPrinting}>
+                <Printer className="w-4 h-4" />{isPrinting ? 'Preparando...' : 'Imprimir'}
+              </Button>
+            </PermissionGuard>
+            <PermissionGuard permission="PROJECTS_EDIT">
+              <Button onClick={handleAddFunction} size="sm" className="flex-1 sm:flex-none">
+                <Plus className="w-4 h-4" />Função
+              </Button>
+            </PermissionGuard>
           </div>
         </div>
       </div>
@@ -150,9 +157,11 @@ export const ProjectView = () => {
           <div className="empty-state">
             <p className="text-slate-500 text-lg font-medium mb-2">Nenhuma função cadastrada</p>
             <p className="text-slate-400 text-sm mb-6">Adicione funções para iniciar a análise ergonômica</p>
-            <Button onClick={handleAddFunction} variant="outline">
-              <Plus className="w-4 h-4" /> Cadastrar Função
-            </Button>
+            <PermissionGuard permission="PROJECTS_EDIT">
+              <Button onClick={handleAddFunction} variant="outline">
+                <Plus className="w-4 h-4" /> Cadastrar Função
+              </Button>
+            </PermissionGuard>
           </div>
         ) : (
           <div className="space-y-2">
@@ -173,15 +182,19 @@ export const ProjectView = () => {
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg">
-                      <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg">
-                      <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg">
-                      <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
-                    </Button>
+                    <PermissionGuard permission="PROJECTS_EDIT">
+                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg">
+                        <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg">
+                        <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
+                      </Button>
+                    </PermissionGuard>
+                    <PermissionGuard permission="PROJECTS_DELETE">
+                      <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg">
+                        <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                      </Button>
+                    </PermissionGuard>
                   </div>
                 </div>
               </Card>

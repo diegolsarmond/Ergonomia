@@ -184,7 +184,53 @@ Esta seção cobre a verificação manual de que os dados mockados estão corret
 
 ---
 
-## 9. Pendências conhecidas
+## 9. Validação de Autenticação e Permissões
+
+> **Pré-requisito:** ambiente DEV (`npm run dev`). O usuário `admin/admin` é criado automaticamente apenas em DEV.  
+> Consulte `SECURITY_AUTH.md` para detalhes sobre segurança e remoção antes da entrega.
+
+### 9.1 Login
+
+- [ ] Ao acessar o sistema sem sessão ativa, o navegador redireciona automaticamente para `/login`
+- [ ] A tela de login exibe campos **Usuário** e **Senha**
+- [ ] Em ambiente DEV, o aviso `"Ambiente de desenvolvimento: usuário temporário admin/admin"` está visível abaixo do card
+- [ ] Ao tentar login com credenciais inválidas (`admin` / `errada`), exibe a mensagem `"Usuário ou senha inválidos."` sem indicar se o usuário existe
+- [ ] Ao fazer login com `admin` / `admin`, o sistema redireciona para `/` (Dashboard AEP)
+- [ ] A sessão persiste ao recarregar a página (F5)
+
+### 9.2 Logout
+
+- [ ] No rodapé da sidebar, o nome do usuário logado é exibido (`Administrador Local`)
+- [ ] O perfil exibido é `Administrador`
+- [ ] Ao clicar no ícone de saída (LogOut), a sessão é encerrada
+- [ ] Após logout, o sistema redireciona para `/login`
+- [ ] Tentar acessar `/` após logout redireciona de volta para `/login`
+
+### 9.3 Acesso ao Dashboard e projetos
+
+- [ ] Admin logado acessa o Dashboard AEP (`/aep`) normalmente
+- [ ] Admin logado acessa o Dashboard AET (`/aet`) normalmente
+- [ ] Botões **Novo Projeto AEP** e **Novo Projeto AET** estão visíveis para admin
+- [ ] Botão de excluir projeto (ícone lixeira no card) está visível para admin
+- [ ] Ao acessar um projeto, os botões **Imprimir**, **+ Função**, **Editar** e **Excluir** função estão visíveis para admin
+
+### 9.4 Permissões do perfil ADMIN
+
+- [ ] Menu **Usuários** aparece na sidebar para admin
+- [ ] Acessar `/users` lista os usuários cadastrados
+- [ ] Botão **Novo Usuário** está visível
+- [ ] Menu **Parâmetros** (catálogos) aparece na sidebar para admin
+- [ ] Dentro de uma função, o botão **Salvar** está habilitado para admin
+- [ ] Não aparece aviso de "sem permissão para editar" para admin
+
+### 9.5 Restrição de acesso por URL
+
+- [ ] Acessar `/users` sem estar logado redireciona para `/login`
+- [ ] Fazer logout e tentar acessar `/users` diretamente redireciona para `/login`
+
+---
+
+## 10. Pendências conhecidas
 
 | Item | Status |
 |------|--------|

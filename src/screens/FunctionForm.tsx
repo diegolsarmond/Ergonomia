@@ -4,7 +4,8 @@ import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION, ErgonomicRisk, NHO11MeasurementPoint, NHO11ModelType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ImageUpload } from '../components/ImageUpload';
@@ -78,6 +79,8 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('PROJECTS_EDIT');
   const {
     getProject, addFunction, updateFunction, checklistQuestions,
     scientificMethodTemplates, equipment, epis, surveyQuestions,
@@ -101,6 +104,7 @@ export const FunctionForm = () => {
   // ── AEP: delegate to dedicated form ────────────────────────────────────────
   if (project.reportType === 'AEP') {
     const handleAEPSave = async (data: AETFunction) => {
+      if (!canEdit) return;
       if (isNew) {
         const newId = await addFunction(id!, data);
         navigate(`/project/${id}`);
@@ -143,6 +147,7 @@ export const FunctionForm = () => {
     }));
 
   const handleSave = async () => {
+    if (!canEdit) return;
     try {
       if (!formData.name?.trim()) {
         setError('O Nome da Função é obrigatório.');
@@ -368,13 +373,19 @@ export const FunctionForm = () => {
           {formData.name || 'Nova Função'}
         </h1>
         <div className="flex items-center gap-3">
+          {!canEdit && (
+            <div className="text-amber-700 font-medium flex items-center text-sm bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+              <Lock className="w-4 h-4 mr-1.5" />
+              Você não possui permissão para editar este projeto.
+            </div>
+          )}
           {error && (
             <div className="text-red-500 font-medium flex items-center text-sm bg-red-50 px-3 py-1.5 rounded-lg">
               <AlertCircle className="w-4 h-4 mr-1.5" />
               {error}
             </div>
           )}
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} disabled={!canEdit}>
             <Save className="w-4 h-4" />
             Salvar Alterações
           </Button>
