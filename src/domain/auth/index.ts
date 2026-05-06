@@ -3,3 +3,4 @@ export * from './permissions';
 export * from './authDefaults';
 export * from './passwordService';
 export * from './userRepository';
+export * from './rolePermissionRepository';

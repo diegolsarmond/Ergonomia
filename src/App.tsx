@@ -27,6 +27,7 @@ import { RiskClassifications } from './screens/parameters/RiskClassifications';
 import { ReportTexts } from './screens/parameters/ReportTexts';
 import { Shifts } from './screens/parameters/Shifts';
 import { Users } from './screens/Users';
+import { ProfilesPermissions } from './screens/ProfilesPermissions';
 
 export default function App() {
   return (
@@ -65,6 +66,7 @@ export default function App() {
               <Route path="parameters/report-texts" element={<ReportTexts />} />
               <Route path="parameters/shifts" element={<Shifts />} />
               <Route path="users" element={<Users />} />
+              <Route path="profiles-permissions" element={<ProfilesPermissions />} />
             </Route>
 
             <Route

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { AppUser, UserRole, UserStatus } from './authTypes';
 import { USERS_STORAGE_KEY } from './authDefaults';
 import { createPasswordRecord } from './passwordService';
-import { ROLE_PERMISSIONS } from './permissions';
+import { getRolePermissions } from './rolePermissionRepository';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -52,7 +52,7 @@ export async function createUser(input: CreateUserInput): Promise<AppUser> {
     passwordHash,
     passwordSalt,
     role: input.role,
-    permissions: ROLE_PERMISSIONS[input.role],
+    permissions: (await getRolePermissions())[input.role],
     status: input.status ?? 'active',
     mustChangePassword: input.mustChangePassword ?? false,
     createdAt: now,

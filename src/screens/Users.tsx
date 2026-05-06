@@ -11,7 +11,7 @@ import {
   deleteUser,
 } from '../domain/auth/userRepository';
 import { createPasswordRecord } from '../domain/auth/passwordService';
-import { ROLE_PERMISSIONS } from '../domain/auth/permissions';
+import { getRolePermissions } from '../domain/auth/rolePermissionRepository';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -97,13 +97,14 @@ function UserModal({ editing, onClose, onSaved }: ModalProps) {
 
     setSaving(true);
     try {
+      const currentRolePerms = await getRolePermissions();
       if (editing) {
         const patch: Partial<AppUser> = {
           name: form.name,
           email: form.email,
           role: form.role,
           status: form.status,
-          permissions: ROLE_PERMISSIONS[form.role],
+          permissions: currentRolePerms[form.role],
           mustChangePassword: form.mustChangePassword,
         };
         if (form.password) {

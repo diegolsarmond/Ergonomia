@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FileText, BookOpen, ChevronDown, ChevronRight, Settings,
   List, FlaskConical, Building2,
-  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -110,10 +110,15 @@ export const Layout = () => {
             <NavLink to="/aet" icon={BookOpen} label="Projetos AET" active={location.pathname === '/aet'} />
           </div>
 
-          {hasPermission('USERS_VIEW') && (
+          {(hasPermission('USERS_VIEW') || hasPermission('SETTINGS_VIEW')) && (
             <div className="mt-4">
               <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Administração</p>
-              <NavLink to="/users" icon={Users} label="Usuários" active={location.pathname === '/users'} />
+              {hasPermission('USERS_VIEW') && (
+                <NavLink to="/users" icon={Users} label="Usuários" active={location.pathname === '/users'} />
+              )}
+              {(hasPermission('SETTINGS_VIEW') || hasPermission('USERS_VIEW')) && (
+                <NavLink to="/profiles-permissions" icon={ShieldCheck} label="Perfis e Permissões" active={location.pathname === '/profiles-permissions'} />
+              )}
             </div>
           )}
 

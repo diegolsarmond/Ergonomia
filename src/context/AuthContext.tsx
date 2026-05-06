@@ -1,7 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import localforage from 'localforage';
-import { v4 as uuidv4 } from 'uuid';
-import type { AppUser, AuthSession, Permission } from '../domain/auth/authTypes';
+import type { AppUser, AuthSession, Permission, UserRole } from '../domain/auth/authTypes';
 import {
   SESSION_STORAGE_KEY,
   SESSION_DURATION_HOURS,
@@ -13,6 +12,11 @@ import {
   seedDevelopmentAdminUser,
 } from '../domain/auth/userRepository';
 import { verifyPassword } from '../domain/auth/passwordService';
+import {
+  getRolePermissions,
+  type RolePermissionsMap,
+} from '../domain/auth/rolePermissionRepository';
+import { ROLE_PERMISSIONS } from '../domain/auth/permissions';
 
 // ── Context shape ─────────────────────────────────────────────────────────────
 
@@ -21,8 +25,10 @@ interface AuthContextValue {
   session: AuthSession | null;
   loading: boolean;
   isAuthenticated: boolean;
+  rolePermissions: RolePermissionsMap;
   login(username: string, password: string): Promise<{ ok: boolean; error?: string }>;
   logout(): Promise<void>;
+  refreshRolePermissions(): Promise<void>;
   hasPermission(permission: Permission): boolean;
   hasAnyPermission(permissions: Permission[]): boolean;
 }
@@ -68,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>(ROLE_PERMISSIONS);
 
   // ── Initial load ────────────────────────────────────────────────────────────
 
@@ -77,7 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await seedDevelopmentAdminUser();
       }
 
-      const stored = await loadPersistedSession();
+      const [stored, perms] = await Promise.all([
+        loadPersistedSession(),
+        getRolePermissions(),
+      ]);
+
+      setRolePermissions(perms);
+
       if (stored) {
         const user = await findUserById(stored.userId);
         if (user && user.status === 'active') {
@@ -90,6 +103,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setLoading(false);
     })();
+  }, []);
+
+  // ── Refresh role permissions (call after saving changes) ────────────────────
+
+  const refreshRolePermissions = useCallback(async () => {
+    setRolePermissions(await getRolePermissions());
   }, []);
 
   // ── Login ───────────────────────────────────────────────────────────────────
@@ -130,16 +149,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
   }, []);
 
-  // ── Permission helpers ──────────────────────────────────────────────────────
+  // ── Permission helpers — usa o mapa dinâmico do perfil do usuário ───────────
 
   const hasPermission = useCallback(
-    (permission: Permission) => currentUser?.permissions.includes(permission) ?? false,
-    [currentUser],
+    (permission: Permission): boolean => {
+      if (!currentUser) return false;
+      const perms = rolePermissions[currentUser.role as UserRole];
+      return perms?.includes(permission) ?? false;
+    },
+    [currentUser, rolePermissions],
   );
 
   const hasAnyPermission = useCallback(
-    (permissions: Permission[]) => permissions.some(p => currentUser?.permissions.includes(p) ?? false),
-    [currentUser],
+    (permissions: Permission[]): boolean => {
+      if (!currentUser) return false;
+      const perms = rolePermissions[currentUser.role as UserRole] ?? [];
+      return permissions.some(p => perms.includes(p));
+    },
+    [currentUser, rolePermissions],
   );
 
   // ── Value ───────────────────────────────────────────────────────────────────
@@ -149,8 +176,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     isAuthenticated: currentUser !== null && session !== null,
+    rolePermissions,
     login,
     logout,
+    refreshRolePermissions,
     hasPermission,
     hasAnyPermission,
   };
