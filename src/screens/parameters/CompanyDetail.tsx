@@ -9,8 +9,96 @@ import { Company, Unit, Sector, StandardJobRole } from '../../types';
 import {
   Building2, MapPin, Layers, Briefcase,
   Edit, Trash2, ChevronLeft, CheckCircle, XCircle, Save, X,
-  List, GitBranch,
+  List, GitBranch, Plus, Shield, Wrench,
 } from 'lucide-react';
+
+// ── CatalogMultiSelect (reutilizado em FuncoesTab) ────────────────────────────
+
+interface CatalogItem { id: string; name: string; active: boolean; }
+
+function CatalogMultiSelect({
+  label, icon, items, selectedIds, onChange,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  items: CatalogItem[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const active = items.filter(i => i.active);
+  const filtered = active.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+  const selectedItems = items.filter(i => selectedIds.includes(i.id));
+  const toggle = (id: string) =>
+    onChange(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]);
+
+  return (
+    <FormGroup label={label}>
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selectedItems.map(item => (
+            <span key={item.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium">
+              {item.name}
+              <button type="button" onClick={() => toggle(item.id)} className="hover:text-teal-900 leading-none">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => { setOpen(o => !o); setSearch(''); }}
+          className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-500 hover:border-teal-400 hover:text-teal-600 transition-colors bg-white"
+        >
+          <span className="flex items-center gap-2">{icon} Selecionar {label.toLowerCase()}...</span>
+          <Plus className="w-4 h-4" />
+        </button>
+        {open && (
+          <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+            <div className="p-2 border-b border-slate-100">
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar..."
+                className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+              />
+            </div>
+            <ul className="max-h-44 overflow-y-auto">
+              {filtered.length === 0 && <li className="px-3 py-2 text-xs text-slate-400">Nenhum item encontrado.</li>}
+              {filtered.map(item => {
+                const isSel = selectedIds.includes(item.id);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(item.id)}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${isSel ? 'bg-teal-50 text-teal-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${isSel ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300'}`}>
+                        {isSel && '✓'}
+                      </span>
+                      {item.name}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </FormGroup>
+  );
+}
 
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
@@ -716,10 +804,10 @@ const OrgChart: React.FC<{
 
 // ── Funções Padrão ───────────────────────────────────────────────────────────
 
-const EMPTY_ROLE: Omit<StandardJobRole, 'id'> = { companyId: '', sectorId: '', parentRoleId: '', name: '', cbo: '', description: '', active: true };
+const EMPTY_ROLE: Omit<StandardJobRole, 'id'> = { companyId: '', sectorId: '', parentRoleId: '', name: '', cbo: '', description: '', active: true, epiIds: [], equipmentIds: [] };
 
 const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
-  const { jobRoles, addJobRole, updateJobRole, deleteJobRole, sectors } = useAET();
+  const { jobRoles, addJobRole, updateJobRole, deleteJobRole, sectors, epis, equipment } = useAET();
   const companyRoles = jobRoles.filter(r => r.companyId === companyId);
   const companySectors = sectors.filter(s => s.companyId === companyId);
   const [modalOpen, setModalOpen] = useState(false);
@@ -729,7 +817,7 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
   const set = (field: keyof Omit<StandardJobRole, 'id'>, value: any) => setForm(f => ({ ...f, [field]: value }));
 
   const openNew = () => { setEditingId(null); setForm({ ...EMPTY_ROLE, companyId }); setModalOpen(true); };
-  const openEdit = (r: StandardJobRole) => { setEditingId(r.id); setForm({ ...r }); setModalOpen(true); };
+  const openEdit = (r: StandardJobRole) => { setEditingId(r.id); setForm({ ...r, epiIds: r.epiIds ?? [], equipmentIds: r.equipmentIds ?? [] }); setModalOpen(true); };
   const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_ROLE, companyId }); };
 
   const handleSave = async () => {
@@ -807,6 +895,23 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
           <FormGroup label="Descrição Padrão">
             <Textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Descreva resumidamente as atribuições da função" />
           </FormGroup>
+
+          <CatalogMultiSelect
+            label="EPIs vinculados"
+            icon={<Shield className="w-3.5 h-3.5" />}
+            items={epis}
+            selectedIds={form.epiIds ?? []}
+            onChange={ids => set('epiIds', ids)}
+          />
+
+          <CatalogMultiSelect
+            label="Equipamentos vinculados"
+            icon={<Wrench className="w-3.5 h-3.5" />}
+            items={equipment}
+            selectedIds={form.equipmentIds ?? []}
+            onChange={ids => set('equipmentIds', ids)}
+          />
+
           <FormGroup label="Status">
             <Select value={form.active ? 'true' : 'false'} onChange={e => set('active', e.target.value === 'true')}>
               <option value="true">Ativo</option>
@@ -865,6 +970,20 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
                         {r.parentRoleId && (() => { const chain = ancestorChain(r.id); return chain.length > 0 && <span className="stat-badge !text-[11px] !px-2 !py-0.5 !bg-amber-50 !text-amber-600 !border-amber-200">↳ {chain.join(' › ')}</span>; })()}
                       </div>
                       {r.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{r.description}</p>}
+                      {((r.epiIds?.length ?? 0) > 0 || (r.equipmentIds?.length ?? 0) > 0) && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(r.epiIds ?? []).map(id => { const e = epis.find(x => x.id === id); return e ? (
+                            <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-700">
+                              <Shield className="w-2.5 h-2.5" />{e.name}
+                            </span>
+                          ) : null; })}
+                          {(r.equipmentIds ?? []).map(id => { const e = equipment.find(x => x.id === id); return e ? (
+                            <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-700">
+                              <Wrench className="w-2.5 h-2.5" />{e.name}
+                            </span>
+                          ) : null; })}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-1 ml-3 shrink-0">
                       <Button variant="ghost" size="sm" className="!rounded-lg" onClick={() => openEdit(r)}>

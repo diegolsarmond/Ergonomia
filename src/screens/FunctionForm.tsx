@@ -423,15 +423,31 @@ export const FunctionForm = () => {
             const handleApplyJobRole = (roleId: string) => {
               const role = companyJobRoles.find(r => r.id === roleId);
               if (!role) return;
-              
+
               const sector = companySectors.find(s => s.id === role.sectorId);
               const unit = sector ? companyUnits.find(u => u.id === sector.unitId) : null;
-              
+
+              // Pre-fill EPIs and equipment from linked catalog items
+              const roleEpis = (role.epiIds ?? [])
+                .map(id => epis.find(e => e.id === id))
+                .filter(Boolean) as typeof epis;
+              const roleEquip = (role.equipmentIds ?? [])
+                .map(id => equipment.find(e => e.id === id))
+                .filter(Boolean) as typeof equipment;
+
               setFormData(prev => ({
                 ...prev,
                 name: role.name,
                 sector: sector ? sector.name : prev.sector,
                 unit: unit ? unit.name : prev.unit,
+                usesEPI: roleEpis.length > 0 || prev.usesEPI,
+                epiList: roleEpis.length > 0
+                  ? roleEpis.map(e => ({ id: e.id, name: e.name, mandatory: false, occasional: false, location: '', observations: '' }))
+                  : prev.epiList,
+                usesEquipment: roleEquip.length > 0 || prev.usesEquipment,
+                equipmentList: roleEquip.length > 0
+                  ? roleEquip.map(e => ({ id: e.id, name: e.name, quantity: '', dimensions: '', principle: '', condition: '', observations: '' }))
+                  : prev.equipmentList,
               }));
             };
 

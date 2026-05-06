@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useAET } from '../context/AETContext';
@@ -45,11 +45,192 @@ const ASSESSMENT_OPTIONS: { value: BiomechanicalAssessment; label: string; color
 
 const PSYCHOSOCIAL_SCALE = ['', '1', '2', '3', '4', '5'];
 
+// ── CatalogMultiSelect ────────────────────────────────────────────────────────
+
+interface CatalogItem { id: string; name: string; active: boolean; }
+
+interface CatalogMultiSelectProps {
+  label: string;
+  items: CatalogItem[];
+  value: string;          // comma-separated names
+  onChange: (v: string) => void;
+  onAddNew: (name: string) => Promise<void>;
+  placeholder?: string;
+}
+
+const CatalogMultiSelect: React.FC<CatalogMultiSelectProps> = ({ label, items, value, onChange, onAddNew, placeholder }) => {
+  const selected = value.split(', ').filter(Boolean);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [addingNew, setAddingNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const activeItems = items.filter(i => i.active);
+  const filtered = activeItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+
+  const toggle = (name: string) => {
+    const cur = value.split(', ').filter(Boolean);
+    const nxt = cur.includes(name) ? cur.filter(v => v !== name) : [...cur, name];
+    onChange(nxt.join(', '));
+  };
+
+  const handleAddNew = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    await onAddNew(trimmed);
+    const cur = value.split(', ').filter(Boolean);
+    onChange([...cur, trimmed].join(', '));
+    setNewName('');
+    setAddingNew(false);
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Selected chips */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map(name => (
+            <span key={name} className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium">
+              {name}
+              <button type="button" onClick={() => toggle(name)} className="hover:text-teal-900 leading-none">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown trigger */}
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => { setOpen(o => !o); setSearch(''); setAddingNew(false); }}
+          className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-500 hover:border-teal-400 hover:text-teal-600 transition-colors bg-white"
+        >
+          <span>{placeholder ?? `Selecionar ${label.toLowerCase()}...`}</span>
+          <Plus className="w-4 h-4" />
+        </button>
+
+        {open && (
+          <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+            {/* Search */}
+            <div className="p-2 border-b border-slate-100">
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar..."
+                className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+              />
+            </div>
+
+            {/* List */}
+            <ul className="max-h-48 overflow-y-auto">
+              {filtered.length === 0 && (
+                <li className="px-3 py-2 text-xs text-slate-400">Nenhum item encontrado.</li>
+              )}
+              {filtered.map(item => {
+                const isSel = selected.includes(item.name);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(item.name)}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${isSel ? 'bg-teal-50 text-teal-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${isSel ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300'}`}>
+                        {isSel && '✓'}
+                      </span>
+                      {item.name}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Add new */}
+            <div className="border-t border-slate-100 p-2">
+              {!addingNew ? (
+                <button
+                  type="button"
+                  onClick={() => setAddingNew(true)}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-teal-600 hover:bg-teal-50 rounded-lg transition-colors font-medium"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Criar novo e adicionar
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddNew(); } if (e.key === 'Escape') setAddingNew(false); }}
+                    placeholder="Nome do novo item..."
+                    className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNew}
+                    disabled={saving || !newName.trim()}
+                    className="px-3 py-1.5 text-xs bg-teal-600 text-white rounded-lg hover:bg-teal-500 disabled:opacity-50 transition-colors"
+                  >
+                    {saving ? '...' : 'Salvar'}
+                  </button>
+                  <button type="button" onClick={() => setAddingNew(false)} className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors">
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   <div className="section-title first:!mt-0">{children}</div>
 );
+
+const ChipSelector = ({ label, value, options, onChange, placeholder }: { label: string; value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) => {
+  const values = value.split(', ').filter(Boolean);
+  return (
+    <FormGroup label={label}>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {options.map(opt => {
+          const selected = values.includes(opt);
+          return (
+            <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+              <Checkbox checked={selected} onChange={() => {
+                const nxt = selected ? values.filter(v => v !== opt) : [...values, opt];
+                onChange(nxt.join(', '));
+              }} />
+              {opt}
+            </label>
+          );
+        })}
+      </div>
+      <Input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </FormGroup>
+  );
+};
 
 function computePsychosocialAverages(answers: PsychosocialQuestion[]) {
   const scored = answers.filter(a => a.score !== '');
@@ -126,7 +307,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const {
     companies, units, sectors, jobRoles,
     addJobRole, addUnit, addSector,
-    epis: epiCatalog, equipment: equipmentCatalog,
+    epis: epiCatalog, addEPI, equipment: equipmentCatalog, addEquipment,
     shifts: shiftCatalog, pauses: pauseCatalog,
     scientificMethodTemplates,
   } = useAET();
@@ -213,9 +394,18 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     if (!role) return;
     const sector = companySectors.find(s => s.id === role.sectorId);
     const unit   = sector ? companyUnits.find(u => u.id === sector.unitId) : null;
+    // Pre-fill EPIs and equipment from the role's linked catalog items
+    const roleEpiNames = (role.epiIds ?? [])
+      .map(id => epiCatalog.find(e => e.id === id)?.name)
+      .filter(Boolean) as string[];
+    const roleEquipNames = (role.equipmentIds ?? [])
+      .map(id => equipmentCatalog.find(e => e.id === id)?.name)
+      .filter(Boolean) as string[];
     setFormData(prev => ({ ...prev, name: role.name }));
-    if (sector) setIdent('sectorArea',  sector.name);
-    if (unit)   setIdent('unitBranch',  unit.name);
+    if (sector) setIdent('sectorArea', sector.name);
+    if (unit)   setIdent('unitBranch', unit.name);
+    if (roleEpiNames.length > 0)   setTools('epis',        roleEpiNames.join(', '));
+    if (roleEquipNames.length > 0) setTools('description', roleEquipNames.join(', '));
   };
 
   const setEnvComfort = (field: keyof AEPFunctionAssessment['biomechanics']['environmentalComfort'], value: string) =>
@@ -550,64 +740,49 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           {activeTab === 1 && (
             <div className="space-y-4">
               <SectionTitle>2.1 Descrição do Processo e Ciclo de Trabalho</SectionTitle>
-              <FormGroup label="Descrição do Processo">
-                <Textarea value={aep.workCharacterization.processDescription} onChange={e => setWork('processDescription', e.target.value)} rows={4} placeholder="Descreva o processo produtivo e as etapas da atividade." />
-              </FormGroup>
-              <FormGroup label="Descrição do Ciclo de Trabalho">
-                <Textarea value={aep.workCharacterization.workCycleDescription} onChange={e => setWork('workCycleDescription', e.target.value)} rows={4} placeholder="Descreva o ciclo de trabalho observado." />
+              <FormGroup label="Descrição">
+                <Textarea value={aep.workCharacterization.processDescription} onChange={e => setWork('processDescription', e.target.value)} rows={6} placeholder="Descreva o processo produtivo e o ciclo de trabalho." />
               </FormGroup>
 
               <SectionTitle>2.2 Organização do Trabalho</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Jornada de Trabalho">
-                  <Input value={aep.workCharacterization.workOrganization.workday} onChange={e => setWorkOrg('workday', e.target.value)} placeholder="Ex: 8h diárias, 44h semanais" />
-                </FormGroup>
+                <ChipSelector
+                  label="Jornada de Trabalho"
+                  value={aep.workCharacterization.workOrganization.workday}
+                  onChange={v => setWorkOrg('workday', v)}
+                  options={['6h/Dia', '8h/Dia', '12h/Dia', 'Outro']}
+                  placeholder="Descreva a jornada..."
+                />
                 <FormGroup label="Escala / Turno">
-                  {shiftCatalog.filter(s => s.active).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {shiftCatalog.filter(s => s.active).map(s => {
-                        const selected = aep.workCharacterization.workOrganization.scale.split(', ').includes(s.name);
-                        return (
-                          <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                            <Checkbox checked={selected} onChange={() => {
-                              const cur = aep.workCharacterization.workOrganization.scale.split(', ').filter(Boolean);
-                              const nxt = selected ? cur.filter(v => v !== s.name) : [...cur, s.name];
-                              setWorkOrg('scale', nxt.join(', '));
-                            }} />
-                            {s.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <Input value={aep.workCharacterization.workOrganization.scale} onChange={e => setWorkOrg('scale', e.target.value)} placeholder="Ex: Segunda a sexta, turno diurno" />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {shiftCatalog.filter(s => s.active).map(s => {
+                      const selected = aep.workCharacterization.workOrganization.scale.split(', ').includes(s.name);
+                      return (
+                        <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox checked={selected} onChange={() => {
+                            const cur = aep.workCharacterization.workOrganization.scale.split(', ').filter(Boolean);
+                            const nxt = selected ? cur.filter(v => v !== s.name) : [...cur, s.name];
+                            setWorkOrg('scale', nxt.join(', '));
+                          }} />
+                          {s.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <Input value={aep.workCharacterization.workOrganization.scale} onChange={e => setWorkOrg('scale', e.target.value)} placeholder="Ex: 6x1, 5x2, 12x36..." />
                 </FormGroup>
                 <FormGroup label="Horas Extras">
                   <Input value={aep.workCharacterization.workOrganization.overtime} onChange={e => setWorkOrg('overtime', e.target.value)} placeholder="Ex: Eventualmente" />
                 </FormGroup>
-                <FormGroup label="Intervalo para Refeição">
-                  <Input value={aep.workCharacterization.workOrganization.lunchBreak} onChange={e => setWorkOrg('lunchBreak', e.target.value)} placeholder="Ex: 1 hora" />
-                </FormGroup>
+                <ChipSelector
+                  label="Pausa para o almoço"
+                  value={aep.workCharacterization.workOrganization.lunchBreak}
+                  onChange={v => setWorkOrg('lunchBreak', v)}
+                  options={['60min.', '15min.', 'N/A', 'Outro']}
+                  placeholder="Descreva a pausa..."
+                />
                 <FormGroup label="Outras Pausas">
-                  {pauseCatalog.filter(p => p.active).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {pauseCatalog.filter(p => p.active).map(p => {
-                        const label = p.duration ? `${p.name} (${p.duration} ${p.durationUnit})` : p.name;
-                        const selected = aep.workCharacterization.workOrganization.otherBreaks.includes(p.name);
-                        return (
-                          <label key={p.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                            <Checkbox checked={selected} onChange={() => {
-                              const cur = aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(Boolean);
-                              const nxt = selected ? cur.filter(v => v !== p.name) : [...cur, label];
-                              setWorkOrg('otherBreaks', nxt.join(', '));
-                            }} />
-                            {label}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Ex: 2 pausas de 10 min" />
+                  <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Descreva outras pausas existentes..." />
                 </FormGroup>
                 <FormGroup label="Rodízio de Tarefas">
                   <Input value={aep.workCharacterization.workOrganization.taskRotation} onChange={e => setWorkOrg('taskRotation', e.target.value)} placeholder="Ex: Não há rodízio formalizado" />
@@ -617,46 +792,62 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 <Input value={aep.workCharacterization.workOrganization.safetyDialogues} onChange={e => setWorkOrg('safetyDialogues', e.target.value)} placeholder="Ex: Semanal" />
               </FormGroup>
 
-              <SectionTitle>2.3 Ferramentas e Materiais</SectionTitle>
-              <FormGroup label="Descrição de Ferramentas e Materiais">
-                {equipmentCatalog.filter(e => e.active).length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {equipmentCatalog.filter(e => e.active).map(e => {
-                      const selected = aep.workCharacterization.toolsAndMaterials.description.includes(e.name);
-                      return (
-                        <label key={e.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.toolsAndMaterials.description.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== e.name) : [...cur, e.name];
-                            setTools('description', nxt.join(', '));
-                          }} />
-                          {e.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-                <Textarea value={aep.workCharacterization.toolsAndMaterials.description} onChange={e => setTools('description', e.target.value)} rows={3} placeholder="Liste as ferramentas, equipamentos e materiais utilizados." />
+              <SectionTitle>2.3 Equipamentos e EPIs</SectionTitle>
+              <FormGroup label="Equipamentos Utilizados">
+                <CatalogMultiSelect
+                  label="Equipamentos"
+                  items={equipmentCatalog}
+                  value={aep.workCharacterization.toolsAndMaterials.description}
+                  onChange={v => setTools('description', v)}
+                  onAddNew={async name => {
+                    await addEquipment({ name, category: '', operation: [], description: '', hasDimensions: false, active: true });
+                  }}
+                  placeholder="Selecionar equipamentos do catálogo..."
+                />
+                <Input
+                  className="mt-2"
+                  value={(() => {
+                    const catalogNames = equipmentCatalog.map(e => e.name);
+                    return aep.workCharacterization.toolsAndMaterials.description
+                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                  })()}
+                  onChange={e => {
+                    const catalogNames = equipmentCatalog.map(eq => eq.name);
+                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.description
+                      .split(', ').filter(n => n && catalogNames.includes(n));
+                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    setTools('description', [...fromCatalog, ...extra].join(', '));
+                  }}
+                  placeholder="Outros equipamentos (não cadastrados), separados por vírgula..."
+                />
               </FormGroup>
               <FormGroup label="EPIs Utilizados">
-                {epiCatalog.filter(e => e.active).length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {epiCatalog.filter(e => e.active).map(e => {
-                      const selected = aep.workCharacterization.toolsAndMaterials.epis.includes(e.name);
-                      return (
-                        <label key={e.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.toolsAndMaterials.epis.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== e.name) : [...cur, e.name];
-                            setTools('epis', nxt.join(', '));
-                          }} />
-                          {e.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-                <Textarea value={aep.workCharacterization.toolsAndMaterials.epis} onChange={e => setTools('epis', e.target.value)} rows={2} placeholder="Ex: Calçado de segurança, luvas, óculos..." />
+                <CatalogMultiSelect
+                  label="EPIs"
+                  items={epiCatalog}
+                  value={aep.workCharacterization.toolsAndMaterials.epis}
+                  onChange={v => setTools('epis', v)}
+                  onAddNew={async name => {
+                    await addEPI({ name, type: '', description: '', mandatoryByDefault: false, active: true });
+                  }}
+                  placeholder="Selecionar EPIs do catálogo..."
+                />
+                <Input
+                  className="mt-2"
+                  value={(() => {
+                    const catalogNames = epiCatalog.map(e => e.name);
+                    return aep.workCharacterization.toolsAndMaterials.epis
+                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                  })()}
+                  onChange={e => {
+                    const catalogNames = epiCatalog.map(ep => ep.name);
+                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.epis
+                      .split(', ').filter(n => n && catalogNames.includes(n));
+                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    setTools('epis', [...fromCatalog, ...extra].join(', '));
+                  }}
+                  placeholder="Outros EPIs (não cadastrados), separados por vírgula..."
+                />
               </FormGroup>
               <FormGroup label="Outros Recursos">
                 <Input value={aep.workCharacterization.toolsAndMaterials.others} onChange={e => setTools('others', e.target.value)} />
