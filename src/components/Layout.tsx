@@ -107,8 +107,8 @@ export const Layout = () => {
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Projetos</p>
           <div className="space-y-0.5">
-            <NavLink to="/aep" icon={FileText} label="Projetos AEP" active={location.pathname === '/aep'} accent="amber" />
-            <NavLink to="/aet" icon={BookOpen} label="Projetos AET" active={location.pathname === '/aet'} />
+            <NavLink to="/aep" icon={FileText} label="Análise Preliminar - AEP" active={location.pathname === '/aep'} accent="amber" />
+            <NavLink to="/aet" icon={BookOpen} label="Análise do Trabalho - AET" active={location.pathname === '/aet'} />
           </div>
 
           {(hasPermission('USERS_VIEW') || hasPermission('SETTINGS_VIEW')) && (
