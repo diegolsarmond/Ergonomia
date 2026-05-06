@@ -53,7 +53,11 @@ export function normalizeFunction(raw: any): AETFunction {
     requiresAETJustification: base.requiresAETJustification ?? '',
     // Structured AEP assessment — merge with defaults so old functions get the full shape
     aep: base.aep
-      ? { ...createEmptyAEPFunctionAssessment(), ...base.aep }
+      ? {
+          ...createEmptyAEPFunctionAssessment(),
+          ...base.aep,
+          illuminanceMeasurements: Array.isArray(base.aep?.illuminanceMeasurements) ? base.aep.illuminanceMeasurements : [],
+        }
       : createEmptyAEPFunctionAssessment(),
   };
 }

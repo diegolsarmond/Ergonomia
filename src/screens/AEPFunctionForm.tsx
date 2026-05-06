@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
 import { ImageUpload } from '../components/ImageUpload';
+import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
 import type {
   AETFunction,
   AETProject,
@@ -775,6 +776,14 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   <ImageUpload value={tool.imageDataUrl || ''} onChange={url => updateTool(idx, 'imageDataUrl', url)} label="Imagem do resultado" />
                 </div>
               ))}
+
+              {/* ── 5b. Medições de Iluminância ── */}
+              <div className="mt-8 pt-6 border-t border-slate-200">
+                <IlluminanceMeasurementPanel
+                  measurements={aep.illuminanceMeasurements || []}
+                  onChange={(measurements) => setAep(a => ({ ...a, illuminanceMeasurements: measurements }))}
+                />
+              </div>
             </div>
           )}
 

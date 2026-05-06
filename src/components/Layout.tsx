@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FileText, BookOpen, ChevronDown, ChevronRight, Settings,
-  List, FlaskConical, Building2,
+  List, FlaskConical, Building2, Lightbulb,
   HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +31,7 @@ const PARAM_GROUPS = [
       { to: '/parameters/scientific-methods', icon: FlaskConical, label: 'Métodos Científicos' },
       { to: '/parameters/risk-classifications', icon: AlertTriangle, label: 'Classificação de Risco' },
       { to: '/parameters/report-texts', icon: FileText, label: 'Textos Padrão' },
+      { to: '/parameters/illuminance-norms', icon: Lightbulb, label: 'Parâmetros de Iluminância' },
     ],
   },
 ];
