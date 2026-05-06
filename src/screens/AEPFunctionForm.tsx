@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useAET } from '../context/AETContext';
@@ -45,6 +45,160 @@ const ASSESSMENT_OPTIONS: { value: BiomechanicalAssessment; label: string; color
 ];
 
 const PSYCHOSOCIAL_SCALE = ['', '1', '2', '3', '4', '5'];
+
+// ── CatalogMultiSelect ────────────────────────────────────────────────────────
+
+interface CatalogItem { id: string; name: string; active: boolean; }
+
+interface CatalogMultiSelectProps {
+  label: string;
+  items: CatalogItem[];
+  value: string;          // comma-separated names
+  onChange: (v: string) => void;
+  onAddNew: (name: string) => Promise<void>;
+  placeholder?: string;
+}
+
+const CatalogMultiSelect: React.FC<CatalogMultiSelectProps> = ({ label, items, value, onChange, onAddNew, placeholder }) => {
+  const selected = value.split(', ').filter(Boolean);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [addingNew, setAddingNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const activeItems = items.filter(i => i.active);
+  const filtered = activeItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+
+  const toggle = (name: string) => {
+    const cur = value.split(', ').filter(Boolean);
+    const nxt = cur.includes(name) ? cur.filter(v => v !== name) : [...cur, name];
+    onChange(nxt.join(', '));
+  };
+
+  const handleAddNew = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    await onAddNew(trimmed);
+    const cur = value.split(', ').filter(Boolean);
+    onChange([...cur, trimmed].join(', '));
+    setNewName('');
+    setAddingNew(false);
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Selected chips */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map(name => (
+            <span key={name} className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium">
+              {name}
+              <button type="button" onClick={() => toggle(name)} className="hover:text-teal-900 leading-none">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown trigger */}
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => { setOpen(o => !o); setSearch(''); setAddingNew(false); }}
+          className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-500 hover:border-teal-400 hover:text-teal-600 transition-colors bg-white"
+        >
+          <span>{placeholder ?? `Selecionar ${label.toLowerCase()}...`}</span>
+          <Plus className="w-4 h-4" />
+        </button>
+
+        {open && (
+          <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+            {/* Search */}
+            <div className="p-2 border-b border-slate-100">
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar..."
+                className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+              />
+            </div>
+
+            {/* List */}
+            <ul className="max-h-48 overflow-y-auto">
+              {filtered.length === 0 && (
+                <li className="px-3 py-2 text-xs text-slate-400">Nenhum item encontrado.</li>
+              )}
+              {filtered.map(item => {
+                const isSel = selected.includes(item.name);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(item.name)}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${isSel ? 'bg-teal-50 text-teal-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${isSel ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300'}`}>
+                        {isSel && '✓'}
+                      </span>
+                      {item.name}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Add new */}
+            <div className="border-t border-slate-100 p-2">
+              {!addingNew ? (
+                <button
+                  type="button"
+                  onClick={() => setAddingNew(true)}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-teal-600 hover:bg-teal-50 rounded-lg transition-colors font-medium"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Criar novo e adicionar
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddNew(); } if (e.key === 'Escape') setAddingNew(false); }}
+                    placeholder="Nome do novo item..."
+                    className="flex-1 px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNew}
+                    disabled={saving || !newName.trim()}
+                    className="px-3 py-1.5 text-xs bg-teal-600 text-white rounded-lg hover:bg-teal-500 disabled:opacity-50 transition-colors"
+                  >
+                    {saving ? '...' : 'Salvar'}
+                  </button>
+                  <button type="button" onClick={() => setAddingNew(false)} className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors">
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -154,7 +308,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const {
     companies, units, sectors, jobRoles,
     addJobRole, addUnit, addSector,
-    epis: epiCatalog, equipment: equipmentCatalog,
+    epis: epiCatalog, addEPI, equipment: equipmentCatalog, addEquipment,
     shifts: shiftCatalog, pauses: pauseCatalog,
     scientificMethodTemplates,
   } = useAET();
@@ -635,46 +789,30 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 <Input value={aep.workCharacterization.workOrganization.safetyDialogues} onChange={e => setWorkOrg('safetyDialogues', e.target.value)} placeholder="Ex: Semanal" />
               </FormGroup>
 
-              <SectionTitle>2.3 Ferramentas e Materiais</SectionTitle>
-              <FormGroup label="Descrição de Ferramentas e Materiais">
-                {equipmentCatalog.filter(e => e.active).length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {equipmentCatalog.filter(e => e.active).map(e => {
-                      const selected = aep.workCharacterization.toolsAndMaterials.description.includes(e.name);
-                      return (
-                        <label key={e.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.toolsAndMaterials.description.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== e.name) : [...cur, e.name];
-                            setTools('description', nxt.join(', '));
-                          }} />
-                          {e.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-                <Textarea value={aep.workCharacterization.toolsAndMaterials.description} onChange={e => setTools('description', e.target.value)} rows={3} placeholder="Liste as ferramentas, equipamentos e materiais utilizados." />
+              <SectionTitle>2.3 Equipamentos Utilizados</SectionTitle>
+              <FormGroup label="Equipamentos Utilizados">
+                <CatalogMultiSelect
+                  label="Equipamentos"
+                  items={equipmentCatalog}
+                  value={aep.workCharacterization.toolsAndMaterials.description}
+                  onChange={v => setTools('description', v)}
+                  onAddNew={async name => {
+                    await addEquipment({ name, category: '', operation: [], description: '', hasDimensions: false, active: true });
+                  }}
+                  placeholder="Selecionar equipamentos..."
+                />
               </FormGroup>
               <FormGroup label="EPIs Utilizados">
-                {epiCatalog.filter(e => e.active).length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {epiCatalog.filter(e => e.active).map(e => {
-                      const selected = aep.workCharacterization.toolsAndMaterials.epis.includes(e.name);
-                      return (
-                        <label key={e.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-xs transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.toolsAndMaterials.epis.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== e.name) : [...cur, e.name];
-                            setTools('epis', nxt.join(', '));
-                          }} />
-                          {e.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-                <Textarea value={aep.workCharacterization.toolsAndMaterials.epis} onChange={e => setTools('epis', e.target.value)} rows={2} placeholder="Ex: Calçado de segurança, luvas, óculos..." />
+                <CatalogMultiSelect
+                  label="EPIs"
+                  items={epiCatalog}
+                  value={aep.workCharacterization.toolsAndMaterials.epis}
+                  onChange={v => setTools('epis', v)}
+                  onAddNew={async name => {
+                    await addEPI({ name, type: '', description: '', mandatoryByDefault: false, active: true });
+                  }}
+                  placeholder="Selecionar EPIs..."
+                />
               </FormGroup>
               <FormGroup label="Outros Recursos">
                 <Input value={aep.workCharacterization.toolsAndMaterials.others} onChange={e => setTools('others', e.target.value)} />
