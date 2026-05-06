@@ -27,6 +27,7 @@ export function normalizeFunction(raw: any): AETFunction {
   const base = { ...EMPTY_FUNCTION, ...(raw ?? {}) };
   return {
     ...base,
+    analysisDate: base.analysisDate || new Date().toISOString().split('T')[0],
     // Always arrays
     risks:            Array.isArray(base.risks)            ? base.risks            : [],
     improvements:     Array.isArray(base.improvements)     ? base.improvements     : [],

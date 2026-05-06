@@ -19,7 +19,7 @@ interface Props {
 
 export const Dashboard: React.FC<Props> = ({ reportType }) => {
   const { projects, companies, units, loading, addProject, deleteProject, importProjectJSON } = useAET();
-  const { hasPermission } = useAuth();
+  const { hasPermission, currentUser } = useAuth();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
     reportType,
     companyName: '', fantasyName: '', cnpj: '', address: '', unit: '', product: '',
     riskDegree: '', location: '',
-    evaluatorName: '', evaluatorFormation: '', evaluatorCrefito: '', evaluatorCompany: '',
+    evaluatorName: currentUser?.name ?? '', evaluatorFormation: currentUser?.formation ?? '', evaluatorCrefito: currentUser?.crefito ?? '', evaluatorCompany: 'Ergominas',
     date: new Date().toISOString().split('T')[0],
     consultoriaLogoDataUrl: '', companyLogoDataUrl: '', responsibleLogoDataUrl: '', evaluatorSignatureDataUrl: '',
     ...introDefaults(reportType),
@@ -49,23 +49,17 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
     DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA,
   ];
 
-  const handleReportTypeChange = (newType: ReportType) => {
-    const isDefault = (v: string) => ALL_DEFAULTS.includes(v);
-    const d = introDefaults(newType);
-    setFormData(prev => ({
-      ...prev,
-      reportType:       newType,
-      introErgonomia:   isDefault(prev.introErgonomia)   ? d.introErgonomia   : prev.introErgonomia,
-      introObjetivo:    isDefault(prev.introObjetivo)    ? d.introObjetivo    : prev.introObjetivo,
-      introMetodologia: isDefault(prev.introMetodologia) ? d.introMetodologia : prev.introMetodologia,
-    }));
-  };
+
 
   const openNewProjectModal = () => {
     setFormData(prev => ({
       ...prev,
       reportType,
       ...introDefaults(reportType),
+      evaluatorName: currentUser?.name ?? '',
+      evaluatorFormation: currentUser?.formation ?? '',
+      evaluatorCrefito: currentUser?.crefito ?? '',
+      evaluatorCompany: 'Ergominas',
     }));
     setSelectedCompanyId('');
     setIsModalOpen(true);
@@ -237,16 +231,12 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreate} className="space-y-4">
-                <FormGroup label="Tipo de Relatório" required>
-                  <select
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
-                    value={formData.reportType}
-                    onChange={e => handleReportTypeChange(e.target.value as ReportType)}
-                    required
-                  >
-                    <option value="AET">AET – Análise Ergonômica do Trabalho</option>
-                    <option value="AEP">AEP – Análise Ergonômica Preliminar</option>
-                  </select>
+                <FormGroup label="Tipo de Relatório">
+                  <Input 
+                    value={formData.reportType === 'AEP' ? 'AEP – Análise Ergonômica Preliminar' : 'AET – Análise Ergonômica do Trabalho'} 
+                    disabled 
+                    className="bg-slate-50 text-slate-500 font-medium cursor-not-allowed"
+                  />
                 </FormGroup>
 
                 <FormGroup label="Selecionar Cliente Cadastrado">
@@ -353,7 +343,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
                     <Input value={formData.evaluatorFormation} onChange={e => f('evaluatorFormation', e.target.value)} placeholder="Ex: Fisioterapeuta" />
                   </FormGroup>
                   <FormGroup label="Empresa / Consultoria">
-                    <Input value={formData.evaluatorCompany} onChange={e => f('evaluatorCompany', e.target.value)} />
+                    <Input value={formData.evaluatorCompany} readOnly className="bg-slate-50 text-slate-500 cursor-not-allowed" />
                   </FormGroup>
                 </div>
                 <FormGroup label="Data da Análise">
