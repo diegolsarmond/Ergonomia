@@ -395,9 +395,18 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     if (!role) return;
     const sector = companySectors.find(s => s.id === role.sectorId);
     const unit   = sector ? companyUnits.find(u => u.id === sector.unitId) : null;
+    // Pre-fill EPIs and equipment from the role's linked catalog items
+    const roleEpiNames = (role.epiIds ?? [])
+      .map(id => epiCatalog.find(e => e.id === id)?.name)
+      .filter(Boolean) as string[];
+    const roleEquipNames = (role.equipmentIds ?? [])
+      .map(id => equipmentCatalog.find(e => e.id === id)?.name)
+      .filter(Boolean) as string[];
     setFormData(prev => ({ ...prev, name: role.name }));
-    if (sector) setIdent('sectorArea',  sector.name);
-    if (unit)   setIdent('unitBranch',  unit.name);
+    if (sector) setIdent('sectorArea', sector.name);
+    if (unit)   setIdent('unitBranch', unit.name);
+    if (roleEpiNames.length > 0)   setTools('epis',        roleEpiNames.join(', '));
+    if (roleEquipNames.length > 0) setTools('description', roleEquipNames.join(', '));
   };
 
   const setEnvComfort = (field: keyof AEPFunctionAssessment['biomechanics']['environmentalComfort'], value: string) =>
@@ -789,7 +798,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 <Input value={aep.workCharacterization.workOrganization.safetyDialogues} onChange={e => setWorkOrg('safetyDialogues', e.target.value)} placeholder="Ex: Semanal" />
               </FormGroup>
 
-              <SectionTitle>2.3 Equipamentos Utilizados</SectionTitle>
+              <SectionTitle>2.3 Equipamentos e EPIs</SectionTitle>
               <FormGroup label="Equipamentos Utilizados">
                 <CatalogMultiSelect
                   label="Equipamentos"
@@ -799,7 +808,23 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   onAddNew={async name => {
                     await addEquipment({ name, category: '', operation: [], description: '', hasDimensions: false, active: true });
                   }}
-                  placeholder="Selecionar equipamentos..."
+                  placeholder="Selecionar equipamentos do catálogo..."
+                />
+                <Input
+                  className="mt-2"
+                  value={(() => {
+                    const catalogNames = equipmentCatalog.map(e => e.name);
+                    return aep.workCharacterization.toolsAndMaterials.description
+                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                  })()}
+                  onChange={e => {
+                    const catalogNames = equipmentCatalog.map(eq => eq.name);
+                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.description
+                      .split(', ').filter(n => n && catalogNames.includes(n));
+                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    setTools('description', [...fromCatalog, ...extra].join(', '));
+                  }}
+                  placeholder="Outros equipamentos (não cadastrados), separados por vírgula..."
                 />
               </FormGroup>
               <FormGroup label="EPIs Utilizados">
@@ -811,7 +836,23 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   onAddNew={async name => {
                     await addEPI({ name, type: '', description: '', mandatoryByDefault: false, active: true });
                   }}
-                  placeholder="Selecionar EPIs..."
+                  placeholder="Selecionar EPIs do catálogo..."
+                />
+                <Input
+                  className="mt-2"
+                  value={(() => {
+                    const catalogNames = epiCatalog.map(e => e.name);
+                    return aep.workCharacterization.toolsAndMaterials.epis
+                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                  })()}
+                  onChange={e => {
+                    const catalogNames = epiCatalog.map(ep => ep.name);
+                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.epis
+                      .split(', ').filter(n => n && catalogNames.includes(n));
+                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    setTools('epis', [...fromCatalog, ...extra].join(', '));
+                  }}
+                  placeholder="Outros EPIs (não cadastrados), separados por vírgula..."
                 />
               </FormGroup>
               <FormGroup label="Outros Recursos">

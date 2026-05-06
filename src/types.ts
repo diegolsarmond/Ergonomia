@@ -60,6 +60,8 @@ export interface StandardJobRole {
   cbo: string;
   description: string;
   active: boolean;
+  epiIds?: string[];
+  equipmentIds?: string[];
 }
 
 export interface EPI {
