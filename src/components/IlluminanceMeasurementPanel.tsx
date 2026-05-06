@@ -19,12 +19,15 @@ import {
 } from 'lucide-react';
 import { useAET } from '../context/AETContext';
 import type { IlluminanceMeasurement } from '../types';
-import type { IlluminanceNormativeParameter } from '../domain/illuminance/illuminanceTypes';
+import type { IlluminanceNormativeParameter, MeasurementRowType } from '../domain/illuminance/illuminanceTypes';
 import {
   createEmptyIlluminanceMeasurement,
-  createEmptyGridPoints,
+  generateFixedRows,
+  GEOMETRY_LABELS,
 } from '../domain/illuminance/illuminanceTypes';
-import { calculateAndEvaluateFromGridPoints } from '../domain/illuminance/illuminanceCalculator';
+import { calculateAndEvaluate } from '../domain/illuminance/illuminanceCalculator';
+
+const MAX_COLS = 8;
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -156,7 +159,10 @@ interface MeasurementCardProps {
 const MeasurementCard: React.FC<MeasurementCardProps> = ({
   measurement: m, index, expanded, onToggle, onUpdate, onRemove, onDuplicate, normativeParams,
 }) => {
-  // ── Auto-calculate on changes ─────────────────────────────────────────────
+  const N = m.gridParameters.N;
+  const M = m.gridParameters.M;
+
+  // ── Calculation ───────────────────────────────────────────────────────────
 
   const selectedNorm = useMemo(
     () => normativeParams.find(n => n.id === m.normativeParameterId) ?? null,
@@ -164,40 +170,49 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
   );
 
   const { calculation, evaluation } = useMemo(
-    () => calculateAndEvaluateFromGridPoints(m.gridPoints, m.recommendedMinLux, selectedNorm),
-    [m.gridPoints, m.recommendedMinLux, selectedNorm]
+    () => calculateAndEvaluate(m.measurementRows, m.recommendedMinLux, selectedNorm, m.gridParameters),
+    [m.measurementRows, m.recommendedMinLux, selectedNorm, m.gridParameters]
   );
 
-  // Sync calculated results into measurement whenever they change
   useEffect(() => {
     const calcChanged = JSON.stringify(calculation) !== JSON.stringify(m.calculationResult);
     const evalChanged = JSON.stringify(evaluation) !== JSON.stringify(m.evaluationResult);
-    if (calcChanged || evalChanged) {
-      onUpdate({ calculationResult: calculation, evaluationResult: evaluation });
-    }
+    if (calcChanged || evalChanged) onUpdate({ calculationResult: calculation, evaluationResult: evaluation });
   }, [calculation, evaluation]);
 
-  // ── Grid resize ───────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
-  const handleGridResize = (rows: number, cols: number) => {
-    const r = Math.max(1, Math.min(20, rows));
-    const c = Math.max(1, Math.min(20, cols));
+  const getRow = (type: MeasurementRowType) => m.measurementRows.find(r => r.rowType === type);
+
+  const rowAvg = (type: MeasurementRowType): number | null => {
+    const row = getRow(type);
+    if (!row) return null;
+    const vals = row.values.filter((v, i): v is number =>
+      v !== null && !(row.naFlags?.[i] ?? false)
+    );
+    return vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+  };
+
+  const updateCell = (type: MeasurementRowType, col: number, value: number | null) => {
     onUpdate({
-      gridConfig: { rows: r, cols: c },
-      gridPoints: createEmptyGridPoints(r, c),
+      measurementRows: m.measurementRows.map(row =>
+        row.rowType !== type ? row
+          : { ...row, values: row.values.map((v, i) => i === col ? value : v) }
+      ),
     });
   };
 
-  // ── Grid point update ─────────────────────────────────────────────────────
-
-  const updatePoint = (row: number, col: number, lux: number | null, notApplicable: boolean) => {
-    const newPoints = m.gridPoints.map(p =>
-      p.row === row && p.col === col ? { ...p, lux, notApplicable } : p
-    );
-    onUpdate({ gridPoints: newPoints });
+  const toggleNA = (type: MeasurementRowType, col: number) => {
+    onUpdate({
+      measurementRows: m.measurementRows.map(row => {
+        if (row.rowType !== type) return row;
+        const flags = [...(row.naFlags ?? new Array(MAX_COLS).fill(false))];
+        flags[col] = !flags[col];
+        const values = row.values.map((v, i) => (i === col && flags[col] ? null : v));
+        return { ...row, naFlags: flags, values };
+      }),
+    });
   };
-
-  // ── Apply normative param ─────────────────────────────────────────────────
 
   const handleNormativeSelect = (normId: string) => {
     const norm = normativeParams.find(n => n.id === normId);
@@ -210,6 +225,87 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
   };
 
   const statusLabel = evaluation?.status || (m.formStatus === 'rascunho' ? 'Rascunho' : '');
+
+  // ── Grid row renderer (inline — keeps input focus across re-renders) ───────
+
+  const renderGridRow = (
+    type: MeasurementRowType,
+    label: string,
+    summaryLabel: string,
+    paramLabel?: string,
+    paramValue?: number,
+    onParamChange?: (v: number) => void,
+  ) => {
+    const row = getRow(type);
+    const avg = rowAvg(type);
+    return (
+      <React.Fragment key={type}>
+        {/* Label row */}
+        <tr className="bg-slate-700 text-white">
+          {Array.from({ length: MAX_COLS }, (_, c) => (
+            <td key={c} className="px-2 py-1 text-center text-xs font-semibold border border-slate-600">
+              {label}{c + 1}
+            </td>
+          ))}
+          <td className="px-3 py-1 text-center text-xs font-bold border border-slate-600 bg-slate-600 min-w-[56px]">{summaryLabel}</td>
+          <td className="px-3 py-1 text-center text-xs font-bold border border-slate-600 bg-slate-600 min-w-[56px]">{paramLabel ?? ''}</td>
+        </tr>
+        {/* Value row */}
+        <tr className="bg-white">
+          {Array.from({ length: MAX_COLS }, (_, c) => {
+            const val = row?.values[c] ?? null;
+            const isNA = row?.naFlags?.[c] ?? false;
+            const below = !isNA && calculation && val !== null
+              && calculation.seventyPercentAverage > 0
+              && val < calculation.seventyPercentAverage;
+            return (
+              <td key={c} className="p-0.5 border border-slate-200">
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={0}
+                    value={isNA ? '' : (val ?? '')}
+                    disabled={isNA}
+                    onChange={e => updateCell(type, c, e.target.value === '' ? null : Number(e.target.value))}
+                    placeholder={isNA ? 'N/A' : '—'}
+                    className={`w-full min-w-[60px] rounded border-0 px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 transition-colors ${
+                      isNA   ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : below ? 'bg-red-50 text-red-700 focus:ring-red-400'
+                              : 'bg-white focus:ring-teal-400'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleNA(type, c)}
+                    title={isNA ? 'Tornar aplicável' : 'Marcar como N/A'}
+                    className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center transition-colors cursor-pointer ${
+                      isNA ? 'bg-slate-400 text-white' : 'bg-slate-200 text-slate-400 hover:bg-amber-300 hover:text-amber-800'
+                    }`}
+                  >
+                    {isNA ? '✕' : '—'}
+                  </button>
+                </div>
+              </td>
+            );
+          })}
+          <td className="px-3 py-1.5 text-center text-sm font-bold text-blue-700 border border-slate-200 bg-slate-50">
+            {avg ?? '—'}
+          </td>
+          <td className="p-0.5 border border-slate-200 bg-slate-50">
+            {onParamChange ? (
+              <input
+                type="number"
+                min={1}
+                value={paramValue ?? ''}
+                onChange={e => onParamChange(Number(e.target.value) || 1)}
+                className="w-full text-center text-sm font-bold text-slate-700 bg-transparent focus:outline-none focus:ring-1 focus:ring-teal-400 rounded"
+              />
+            ) : null}
+          </td>
+        </tr>
+      </React.Fragment>
+    );
+  };
 
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -227,7 +323,7 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
               Medição {index + 1}{m.environment ? ` — ${m.environment}` : ''}
             </p>
             <p className="text-[11px] text-slate-400">
-              {m.environmentType || 'Tipo não definido'} · {m.gridConfig.rows}×{m.gridConfig.cols} pontos
+              {m.environmentType || 'Tipo não definido'} · N={N} · M={M}
             </p>
           </div>
         </div>
@@ -256,10 +352,7 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
               <Input value={m.environment} onChange={e => onUpdate({ environment: e.target.value })} placeholder="Ex: Escritório Administrativo" />
             </FormGroup>
             <FormGroup label="Tipo de Ambiente / Atividade">
-              <Select
-                value={m.normativeParameterId}
-                onChange={e => handleNormativeSelect(e.target.value)}
-              >
+              <Select value={m.normativeParameterId} onChange={e => handleNormativeSelect(e.target.value)}>
                 <option value="">Selecione ou digite manualmente...</option>
                 {normativeParams.filter(n => n.active).map(n => (
                   <option key={n.id} value={n.id}>{n.activityDescription} ({n.minimumLux} lux)</option>
@@ -267,6 +360,30 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
               </Select>
             </FormGroup>
           </div>
+
+          {/* ── Geometria do ambiente ── */}
+          <FormGroup label="Configuração do ambiente (define fórmula do IM)" required>
+            <Select
+              value={m.gridParameters.geometryType}
+              onChange={e => onUpdate({ gridParameters: { ...m.gridParameters, geometryType: e.target.value as any } })}
+            >
+              {(Object.entries(GEOMETRY_LABELS) as [string, string][]).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </Select>
+          </FormGroup>
+
+          {m.gridParameters.geometryType === 'A6' && (
+            <div className="grid grid-cols-2 gap-4">
+              <FormGroup label="W — Pontos na largura (> 8)">
+                <Input type="number" min={9} value={m.gridParameters.W || ''} onChange={e => onUpdate({ gridParameters: { ...m.gridParameters, W: Number(e.target.value) || 0 } })} placeholder="Ex: 16" />
+              </FormGroup>
+              <FormGroup label="L — Pontos no comprimento (> 8)">
+                <Input type="number" min={9} value={m.gridParameters.L || ''} onChange={e => onUpdate({ gridParameters: { ...m.gridParameters, L: Number(e.target.value) || 0 } })} placeholder="Ex: 16" />
+              </FormGroup>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-4">
             <FormGroup label="Lux Mínimo Recomendado" required>
               <Input type="number" min={0} value={m.recommendedMinLux || ''} onChange={e => onUpdate({ recommendedMinLux: Number(e.target.value) || 0 })} placeholder="Ex: 500" />
@@ -284,86 +401,29 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
             <div className="flex items-center gap-3 mb-3">
               <Grid3X3 className="w-4 h-4 text-slate-500" />
               <h4 className="text-sm font-semibold text-slate-700">Malha de Medição</h4>
-            </div>
-            <div className="flex items-center gap-4 mb-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Linhas:</label>
-                <input type="number" min={1} max={20} value={m.gridConfig.rows}
-                  onChange={e => handleGridResize(Number(e.target.value), m.gridConfig.cols)}
-                  className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-sm text-center focus:border-teal-500 focus:outline-none"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-500">Colunas:</label>
-                <input type="number" min={1} max={20} value={m.gridConfig.cols}
-                  onChange={e => handleGridResize(m.gridConfig.rows, Number(e.target.value))}
-                  className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-sm text-center focus:border-teal-500 focus:outline-none"
-                />
-              </div>
-              <span className="text-xs text-slate-400">({m.gridConfig.rows * m.gridConfig.cols} pontos)</span>
+              {calculation && <span className="text-[10px] bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full font-medium">Vermelho = abaixo de 70% da média · "—" marca N/A</span>}
             </div>
 
-            {/* Grid table */}
             <div className="overflow-x-auto">
               <table className="border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th className="p-1.5 text-xs text-slate-400 font-medium"></th>
-                    {Array.from({ length: m.gridConfig.cols }, (_, c) => (
-                      <th key={c} className="p-1.5 text-xs text-slate-500 font-medium text-center min-w-[72px]">c{c + 1}</th>
-                    ))}
-                  </tr>
-                </thead>
                 <tbody>
-                  {Array.from({ length: m.gridConfig.rows }, (_, r) => (
-                    <tr key={r}>
-                      <td className="p-1.5 text-xs text-slate-500 font-medium">r{r + 1}</td>
-                      {Array.from({ length: m.gridConfig.cols }, (_, c) => {
-                        const point = m.gridPoints.find(p => p.row === r && p.col === c);
-                        const isNA = point?.notApplicable ?? false;
-                        const val = point?.lux;
-                        const isBelowThreshold = calculation && val !== null && !isNA && calculation.seventyPercentAverage > 0 && val < calculation.seventyPercentAverage;
-                        return (
-                          <td key={c} className="p-0.5">
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min={0}
-                                value={isNA ? '' : (val ?? '')}
-                                disabled={isNA}
-                                onChange={e => {
-                                  const v = e.target.value === '' ? null : Number(e.target.value);
-                                  updatePoint(r, c, v, false);
-                                }}
-                                placeholder={isNA ? 'N/A' : '—'}
-                                className={`w-full rounded-lg border px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 transition-colors ${
-                                  isNA ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                    : isBelowThreshold ? 'bg-red-50 border-red-300 text-red-700 focus:ring-red-400'
-                                    : 'border-slate-200 focus:border-teal-500 focus:ring-teal-400'
-                                }`}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => updatePoint(r, c, null, !isNA)}
-                                title={isNA ? 'Tornar aplicável' : 'Marcar como N/A'}
-                                className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center transition-colors cursor-pointer ${
-                                  isNA ? 'bg-slate-400 text-white' : 'bg-slate-200 text-slate-400 hover:bg-amber-300 hover:text-amber-800'
-                                }`}
-                              >
-                                {isNA ? '✕' : '—'}
-                              </button>
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                  {renderGridRow('r', 'r', 'R', 'N', N, (v) => {
+                    const n = Math.min(Math.max(1, v), MAX_COLS);
+                    const newRows = generateFixedRows(n).map(nr => {
+                      const old = getRow(nr.rowType);
+                      return old ? { ...nr, values: old.values.slice(), naFlags: old.naFlags?.slice() } : nr;
+                    });
+                    onUpdate({ gridParameters: { ...m.gridParameters, N: n }, measurementRows: newRows });
+                  })}
+                  {renderGridRow('q', 'q', 'Q', 'M', M, (v) =>
+                    onUpdate({ gridParameters: { ...m.gridParameters, M: Math.max(1, v) } })
+                  )}
+                  {renderGridRow('p', 'p', 'P')}
+                  {renderGridRow('t', 't', 'T')}
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1.5">
-              Clique no botão "—" no canto de cada célula para marcar/desmarcar como N/A. Pontos em vermelho estão abaixo de 70% da média.
-            </p>
+            <p className="text-[10px] text-slate-400 mt-1.5">N = luminárias/fila · M = número de filas</p>
           </div>
 
           {/* ── Cálculos automáticos ── */}
@@ -375,14 +435,14 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
                 <span className="text-[10px] bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full font-medium">AUTO</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <MetricCard label="Pontos Medidos" value={calculation.measuredPointsCount} unit={`de ${calculation.totalPointsCount}`} />
+                <MetricCard label="Pontos Medidos" value={calculation.measuredPointsCount} unit="pts" />
                 <MetricCard label="Iluminância Média (Emed)" value={calculation.averageLux} highlight />
-                <MetricCard label="Menor Valor" value={calculation.minLux} warning={!evaluation?.allPointsAboveMinimum} />
+                <MetricCard label="Menor Valor" value={calculation.minLux} warning={!evaluation?.seventyPercentCheck} />
                 <MetricCard label="Maior Valor" value={calculation.maxLux} />
                 <MetricCard label="70% da Média" value={calculation.seventyPercentAverage} />
                 <MetricCard label={`Tolerância (${selectedNorm?.tolerancePercent ?? 10}%)`} value={calculation.toleranceMinLux} />
-                <MetricCard label="Uniformidade (máx/mín)" value={`${calculation.uniformityRatioMaxMin}:1`} unit="" warning={!evaluation?.uniformityIsAdequate} />
-                <MetricCard label="Uniformidade (mín/méd)" value={calculation.uniformityRatioMinAvg} unit="" />
+                <MetricCard label="Uniformidade (máx/mín)" value={`${calculation.uniformityRatio}:1`} unit="" warning={!evaluation?.uniformityCheck} />
+                <MetricCard label="Área de Tarefa (T)" value={calculation.taskAreaValue || '—'} unit={calculation.taskAreaValue ? 'lux' : ''} />
               </div>
             </div>
           )}
@@ -421,26 +481,17 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
               <div className="flex items-center gap-3 mb-2">
                 <label className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 rounded-lg border border-teal-200 hover:bg-teal-100 transition-colors text-sm font-medium cursor-pointer">
                   <Sun className="w-4 h-4" /> {m.gridSchemaImageDataUrl ? 'Trocar Imagem' : 'Adicionar Imagem'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = ev => onUpdate({ gridSchemaImageDataUrl: ev.target?.result as string });
-                      reader.readAsDataURL(file);
-                      e.target.value = '';
-                    }}
-                  />
+                  <input type="file" accept="image/*" className="hidden" onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = ev => onUpdate({ gridSchemaImageDataUrl: ev.target?.result as string });
+                    reader.readAsDataURL(file);
+                    e.target.value = '';
+                  }} />
                 </label>
                 {m.gridSchemaImageDataUrl && (
-                  <button
-                    type="button"
-                    onClick={() => onUpdate({ gridSchemaImageDataUrl: '' })}
-                    className="text-xs text-red-500 hover:text-red-700 transition-colors cursor-pointer"
-                  >
+                  <button type="button" onClick={() => onUpdate({ gridSchemaImageDataUrl: '' })} className="text-xs text-red-500 hover:text-red-700 transition-colors cursor-pointer">
                     Remover
                   </button>
                 )}
