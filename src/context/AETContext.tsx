@@ -6,6 +6,8 @@ import {
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate, Shift,
 } from '../types';
+import type { IlluminanceNormativeParameter } from '../domain/illuminance/illuminanceTypes';
+import { DEFAULT_NORMATIVE_PARAMETERS } from '../domain/illuminance/illuminanceTypes';
 import { normalizeFunction, normalizeProject, normalizeProjectsOnLoad } from '../domain/normalize';
 import { createMockAEPProject, createMockAETProject } from '../utils/mockData';
 import { Client, MOCK_CLIENTS } from '../data/mockClients';
@@ -86,6 +88,11 @@ interface AETContextType {
   addShift: (s: Omit<Shift, 'id'>) => Promise<void>;
   updateShift: (id: string, s: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
+  // Illuminance normative parameters
+  illuminanceNormativeParams: IlluminanceNormativeParameter[];
+  addIlluminanceNormativeParam: (p: Omit<IlluminanceNormativeParameter, 'id'>) => Promise<void>;
+  updateIlluminanceNormativeParam: (id: string, p: Partial<IlluminanceNormativeParameter>) => Promise<void>;
+  deleteIlluminanceNormativeParam: (id: string) => Promise<void>;
 }
 
 const AETContext = createContext<AETContextType | undefined>(undefined);
@@ -122,6 +129,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [riskClassifications, setRiskClassifications] = useState<RiskClassification[]>([]);
   const [reportTexts, setReportTexts] = useState<ReportTextTemplate[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [illuminanceNormativeParams, setIlluminanceNormativeParams] = useState<IlluminanceNormativeParameter[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -226,6 +234,15 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } else {
           setShifts(loadedShifts);
         }
+      }
+
+      // Illuminance normative parameters
+      const storedIllumNorms = await localforage.getItem<IlluminanceNormativeParameter[]>('aet_illuminance_norms');
+      if (!storedIllumNorms || storedIllumNorms.length === 0) {
+        await localforage.setItem('aet_illuminance_norms', DEFAULT_NORMATIVE_PARAMETERS);
+        setIlluminanceNormativeParams(DEFAULT_NORMATIVE_PARAMETERS);
+      } else {
+        setIlluminanceNormativeParams(storedIllumNorms);
       }
 
       setLoading(false);
@@ -395,6 +412,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const riskClassificationCRUD = makeCRUD('aet_risk_classifications', riskClassifications, setRiskClassifications);
   const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
   const shiftCRUD = makeCRUD('aet_shifts', shifts, setShifts);
+  const illuminanceNormCRUD = makeCRUD('aet_illuminance_norms', illuminanceNormativeParams, setIlluminanceNormativeParams);
 
   const resetDevelopmentData = async () => {
     await localforage.clear();
@@ -420,6 +438,10 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       riskClassifications, addRiskClassification: riskClassificationCRUD.add, updateRiskClassification: riskClassificationCRUD.update, deleteRiskClassification: riskClassificationCRUD.remove,
       reportTexts, addReportText: reportTextCRUD.add, updateReportText: reportTextCRUD.update, deleteReportText: reportTextCRUD.remove,
       shifts, addShift: shiftCRUD.add, updateShift: shiftCRUD.update, deleteShift: shiftCRUD.remove,
+      illuminanceNormativeParams,
+      addIlluminanceNormativeParam: illuminanceNormCRUD.add,
+      updateIlluminanceNormativeParam: illuminanceNormCRUD.update,
+      deleteIlluminanceNormativeParam: illuminanceNormCRUD.remove,
     }}>
       {children}
     </AETContext.Provider>

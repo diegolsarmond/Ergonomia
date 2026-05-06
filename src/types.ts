@@ -1,6 +1,8 @@
 import type { RiskLevel } from './domain/risks/riskTypes';
 import type { NHO11MeasurementPoint, NHO11ModelType } from './domain/nho11/nho11Types';
+import type { IlluminanceMeasurement } from './domain/illuminance/illuminanceTypes';
 export type { RiskLevel, NHO11MeasurementPoint, NHO11ModelType };
+export type { IlluminanceMeasurement };
 
 // ── Parameter / System entities ─────────────────────────────────────────────
 
@@ -497,6 +499,9 @@ export interface AEPFunctionAssessment {
   // 5. Ferramentas Científicas
   scientificTools: ScientificToolItem[];
 
+  // 5b. Medições de Iluminância (malha de medição)
+  illuminanceMeasurements: IlluminanceMeasurement[];
+
   // 6. Psicossocial
   psychosocialAnswers: PsychosocialQuestion[];
   psychosocialAverages: {
@@ -610,6 +615,7 @@ export function createEmptyAEPFunctionAssessment(): AEPFunctionAssessment {
       },
     },
     scientificTools: [],
+    illuminanceMeasurements: [],
     psychosocialAnswers: [
       { id: 'psy-1', group: 'Demandas / Ritmo', question: 'Preciso trabalhar muito rápido para dar conta das minhas tarefas.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
       { id: 'psy-2', group: 'Demandas / Ritmo', question: 'Tenho um volume de trabalho acima do que consigo fazer no tempo disponível.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },

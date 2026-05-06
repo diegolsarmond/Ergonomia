@@ -28,6 +28,7 @@ import { ReportTexts } from './screens/parameters/ReportTexts';
 import { Shifts } from './screens/parameters/Shifts';
 import { Users } from './screens/Users';
 import { ProfilesPermissions } from './screens/ProfilesPermissions';
+import { IlluminanceNormativeParameters } from './screens/IlluminanceNormativeParameters';
 
 export default function App() {
   return (
@@ -65,6 +66,7 @@ export default function App() {
               <Route path="parameters/risk-classifications" element={<RiskClassifications />} />
               <Route path="parameters/report-texts" element={<ReportTexts />} />
               <Route path="parameters/shifts" element={<Shifts />} />
+              <Route path="parameters/illuminance-norms" element={<IlluminanceNormativeParameters />} />
               <Route path="users" element={<Users />} />
               <Route path="profiles-permissions" element={<ProfilesPermissions />} />
             </Route>
