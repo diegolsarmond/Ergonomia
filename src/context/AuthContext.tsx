@@ -80,9 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      if (import.meta.env.DEV) {
-        await seedDevelopmentAdminUser();
-      }
+      await seedDevelopmentAdminUser();
 
       const [stored, perms] = await Promise.all([
         loadPersistedSession(),

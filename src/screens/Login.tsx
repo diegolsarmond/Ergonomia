@@ -103,11 +103,9 @@ export function Login() {
         </div>
 
         {/* DEV hint */}
-        {import.meta.env.DEV && (
-          <p className="mt-4 text-center text-xs text-amber-400/70">
-            Ambiente de desenvolvimento: usuário temporário <strong>admin/admin</strong>.
-          </p>
-        )}
+        <p className="mt-4 text-center text-xs text-amber-400/70">
+          Usuário temporário: <strong>admin/admin</strong>.
+        </p>
       </div>
     </div>
   );

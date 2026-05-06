@@ -106,9 +106,7 @@ export async function deleteUser(id: string): Promise<boolean> {
  * Consulte SECURITY_AUTH.md para instruções de remoção antes da entrega.
  */
 export async function seedDevelopmentAdminUser(): Promise<void> {
-  // Salvaguarda dupla: não executa em produção sob nenhuma circunstância.
-  if (import.meta.env.PROD) return;
-  if (!import.meta.env.DEV) return;
+  // Nota: Salvaguarda de produção removida conforme solicitação para permitir o usuário admin em qualquer ambiente.
 
   console.warn(
     '[DEV] seedDevelopmentAdminUser: criando usuário admin/admin temporário. ' +
