@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import type { AETProject, AETFunction, AETImprovement, AETEquipmentItem, AETEPIItem, ErgonomicRisk } from '../../types';
 import { DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES } from './components/ReportCommon';
+import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage } from './components/ReportCommon';
 
 // ── AET Function Section ─────────────────────────────────────────────────────
 
@@ -471,45 +471,16 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
       <ReportToolbar projectId={project.id} />
 
       <div className="w-full overflow-x-auto print:overflow-visible bg-gray-100 print:bg-transparent">
-        <div className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none shadow-lg print:shadow-none">
+        <div className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none print:w-full shadow-lg print:shadow-none">
 
           {/* ── Capa ── */}
-          <section className="pdf-page flex flex-col items-center justify-between text-center px-16 py-12 print:break-after-page min-h-[250mm] print:min-h-[240mm]">
-            <div className="flex justify-between items-start w-full mb-8">
-              {project.consultoriaLogoDataUrl
-                ? <img src={project.consultoriaLogoDataUrl} alt="Logo consultoria" className="max-h-20 object-contain" />
-                : <div className="h-20 w-40 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">Logo Consultoria</div>}
-              {project.companyLogoDataUrl
-                ? <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-20 object-contain" />
-                : <div className="h-20 w-40 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-400">Logo Empresa</div>}
-            </div>
-            <div className="flex-1 flex flex-col items-center justify-center gap-4">
-              <div className="w-16 h-1 bg-teal-600 rounded-full" />
-              <p className="text-sm font-semibold tracking-widest text-teal-700 uppercase">Análise Ergonômica do Trabalho</p>
-              <h1 className="text-4xl font-extrabold text-gray-900 leading-tight">AET</h1>
-              <div className="w-16 h-1 bg-teal-600 rounded-full" />
-              <div className="mt-6 space-y-1">
-                <p className="text-xl font-bold text-gray-800">{project.companyName}</p>
-                {project.fantasyName && <p className="text-base text-gray-500">{project.fantasyName}</p>}
-                {project.unit && <p className="text-sm text-gray-500">Unidade: {project.unit}</p>}
-                {project.location && <p className="text-sm text-gray-500">{project.location}</p>}
-              </div>
-            </div>
-            <div className="w-full border-t border-gray-200 pt-6 flex justify-between items-end text-sm text-gray-500">
-              <div className="text-left">
-                {project.evaluatorName      && <p className="font-semibold text-gray-700">{project.evaluatorName}</p>}
-                {project.evaluatorFormation && <p>{project.evaluatorFormation}</p>}
-                {project.evaluatorCrefito   && <p>{project.evaluatorCrefito}</p>}
-                {project.evaluatorCompany   && <p>{project.evaluatorCompany}</p>}
-              </div>
-              <div className="text-right">
-                {project.evaluatorSignatureDataUrl && (
-                  <img src={project.evaluatorSignatureDataUrl} alt="Assinatura" className="max-h-14 mb-2 ml-auto object-contain" />
-                )}
-                {monthYear && <p className="capitalize">{monthYear}</p>}
-              </div>
-            </div>
-          </section>
+          <CoverPage
+            titleLines={['ANÁLISE', 'ERGONÔMICA', 'DO TRABALHO']}
+            companyLogoDataUrl={project.companyLogoDataUrl}
+            consultoriaLogoDataUrl={project.consultoriaLogoDataUrl}
+            companyName={project.companyName || ''}
+            monthYear={monthYear}
+          />
 
           {/* ── Sumário ── */}
           <section className="pdf-page px-12 py-16 print:break-after-page">

@@ -779,7 +779,23 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           {activeTab === 5 && (
             <div className="space-y-4">
               <SectionTitle>6. Avaliação Psicossocial</SectionTitle>
-              <p className="text-xs text-slate-500">Escala: 1 = Nunca · 2 = Raramente · 3 = Às vezes · 4 = Frequentemente · 5 = Sempre</p>
+              <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <p>
+                  Esta seção visa identificar fatores de risco psicossociais no ambiente de trabalho, conforme as diretrizes mais recentes da NR-17. As perguntas são baseadas em escalas de percepção. O objetivo é uma triagem para direcionamento de ações de gestão e saúde ocupacional, não um diagnóstico clínico.
+                </p>
+                <p>
+                  <strong>Instrução:</strong> Por favor, avalie a frequência com que você experimentou as seguintes situações no seu trabalho nas últimas 4 semanas, utilizando a escala abaixo.
+                </p>
+                <div className="flex gap-2 items-start text-amber-800 bg-amber-100 p-3 rounded-lg border border-amber-300">
+                  <span className="text-lg leading-none">⚠️</span>
+                  <p className="font-medium text-xs leading-relaxed">
+                    IMPORTANTE: Leia atentamente cada item. Algumas perguntas são positivas e outras negativas. Evite responder de forma automática; a escala muda de sentido conforme a frase.
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 font-medium bg-white p-3 rounded-xl border border-slate-200">
+                Escala: 1 = Nunca · 2 = Raramente · 3 = Às vezes · 4 = Frequentemente · 5 = Sempre
+              </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
