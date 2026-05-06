@@ -275,7 +275,7 @@ export function Users() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 xl:p-10 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
