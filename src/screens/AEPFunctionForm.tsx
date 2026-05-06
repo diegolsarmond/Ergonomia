@@ -452,21 +452,17 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Unidade / Filial">
-                  {companyUnits.length > 0 ? (
-                    <div className="flex gap-2">
-                      <Select
-                        className="flex-1"
-                        value={companyUnits.find(u => u.name === aep.identification.unitBranch)?.id || ''}
-                        onChange={e => { const u = companyUnits.find(x => x.id === e.target.value); if (u) setIdent('unitBranch', u.name); }}
-                      >
-                        <option value="">Selecionar...</option>
-                        {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </Select>
-                      <Input className="flex-1" value={aep.identification.unitBranch} onChange={e => setIdent('unitBranch', e.target.value)} placeholder={project.unit || 'Ou digitar'} />
-                    </div>
-                  ) : (
-                    <Input value={aep.identification.unitBranch} onChange={e => setIdent('unitBranch', e.target.value)} placeholder={project.unit} />
-                  )}
+                  <div className="flex gap-2">
+                    <Select
+                      className="flex-1"
+                      value={companyUnits.find(u => u.name === aep.identification.unitBranch)?.id || ''}
+                      onChange={e => { const u = companyUnits.find(x => x.id === e.target.value); if (u) setIdent('unitBranch', u.name); }}
+                    >
+                      <option value="">Selecionar...</option>
+                      {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </Select>
+                    <Input className="flex-1" value={aep.identification.unitBranch} onChange={e => setIdent('unitBranch', e.target.value)} placeholder={project.unit || 'Ou digitar'} />
+                  </div>
                 </FormGroup>
                 <FormGroup label="Setor / Área">
                   <Combobox
