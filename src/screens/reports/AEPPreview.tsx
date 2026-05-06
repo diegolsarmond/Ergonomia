@@ -478,7 +478,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 2. Caracterização do Trabalho */}
         {(work.processDescription || work.workCycleDescription) && (
           <>
-            <h3>2. Caracterização do Trabalho</h3>
+            <h3 style={{ marginTop: '32px' }}>2. Caracterização do Trabalho</h3>
             <h4>2.1 Descrição do Processo e Ciclo de Trabalho</h4>
             <Field label="Processo" value={work.processDescription} />
             <Field label="Ciclo de Trabalho" value={work.workCycleDescription} />
@@ -503,7 +503,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 3. Registro Fotográfico */}
         {aep.photographicRecords.length > 0 && (
           <>
-            <h3>3. Registro Fotográfico</h3>
+            <h3 style={{ marginTop: '32px' }}>3. Registro Fotográfico</h3>
             <p style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '12px' }}>{aep.lgpdNote}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               {aep.photographicRecords.map((photo, i) => (
@@ -520,7 +520,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         )}
 
         {/* 4. Biomecânica */}
-        <h3>4. Biomecânica</h3>
+        <h3 style={{ marginTop: '32px' }}>4. Biomecânica</h3>
         <BiomecTable title="4.1 Posturas e Alcances"          items={bio.postureAndReach} />
         <BiomecTable title="4.2 Repetitividade e Ritmo"        items={bio.repetitivenessAndRhythm} />
         <BiomecTable title="4.3 Força e Exigência Física"      items={bio.forceAndPhysicalDemand} />
@@ -539,7 +539,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
 
         {/* 5. Ferramentas Científicas */}
         {(aep.scientificTools.length > 0 || (aep.illuminanceMeasurements?.length ?? 0) > 0) && (
-          <h3>5. Ferramentas Científicas</h3>
+          <h3 style={{ marginTop: '32px' }}>5. Ferramentas Científicas</h3>
         )}
         {aep.scientificTools.map((tool, i) => (
           <div key={tool.id} style={{ marginBottom: '12px' }}>
@@ -558,7 +558,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 6. Psicossocial */}
         {psy.some(q => q.score !== '') && (
           <>
-            <h3>6. Avaliação Psicossocial</h3>
+            <h3 style={{ marginTop: '32px' }}>6. Avaliação Psicossocial</h3>
             <table style={{ fontSize: '0.68rem' }}>
               <thead>
                 <tr>
@@ -600,7 +600,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 7. Classificação de Risco / Gatilhos AET */}
         {trigs.some(t => t.answer !== '') && (
           <>
-            <h3>7. Classificação de Risco — Gatilhos para AET</h3>
+            <h3 style={{ marginTop: '32px' }}>7. Classificação de Risco — Gatilhos para AET</h3>
             <table style={{ fontSize: '0.72rem' }}>
               <thead><tr><th style={{ width: '5%' }}>#</th><th>Gatilho</th><th style={{ width: '10%' }}>Resposta</th></tr></thead>
               <tbody>
@@ -633,7 +633,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {/* 8. Plano de Ação RACI */}
         {raci.length > 0 && (
           <>
-            <h3>8. Plano de Ação RACI</h3>
+            <h3 style={{ marginTop: '32px' }}>8. Plano de Ação RACI</h3>
             <table style={{ fontSize: '0.66rem' }}>
               <thead>
                 <tr>
@@ -701,23 +701,6 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
           </>
         )}
 
-        {/* 9. Responsável Técnico (por função) */}
-        {(resp.name || resp.registration) && (
-          <>
-            <h3>9. Responsável Técnico</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '20px' }}>
-              {resp.signatureDataUrl && (
-                <img src={resp.signatureDataUrl} alt="Assinatura" style={{ maxHeight: '60px', marginBottom: '8px' }} />
-              )}
-              <div style={{ borderTop: '1px solid #000', width: '220px', paddingTop: '6px', textAlign: 'center' }}>
-                {resp.name       && <p style={{ fontWeight: 600, fontSize: '0.85rem' }}>{resp.name}</p>}
-                {resp.formation  && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.formation}</p>}
-                {resp.company    && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.company}</p>}
-                {resp.registration && <p style={{ fontSize: '0.78rem', color: '#4b5563' }}>{resp.registration}</p>}
-              </div>
-            </div>
-          </>
-        )}
       </section>
     );
   }
