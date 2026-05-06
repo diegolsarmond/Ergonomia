@@ -434,18 +434,21 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               <SectionTitle>1. Identificação</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Nome da Função / Cargo" required>
-                  <Combobox
-                    listId="aepJobRolesList"
-                    options={companyJobRoles}
-                    value={formData.name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setField('name', val);
-                      const role = companyJobRoles.find(r => r.name === val);
-                      if (role) handleApplyJobRole(role.id);
-                    }}
-                    placeholder="Digite ou selecione a função..."
-                  />
+                  {companyJobRoles.length > 0 ? (
+                    <div className="flex gap-2">
+                      <Select
+                        className="flex-1"
+                        value={companyJobRoles.find(r => r.name === formData.name)?.id || ''}
+                        onChange={e => { const role = companyJobRoles.find(r => r.id === e.target.value); if (role) handleApplyJobRole(role.id); }}
+                      >
+                        <option value="">Selecione função padrão...</option>
+                        {companyJobRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </Select>
+                      <Input className="flex-1" value={formData.name} onChange={e => setField('name', e.target.value)} placeholder="Ou digite o nome" />
+                    </div>
+                  ) : (
+                    <Input value={formData.name} onChange={e => setField('name', e.target.value)} placeholder="Nome da função..." />
+                  )}
                 </FormGroup>
                 <FormGroup label="Código do Posto">
                   <Input value={aep.identification.code} onChange={e => setIdent('code', e.target.value)} />
