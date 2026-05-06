@@ -229,14 +229,6 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
   // ── Scientific Tools ─────────────────────────────────────────────────────
 
-  const addTool = () =>
-    setAep(a => ({
-      ...a,
-      scientificTools: [
-        ...a.scientificTools,
-        { id: uuidv4(), toolName: '', result: '', interpretation: '', recommendation: '', imageDataUrl: '' },
-      ],
-    }));
 
   const updateTool = (idx: number, field: keyof ScientificToolItem, value: string) =>
     setAep(a => {
@@ -732,12 +724,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           {activeTab === 4 && (
             <div className="space-y-4">
               <SectionTitle>5. Ferramentas Científicas</SectionTitle>
-              <Button variant="ghost" onClick={addTool} className="border border-dashed border-teal-400 text-teal-600 hover:bg-teal-50">
-                <Plus className="w-4 h-4" /> Adicionar Ferramenta
-              </Button>
-              {aep.scientificTools.length === 0 && (
-                <p className="text-sm text-slate-400 italic">Nenhuma ferramenta científica adicionada.</p>
-              )}
+
+
               {aep.scientificTools.map((tool, idx) => (
                 <div key={tool.id} className="border border-slate-200 rounded-xl p-4 space-y-3">
                   <div className="flex justify-between items-center">
