@@ -63,7 +63,7 @@ export const Layout = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[var(--color-surface)] print:block print:h-auto print:bg-white overflow-hidden">
-      
+
       {/* ── Mobile Header ──────────────────────────────────────────────── */}
       <div className="md:hidden flex items-center justify-between px-5 py-4 bg-slate-900 text-white shadow-md z-40 print:hidden shrink-0">
         <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ export const Layout = () => {
             <FileText className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="text-[14px] font-bold text-white tracking-tight">AET System</h1>
+            <h1 className="text-[14px] font-bold text-white tracking-tight">Ergo System</h1>
           </div>
         </div>
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1 rounded-md hover:bg-slate-800 transition-colors">
@@ -81,7 +81,7 @@ export const Layout = () => {
 
       {/* ── Mobile Overlay ─────────────────────────────────────────────── */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
@@ -96,8 +96,8 @@ export const Layout = () => {
               <FileText className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-[15px] font-bold text-white tracking-tight">AET System</h1>
-              <p className="text-[11px] text-slate-400 font-medium">Análise Ergonômica</p>
+              <h1 className="text-[15px] font-bold text-white tracking-tight">Ergo System</h1>
+              <p className="text-[11px] text-slate-400 font-medium">ERGOMINAS</p>
             </div>
           </div>
         </div>
@@ -207,13 +207,11 @@ interface NavLinkProps {
 const NavLink: React.FC<NavLinkProps> = ({ to, icon: Icon, label, active, small, accent = 'teal' }) => (
   <Link
     to={to}
-    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium ${
-      small ? 'text-[13px]' : 'text-sm'
-    } ${
-      active
+    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium ${small ? 'text-[13px]' : 'text-sm'
+      } ${active
         ? accent === 'amber' ? 'active text-amber-300' : 'active text-teal-300'
         : 'text-slate-400 hover:text-white'
-    }`}
+      }`}
   >
     <Icon className={small ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
     {label}

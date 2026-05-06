@@ -37,7 +37,7 @@ export function Login() {
             <FileText className="w-6 h-6 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-white">AET System</h1>
+            <h1 className="text-xl font-bold text-white">Ergo System</h1>
             <p className="text-sm text-slate-400">Análise Ergonômica</p>
           </div>
         </div>
