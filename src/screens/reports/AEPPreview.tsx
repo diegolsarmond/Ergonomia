@@ -208,8 +208,8 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
           <>
             <h3>2. Caracterização do Trabalho</h3>
             <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '8px' }}>2.1 Descrição do Processo e Ciclo de Trabalho</h4>
-            <Field label="Processo" value={work.processDescription} />
-            <Field label="Ciclo de Trabalho" value={work.workCycleDescription} />
+            <Field label="Descrição" value={work.processDescription} />
+            {work.workCycleDescription && <Field label="Ciclo de Trabalho" value={work.workCycleDescription} />}
 
             <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginTop: '12px' }}>2.2 Organização do Trabalho</h4>
             <table style={{ fontSize: '0.75rem' }}>
