@@ -10,6 +10,8 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [{ url: 'http://localhost:3001', description: 'Desenvolvimento' }],
     tags: [
+      { name: 'Auth', description: 'Autenticação e sessão' },
+      { name: 'Usuários', description: 'Gerenciamento de usuários e perfis de acesso' },
       { name: 'Health', description: 'Status do servidor' },
       { name: 'Empresas', description: 'Gerenciamento de empresas' },
       { name: 'Unidades', description: 'Unidades das empresas' },
@@ -30,10 +32,60 @@ const options: swaggerJsdoc.Options = {
       { name: 'Clientes', description: 'Clientes (armazenamento JSONB)' },
     ],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Token JWT obtido em POST /api/auth/login',
+        },
+      },
       schemas: {
         Error: {
           type: 'object',
           properties: { error: { type: 'string' } },
+        },
+        User: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            nome: { type: 'string', example: 'João Silva' },
+            email: { type: 'string', format: 'email' },
+            nomeUsuario: { type: 'string', example: 'joao.silva' },
+            perfil: { type: 'string', example: 'ADMIN', description: '"ADMIN" ou UUID de perfil customizado' },
+            status: { type: 'string', enum: ['ativo', 'inativo', 'bloqueado'] },
+            alterarSenha: { type: 'boolean' },
+            formacao: { type: 'string' },
+            crefito: { type: 'string' },
+            criadoEm: { type: 'string', format: 'date-time' },
+            atualizadoEm: { type: 'string', format: 'date-time' },
+            ultimoAcessoEm: { type: 'string', format: 'date-time', nullable: true },
+            permissions: { type: 'array', items: { type: 'string' }, description: '["ALL"] para ADMIN ou lista de permissões' },
+          },
+        },
+        LoginRequest: {
+          type: 'object',
+          required: ['nomeUsuario', 'senha'],
+          properties: {
+            nomeUsuario: { type: 'string', example: 'admin' },
+            senha: { type: 'string', format: 'password', example: 'admin123' },
+          },
+        },
+        LoginResponse: {
+          type: 'object',
+          properties: {
+            token: { type: 'string', description: 'JWT válido por 8h' },
+            user: { $ref: '#/components/schemas/User' },
+          },
+        },
+        CustomProfile: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            rotulo: { type: 'string', example: 'Avaliador' },
+            criadoEm: { type: 'string', format: 'date-time' },
+            permissoes: { type: 'array', items: { type: 'string' }, example: ['AET_VIEW', 'AET_PRINT'] },
+          },
         },
         Company: {
           type: 'object',
@@ -239,6 +291,270 @@ const options: swaggerJsdoc.Options = {
       },
     },
     paths: {
+      // ── Auth ──────────────────────────────────────────────────────────────
+      '/api/auth/login': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Autenticar usuário e obter token JWT',
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginRequest' } } },
+          },
+          responses: {
+            '200': {
+              description: 'Login realizado com sucesso',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginResponse' } } },
+            },
+            '400': { description: 'Campos obrigatórios ausentes', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '401': { description: 'Credenciais inválidas ou usuário inativo', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '500': { description: 'Erro interno', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+      '/api/auth/me': {
+        get: {
+          tags: ['Auth'],
+          summary: 'Retorna o usuário autenticado com permissões',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': { description: 'Usuário atual', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } },
+            '401': { description: 'Token ausente ou inválido', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '404': { description: 'Usuário não encontrado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+      '/api/auth/change-password': {
+        post: {
+          tags: ['Auth'],
+          summary: 'Altera a senha do usuário autenticado',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['senhaAtual', 'novaSenha'],
+                  properties: {
+                    senhaAtual: { type: 'string', format: 'password' },
+                    novaSenha: { type: 'string', format: 'password', minLength: 6 },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Senha alterada com sucesso' },
+            '400': { description: 'Campos ausentes ou senha fraca', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '401': { description: 'Senha atual incorreta ou token inválido', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+
+      // ── Users ──────────────────────────────────────────────────────────────
+      '/api/users': {
+        get: {
+          tags: ['Usuários'],
+          summary: 'Lista todos os usuários (ADMIN)',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': { description: 'Array de usuários', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/User' } } } } },
+            '401': { description: 'Não autenticado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+        post: {
+          tags: ['Usuários'],
+          summary: 'Cria um novo usuário (ADMIN)',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['nome', 'email', 'nomeUsuario', 'senha'],
+                  properties: {
+                    nome: { type: 'string' },
+                    email: { type: 'string', format: 'email' },
+                    nomeUsuario: { type: 'string' },
+                    senha: { type: 'string', format: 'password', minLength: 6 },
+                    perfil: { type: 'string', default: 'ADMIN' },
+                    status: { type: 'string', enum: ['ativo', 'inativo', 'bloqueado'], default: 'ativo' },
+                    formacao: { type: 'string' },
+                    crefito: { type: 'string' },
+                    alterarSenha: { type: 'boolean', default: false },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': { description: 'Usuário criado', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } },
+            '400': { description: 'Campos obrigatórios ausentes', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '401': { description: 'Não autenticado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '409': { description: 'E-mail ou nome de usuário já cadastrado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+      '/api/users/{id}': {
+        get: {
+          tags: ['Usuários'],
+          summary: 'Retorna um usuário pelo ID (ADMIN ou o próprio usuário)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: {
+            '200': { description: 'Usuário encontrado', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } },
+            '403': { description: 'Acesso negado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '404': { description: 'Usuário não encontrado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+        put: {
+          tags: ['Usuários'],
+          summary: 'Atualiza dados de um usuário (ADMIN ou o próprio)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    nome: { type: 'string' },
+                    email: { type: 'string', format: 'email' },
+                    formacao: { type: 'string' },
+                    crefito: { type: 'string' },
+                    perfil: { type: 'string', description: 'Apenas ADMIN pode alterar' },
+                    status: { type: 'string', enum: ['ativo', 'inativo', 'bloqueado'], description: 'Apenas ADMIN pode alterar' },
+                    alterarSenha: { type: 'boolean', description: 'Apenas ADMIN pode alterar' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Usuário atualizado', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } },
+            '403': { description: 'Acesso negado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '404': { description: 'Usuário não encontrado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '409': { description: 'E-mail já usado por outro usuário', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+        delete: {
+          tags: ['Usuários'],
+          summary: 'Remove um usuário (ADMIN — não pode remover a si mesmo)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: {
+            '204': { description: 'Usuário removido' },
+            '400': { description: 'Não é possível remover o próprio usuário', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '404': { description: 'Usuário não encontrado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+      '/api/users/{id}/reset-password': {
+        post: {
+          tags: ['Usuários'],
+          summary: 'Redefine a senha de um usuário (ADMIN) — marca alterar_senha=true',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['novaSenha'],
+                  properties: { novaSenha: { type: 'string', format: 'password', minLength: 6 } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Senha redefinida com sucesso' },
+            '400': { description: 'Senha inválida', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '404': { description: 'Usuário não encontrado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+
+      // ── Custom Profiles ────────────────────────────────────────────────────
+      '/api/users/profiles/list': {
+        get: {
+          tags: ['Usuários'],
+          summary: 'Lista perfis customizados com permissões (ADMIN)',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': { description: 'Array de perfis', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/CustomProfile' } } } } },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+        post: {
+          tags: ['Usuários'],
+          summary: 'Cria um novo perfil customizado com permissões (ADMIN)',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['rotulo'],
+                  properties: {
+                    rotulo: { type: 'string', example: 'Avaliador' },
+                    permissoes: { type: 'array', items: { type: 'string' }, example: ['AET_VIEW', 'AET_PRINT'] },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': { description: 'Perfil criado', content: { 'application/json': { schema: { $ref: '#/components/schemas/CustomProfile' } } } },
+            '400': { description: 'rotulo obrigatório', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+      '/api/users/profiles/{profileId}': {
+        put: {
+          tags: ['Usuários'],
+          summary: 'Atualiza rótulo e permissões de um perfil (ADMIN)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'profileId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    rotulo: { type: 'string' },
+                    permissoes: { type: 'array', items: { type: 'string' } },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Perfil atualizado' },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+        delete: {
+          tags: ['Usuários'],
+          summary: 'Remove um perfil customizado (ADMIN)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'profileId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          responses: {
+            '204': { description: 'Perfil removido' },
+            '403': { description: 'Sem permissão de ADMIN', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+
       '/api/health': {
         get: {
           tags: ['Health'],

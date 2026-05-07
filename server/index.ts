@@ -19,6 +19,9 @@ import biomechanicalFactorsRouter from './routes/biomechanicalFactors.js';
 import illuminanceParamsRouter from './routes/illuminanceParams.js';
 import projectsRouter from './routes/projects.js';
 import clientsRouter from './routes/clients.js';
+import ocupacoesRouter from './routes/ocupacoes.js';
+import authRouter from './routes/auth.js';
+import usersRouter from './routes/users.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -55,9 +58,14 @@ app.use('/api/checklist-questions',    checklistQuestionsRouter);
 app.use('/api/biomechanical-factors',  biomechanicalFactorsRouter);
 app.use('/api/illuminance-params',     illuminanceParamsRouter);
 
+// Autenticação e Usuários
+app.use('/api/auth',                   authRouter);
+app.use('/api/users',                  usersRouter);
+
 // Projetos e Clientes (JSONB)
 app.use('/api/projects',               projectsRouter);
 app.use('/api/clients',                clientsRouter);
+app.use('/api/ocupacoes',              ocupacoesRouter);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
