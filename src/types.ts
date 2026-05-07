@@ -400,10 +400,9 @@ export interface AEPFunctionFields {
 export type BiomechanicalAssessment = 'OK' | 'Atenção' | 'Crítico' | 'N.A.' | '';
 
 export interface BiomechanicalItem {
-  factor: string;
+  riskFactorId: string;
   assessment: BiomechanicalAssessment;
   description: string;
-  selectedRiskFactors?: string[]; // Array of Risk Factor IDs
 }
 
 export interface EnvironmentalComfortItem {
@@ -576,42 +575,11 @@ export function createEmptyAEPFunctionAssessment(): AEPFunctionAssessment {
     photographicRecords: [],
     lgpdNote: LGPD_NOTE,
     biomechanics: {
-      postureAndReach: [
-        { factor: 'Ombro elevado ou abdução sustentada (60°)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Punho em desvio/torção frequente ou prolongado', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Preensão forte / pinça prolongada', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Flexão/rotação de tronco repetida ou sustentada', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Pescoço fletido/rodado por tempo prolongado', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Trabalho acima da linha dos ombros', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Trabalho com braços estendidos / alcance longo', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Postura estática prolongada (sentado ou em pé)', assessment: '', description: '', selectedRiskFactors: [] },
-      ],
-      repetitivenessAndRhythm: [
-        { factor: 'Repetição alta de movimentos (mesmo gesto)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Ritmo imposto por máquina/esteira/sistema', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Pressão por tempo / metas agressivas', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Pouca margem para variações no método de trabalho', assessment: '', description: '', selectedRiskFactors: [] },
-      ],
-      forceAndPhysicalDemand: [
-        { factor: 'Força manual elevada (aperto, torção, empurrar/puxar)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Empurrar/puxar carrinhos (peso/rolagem/piso)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Sustentação de cargas/braços por tempo prolongado', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Ferramenta inadequada (peso, vibração, pega)', assessment: '', description: '', selectedRiskFactors: [] },
-      ],
-      manualMaterialHandling: [
-        { factor: 'Levantamento/abaixamento frequente de cargas', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Transporte manual de cargas por longas distâncias', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Ajuda mecânica disponível e utilizada?', assessment: '', description: '', selectedRiskFactors: [] },
-      ],
-      furnitureAndWorkstation: [
-        { factor: 'Altura de bancada/mesa adequada à tarefa e biotipo', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Espaço para pernas/joelhos (quando sentado)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Possibilidade de alternância postural (sentado/em pé)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Assento adequado (ajustes, estofamento, encosto)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Apoio para pés (quando necessário)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Monitor/teclado/mouse posicionados adequadamente (admin)', assessment: '', description: '', selectedRiskFactors: [] },
-        { factor: 'Layout favorece fluxo sem posturas forçadas', assessment: '', description: '', selectedRiskFactors: [] },
-      ],
+      postureAndReach: [],
+      repetitivenessAndRhythm: [],
+      forceAndPhysicalDemand: [],
+      manualMaterialHandling: [],
+      furnitureAndWorkstation: [],
       environmentalComfort: {
         lightingComplaint: '',
         lightingValue: '',

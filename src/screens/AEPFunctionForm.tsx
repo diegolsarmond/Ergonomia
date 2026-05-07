@@ -310,6 +310,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     shifts: shiftCatalog, pauses: pauseCatalog,
     scientificMethodTemplates,
     biomechanicalRiskFactors,
+    epis: epiCatalog, addEPI,
+    equipment: equipmentCatalog, addEquipment,
   } = useAET();
 
   const matchedCompany = companies.find(c =>
@@ -419,15 +421,39 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
   const updateBiomecItem = (
     group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
-    idx: number,
-    field: keyof BiomechanicalItem,
+    riskFactorId: string,
+    field: 'assessment' | 'description',
     value: any,
   ) =>
     setAep(a => {
       const list = [...(a.biomechanics[group] as BiomechanicalItem[])];
-      (list[idx] as any)[field] = value;
+      const idx = list.findIndex(i => i.riskFactorId === riskFactorId);
+      if (idx >= 0) {
+        (list[idx] as any)[field] = value;
+      } else {
+        list.push({ riskFactorId, assessment: '', description: '', [field]: value });
+      }
       return { ...a, biomechanics: { ...a.biomechanics, [group]: list } };
     });
+
+  const addBiomecItem = (
+    group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
+    riskFactorId: string,
+  ) =>
+    setAep(a => {
+      const list = a.biomechanics[group] as BiomechanicalItem[];
+      if (list.find(i => i.riskFactorId === riskFactorId)) return a;
+      return { ...a, biomechanics: { ...a.biomechanics, [group]: [...list, { riskFactorId, assessment: '', description: '' }] } };
+    });
+
+  const removeBiomecItem = (
+    group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
+    riskFactorId: string,
+  ) =>
+    setAep(a => ({
+      ...a,
+      biomechanics: { ...a.biomechanics, [group]: (a.biomechanics[group] as BiomechanicalItem[]).filter(i => i.riskFactorId !== riskFactorId) },
+    }));
 
   const updatePsy = (idx: number, field: keyof PsychosocialQuestion, value: any) =>
     setAep(a => {
@@ -551,82 +577,104 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const renderBiomecGroup = (
     title: string,
     group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
-  ) => (
-    <div className="mb-6">
-      <h4 className="text-sm font-semibold text-slate-700 mb-2">{title}</h4>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="bg-slate-50">
-              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/4">Fator Biomecânico</th>
-              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/6">Avaliação</th>
-              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/4">Fatores de Risco</th>
-              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600">Descrição / Observação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(aep.biomechanics[group] as BiomechanicalItem[]).map((item, idx) => {
-              const linkedRisks = biomechanicalRiskFactors.filter(rf => rf.active && rf.biomechanicalFactors?.includes(title));
-              return (
-                <tr key={idx} className="hover:bg-slate-50/50">
-                  <td className="p-2 border border-slate-200 text-slate-700 text-xs">{item.factor}</td>
-                  <td className="p-2 border border-slate-200">
-                    <select
-                      value={item.assessment}
-                      onChange={e => updateBiomecItem(group, idx, 'assessment', e.target.value)}
-                      className={`w-full rounded-lg border px-2 py-1 text-[10px] font-medium ${
-                        item.assessment ? classifColor[item.assessment] || 'border-slate-200' : 'border-slate-200 text-slate-400'
-                      }`}
-                    >
-                      <option value="">—</option>
-                      {ASSESSMENT_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-2 border border-slate-200">
-                    <div className="space-y-1">
-                      {linkedRisks.length === 0 ? (
-                        <span className="text-[10px] text-slate-400 italic">Nenhum fator vinculado</span>
-                      ) : (
-                        linkedRisks.map(rf => {
-                          const isSelected = (item.selectedRiskFactors || []).includes(rf.id);
-                          return (
-                            <label key={rf.id} className="flex items-center gap-1.5 cursor-pointer group">
-                              <Checkbox
-                                checked={isSelected}
-                                onChange={() => {
-                                  const current = item.selectedRiskFactors || [];
-                                  const next = isSelected ? current.filter(id => id !== rf.id) : [...current, rf.id];
-                                  updateBiomecItem(group, idx, 'selectedRiskFactors', next);
-                                }}
-                              />
-                              <span className={`text-[10px] transition-colors ${isSelected ? 'text-teal-700 font-medium' : 'text-slate-500 group-hover:text-slate-700'}`}>
-                                {rf.name}
-                              </span>
-                            </label>
-                          );
-                        })
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-2 border border-slate-200">
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={e => updateBiomecItem(group, idx, 'description', e.target.value)}
-                      placeholder="Observação..."
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-[10px] focus:border-teal-500 focus:outline-none"
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+  ) => {
+    const catalogRisks = biomechanicalRiskFactors.filter(rf =>
+      rf.active &&
+      rf.biomechanicalFactors?.some(bf => bf.trim().toLowerCase() === title.trim().toLowerCase())
+    );
+    const savedItems = aep.biomechanics[group] as BiomechanicalItem[];
+    const availableToAdd = catalogRisks.filter(rf => !savedItems.find(i => i.riskFactorId === rf.id));
+
+    return (
+      <div className="mb-6">
+        <h4 className="text-sm font-semibold text-slate-700 mb-2">{title}</h4>
+
+        {catalogRisks.length === 0 ? (
+          <div className="px-4 py-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+            <span className="text-xs text-slate-400 italic">
+              Nenhum fator de risco cadastrado para esta categoria em Parâmetros → Fatores de Risco Biomecânicos.
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {savedItems.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-2/5">Fator de Risco</th>
+                      <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/5">Avaliação</th>
+                      <th className="text-left p-2 border border-slate-200 font-medium text-slate-600">Descrição / Observação</th>
+                      <th className="p-2 border border-slate-200 w-8" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {savedItems.map(item => {
+                      const rf = catalogRisks.find(r => r.id === item.riskFactorId);
+                      if (!rf) return null;
+                      const assessmentColor = item.assessment
+                        ? ASSESSMENT_OPTIONS.find(o => o.value === item.assessment)?.color ?? 'border-slate-200'
+                        : 'border-slate-200 text-slate-400';
+                      return (
+                        <tr key={item.riskFactorId} className="hover:bg-slate-50/50">
+                          <td className="p-2 border border-slate-200 text-slate-700 text-xs font-medium">{rf.name}</td>
+                          <td className="p-2 border border-slate-200">
+                            <select
+                              value={item.assessment}
+                              onChange={e => updateBiomecItem(group, item.riskFactorId, 'assessment', e.target.value)}
+                              className={`w-full rounded-lg border px-2 py-1 text-[10px] font-medium ${assessmentColor}`}
+                            >
+                              <option value="">—</option>
+                              {ASSESSMENT_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-2 border border-slate-200">
+                            <input
+                              type="text"
+                              value={item.description}
+                              onChange={e => updateBiomecItem(group, item.riskFactorId, 'description', e.target.value)}
+                              placeholder="Observação..."
+                              className="w-full rounded-lg border border-slate-200 px-2 py-1 text-[10px] focus:border-teal-500 focus:outline-none"
+                            />
+                          </td>
+                          <td className="p-2 border border-slate-200 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeBiomecItem(group, item.riskFactorId)}
+                              className="text-slate-300 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {availableToAdd.length > 0 && (
+              <div className="flex items-center gap-2">
+                <select
+                  defaultValue=""
+                  onChange={e => { if (e.target.value) { addBiomecItem(group, e.target.value); e.target.value = ''; } }}
+                  className="flex-1 rounded-xl border border-dashed border-teal-300 px-3 py-1.5 text-xs text-teal-600 bg-teal-50 focus:outline-none focus:border-teal-500 cursor-pointer"
+                >
+                  <option value="" disabled>+ Adicionar fator de risco...</option>
+                  {availableToAdd.map(rf => (
+                    <option key={rf.id} value={rf.id}>{rf.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="p-6 lg:p-8 xl:p-10 pb-24">
@@ -637,7 +685,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         </Button>
         <div className="text-center">
           <h1 className="text-lg font-bold text-slate-800">
-            {funcId === 'new' ? 'Nova Função AEP (v2.1)' : 'Editar Função AEP (v2.1)'}
+            {funcId === 'new' ? 'Nova Função AEP (v2.3)' : 'Editar Função AEP (v2.3)'}
           </h1>
           <p className="text-xs text-slate-500">{project.companyName}</p>
         </div>

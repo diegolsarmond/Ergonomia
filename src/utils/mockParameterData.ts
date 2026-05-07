@@ -1,7 +1,7 @@
 import {
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate,
-  Shift, ScientificMethodTemplate, ChecklistQuestion,
+  Shift, ScientificMethodTemplate, ChecklistQuestion, BiomechanicalRiskFactor,
 } from '../types';
 
 export const MOCK_COMPANIES: Company[] = [

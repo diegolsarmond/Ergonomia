@@ -16,7 +16,6 @@ import {
   MOCK_COMPANIES, MOCK_UNITS, MOCK_SECTORS, MOCK_JOB_ROLES, MOCK_EPIS,
   MOCK_EQUIPMENT, MOCK_SURVEY_QUESTIONS, MOCK_PAUSES, MOCK_RISK_CLASSIFICATIONS,
   MOCK_REPORT_TEXTS, MOCK_CHECKLIST_QUESTIONS, MOCK_SCIENTIFIC_METHODS, MOCK_SHIFTS,
-  MOCK_BIOMECHANICAL_RISK_FACTORS
 } from '../data/mockParameters';
 
 interface AETContextType {
@@ -245,29 +244,14 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await loadSimple<IlluminanceNormativeParameter>('aet_illuminance_norms', setIlluminanceNormativeParams, DEFAULT_NORMATIVE_PARAMETERS);
       {
-        const raw = await localforage.getItem<BiomechanicalRiskFactor[]>('aet_biomechanical_risk_factors');
-        if (!raw || raw.length === 0) {
-          await localforage.setItem('aet_biomechanical_risk_factors', MOCK_BIOMECHANICAL_RISK_FACTORS);
-          setBiomechanicalRiskFactors(MOCK_BIOMECHANICAL_RISK_FACTORS);
+        // Remove dados mockados antigos e usa apenas o que foi cadastrado em Parâmetros
+        await localforage.removeItem('aet_biomechanical_risk_factors');
+        const raw = await localforage.getItem<BiomechanicalRiskFactor[]>('aet_biomechanical_risk_factors_v2');
+        if (!raw) {
+          await localforage.setItem('aet_biomechanical_risk_factors_v2', []);
+          setBiomechanicalRiskFactors([]);
         } else {
-          let migrated = false;
-          const cleaned = raw.map((f: any) => {
-            let factors = f.biomechanicalFactors;
-            // Migration: biomechanicalFactor (string) -> biomechanicalFactors (array)
-            if (!factors && f.biomechanicalFactor) {
-              migrated = true;
-              // Strip numbers from the old string if present
-              const name = f.biomechanicalFactor.replace(/^\d+\.\d+\s+/, '');
-              factors = [name];
-            }
-            if (!Array.isArray(factors)) {
-              migrated = true;
-              factors = [];
-            }
-            return { ...f, biomechanicalFactors: factors };
-          });
-          if (migrated) await localforage.setItem('aet_biomechanical_risk_factors', cleaned);
-          setBiomechanicalRiskFactors(cleaned);
+          setBiomechanicalRiskFactors(raw);
         }
       }
 
@@ -439,7 +423,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
   const shiftCRUD = makeCRUD('aet_shifts', shifts, setShifts);
   const illuminanceNormCRUD = makeCRUD('aet_illuminance_norms', illuminanceNormativeParams, setIlluminanceNormativeParams);
-  const biomechanicalRiskFactorCRUD = makeCRUD('aet_biomechanical_risk_factors', biomechanicalRiskFactors, setBiomechanicalRiskFactors);
+  const biomechanicalRiskFactorCRUD = makeCRUD('aet_biomechanical_risk_factors_v2', biomechanicalRiskFactors, setBiomechanicalRiskFactors);
 
   const resetDevelopmentData = async () => {
     await localforage.clear();
