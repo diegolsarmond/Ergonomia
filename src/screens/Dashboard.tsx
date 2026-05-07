@@ -26,6 +26,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'Empresa' | 'Responsável' | 'Textos de Introdução'>('Empresa');
   const importRef = useRef<HTMLInputElement>(null);
 
   const quillModules = {
@@ -75,6 +76,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
       evaluatorCompany: 'Ergominas',
     }));
     setSelectedCompanyId('');
+    setActiveTab('Empresa');
     setIsModalOpen(true);
   };
 
@@ -235,172 +237,217 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
         </div>
       )}
 
-      {/* ── Modal ─────────────────────────────────────────────────── */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <Card className="modal-content w-full max-w-2xl max-h-[90vh] overflow-y-auto !rounded-2xl" onClick={e => e.stopPropagation()}>
-            <CardHeader className="!bg-gradient-to-r !from-slate-50 !to-slate-100/50">
-              <CardTitle className="!text-lg">Novo Projeto</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <FormGroup label="Tipo de Relatório">
-                  <Input 
-                    value={formData.reportType === 'AEP' ? 'AEP – Análise Ergonômica Preliminar' : 'AET – Análise Ergonômica do Trabalho'} 
-                    disabled 
-                    className="bg-slate-50 text-slate-500 font-medium cursor-not-allowed"
-                  />
-                </FormGroup>
-
-                <FormGroup label="Selecionar Cliente Cadastrado">
-                  <select
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
-                    onChange={(e) => {
-                      const client = companies.find(c => c.id === e.target.value);
-                      setSelectedCompanyId(e.target.value || '');
-                      if (client) setFormData(prev => ({
-                        ...prev,
-                        companyName: client.razaoSocial,
-                        fantasyName: client.nomeFantasia,
-                        cnpj: client.cnpj,
-                        address: `${client.logradouro}${client.numero ? ', ' + client.numero : ''}${client.bairro ? ' - ' + client.bairro : ''}`,
-                        location: `${client.municipio}${client.uf ? ' - ' + client.uf : ''}`,
-                        riskDegree: client.riskDegree || '',
-                        product: client.product || '',
-                        companyLogoDataUrl: client.logoDataUrl || '',
-                        unit: '',
-                      }));
-                    }}
-                    defaultValue=""
+            <CardHeader className="!bg-gradient-to-r !from-slate-50 !to-slate-100/50 pb-0">
+              <CardTitle className="!text-lg px-2">Novo Projeto</CardTitle>
+              <div className="flex gap-4 px-2 mt-4 border-b border-slate-200">
+                {['Empresa', 'Responsável', 'Textos de Introdução'].map(tab => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab as any)}
+                    className={`pb-3 text-sm font-medium transition-colors relative ${
+                      activeTab === tab
+                        ? 'text-teal-600'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
                   >
-                    <option value="" disabled>-- Selecione um cliente --</option>
-                    {companies.map(client => (
-                      <option key={client.id} value={client.id}>{client.razaoSocial || 'Empresa sem Razão Social'}</option>
-                    ))}
-                  </select>
-                </FormGroup>
+                    {tab}
+                    {activeTab === tab && (
+                      <span className="absolute bottom-0 left-0 w-full h-0.5 bg-teal-500 rounded-t-full" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <form onSubmit={handleCreate} className="space-y-4">
+                {activeTab === 'Empresa' && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <FormGroup label="Tipo de Relatório">
+                      <Input 
+                        value={formData.reportType === 'AEP' ? 'AEP – Análise Ergonômica Preliminar' : 'AET – Análise Ergonômica do Trabalho'} 
+                        disabled 
+                        className="bg-slate-50 text-slate-500 font-medium cursor-not-allowed"
+                      />
+                    </FormGroup>
 
-                <div className="section-title !mt-4">Empresa</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="Razão Social" required>
-                    <Input value={formData.companyName} onChange={e => f('companyName', e.target.value)} required />
-                  </FormGroup>
-                  <FormGroup label="Nome Fantasia">
-                    <Input value={formData.fantasyName} onChange={e => f('fantasyName', e.target.value)} />
-                  </FormGroup>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="CNPJ" required>
-                    <Input value={formData.cnpj} onChange={e => f('cnpj', e.target.value)} required placeholder="00.000.000/0000-00" />
-                  </FormGroup>
-                  <FormGroup label="Grau de Risco">
-                    <Input value={formData.riskDegree} onChange={e => f('riskDegree', e.target.value)} placeholder="1, 2, 3 ou 4" />
-                  </FormGroup>
-                </div>
-                <FormGroup label="Endereço Completo" required>
-                  <Input value={formData.address} onChange={e => f('address', e.target.value)} required />
-                </FormGroup>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="Unidade / Local de Produção">
-                    {(() => {
-                      const companyUnits = selectedCompanyId
-                        ? units.filter(u => u.companyId === selectedCompanyId)
-                        : [];
-                      if (companyUnits.length > 0) {
-                        return (
-                          <select
-                            className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
-                            value={units.find(u => u.name === formData.unit && u.companyId === selectedCompanyId)?.id ?? ''}
-                            onChange={e => {
-                              const u = companyUnits.find(u => u.id === e.target.value);
-                              if (u) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  unit: u.name,
-                                  address: u.address || `${u.logradouro}${u.numero ? ', ' + u.numero : ''}${u.bairro ? ' - ' + u.bairro : ''}`,
-                                  location: (u.city || u.uf) ? `${u.city || ''}${u.uf ? ' - ' + u.uf : ''}` : prev.location,
-                                }));
-                              } else {
-                                f('unit', '');
-                              }
-                            }}
-                          >
-                            <option value="">-- Selecione uma unidade --</option>
-                            {companyUnits.map(u => (
-                              <option key={u.id} value={u.id}>{u.name}</option>
-                            ))}
-                            <option value="other">-- Outra unidade (digitar) --</option>
-                          </select>
-                        );
-                      }
-                      return <Input value={formData.unit} onChange={e => f('unit', e.target.value)} placeholder={selectedCompanyId ? 'Nenhuma unidade cadastrada' : 'Selecione uma empresa primeiro'} />;
-                    })()}
-                  </FormGroup>
-                  <FormGroup label="Produto / Atividade">
-                    <Input value={formData.product} onChange={e => f('product', e.target.value)} />
-                  </FormGroup>
-                </div>
-                <FormGroup label="Local (Cidade – UF)">
-                  <Input value={formData.location} onChange={e => f('location', e.target.value)} placeholder="Ex: São Paulo – SP" />
-                </FormGroup>
+                    <FormGroup label="Selecionar Cliente Cadastrado">
+                      <select
+                        className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
+                        onChange={(e) => {
+                          const client = companies.find(c => c.id === e.target.value);
+                          setSelectedCompanyId(e.target.value || '');
+                          if (client) setFormData(prev => ({
+                            ...prev,
+                            companyName: client.razaoSocial,
+                            fantasyName: client.nomeFantasia,
+                            cnpj: client.cnpj,
+                            address: `${client.logradouro}${client.numero ? ', ' + client.numero : ''}${client.bairro ? ' - ' + client.bairro : ''}`,
+                            location: `${client.municipio}${client.uf ? ' - ' + client.uf : ''}`,
+                            riskDegree: client.riskDegree || '',
+                            product: client.product || '',
+                            companyLogoDataUrl: client.logoDataUrl || '',
+                            unit: '',
+                          }));
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>-- Selecione um cliente --</option>
+                        {companies.map(client => (
+                          <option key={client.id} value={client.id}>{client.razaoSocial || 'Empresa sem Razão Social'}</option>
+                        ))}
+                      </select>
+                    </FormGroup>
 
-                <div className="section-title">Responsável Técnico</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormGroup label="Nome" required>
-                    <Input value={formData.evaluatorName} onChange={e => f('evaluatorName', e.target.value)} required />
-                  </FormGroup>
-                  <FormGroup label="Registro Profissional (CREFITO/CRP/etc.)" required>
-                    <Input value={formData.evaluatorCrefito} onChange={e => f('evaluatorCrefito', e.target.value)} required />
-                  </FormGroup>
-                  <FormGroup label="Formação">
-                    <Input value={formData.evaluatorFormation} onChange={e => f('evaluatorFormation', e.target.value)} placeholder="Ex: Fisioterapeuta" />
-                  </FormGroup>
-                  <FormGroup label="Empresa / Consultoria">
-                    <Input value={formData.evaluatorCompany} readOnly className="bg-slate-50 text-slate-500 cursor-not-allowed" />
-                  </FormGroup>
-                </div>
-                <FormGroup label="Data da Análise">
-                  <Input type="date" value={formData.date} onChange={e => f('date', e.target.value)} />
-                </FormGroup>
-
-                <div className="section-title">Textos de Introdução (editáveis)</div>
-                <FormGroup label="1.1 Ergonomia – texto conceitual">
-                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
-                    <ReactQuill 
-                      theme="snow"
-                      modules={quillModules}
-                      value={formData.introErgonomia} 
-                      onChange={val => f('introErgonomia', val)} 
-                      className="min-h-[150px]"
-                    />
+                    <div className="section-title !mt-4">Dados da Empresa</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormGroup label="Razão Social" required>
+                        <Input value={formData.companyName} onChange={e => f('companyName', e.target.value)} required />
+                      </FormGroup>
+                      <FormGroup label="Nome Fantasia">
+                        <Input value={formData.fantasyName} onChange={e => f('fantasyName', e.target.value)} />
+                      </FormGroup>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormGroup label="CNPJ" required>
+                        <Input value={formData.cnpj} onChange={e => f('cnpj', e.target.value)} required placeholder="00.000.000/0000-00" />
+                      </FormGroup>
+                      <FormGroup label="Grau de Risco">
+                        <Input value={formData.riskDegree} onChange={e => f('riskDegree', e.target.value)} placeholder="1, 2, 3 ou 4" />
+                      </FormGroup>
+                    </div>
+                    <FormGroup label="Endereço Completo" required>
+                      <Input value={formData.address} onChange={e => f('address', e.target.value)} required />
+                    </FormGroup>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormGroup label="Unidade / Local de Produção">
+                        {(() => {
+                          const companyUnits = selectedCompanyId
+                            ? units.filter(u => u.companyId === selectedCompanyId)
+                            : [];
+                          if (companyUnits.length > 0) {
+                            return (
+                              <select
+                                className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 bg-white transition-all duration-200 hover:border-slate-300"
+                                value={units.find(u => u.name === formData.unit && u.companyId === selectedCompanyId)?.id ?? ''}
+                                onChange={e => {
+                                  const u = companyUnits.find(u => u.id === e.target.value);
+                                  if (u) {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      unit: u.name,
+                                      address: u.address || `${u.logradouro}${u.numero ? ', ' + u.numero : ''}${u.bairro ? ' - ' + u.bairro : ''}`,
+                                      location: (u.city || u.uf) ? `${u.city || ''}${u.uf ? ' - ' + u.uf : ''}` : prev.location,
+                                    }));
+                                  } else {
+                                    f('unit', '');
+                                  }
+                                }}
+                              >
+                                <option value="">-- Selecione uma unidade --</option>
+                                {companyUnits.map(u => (
+                                  <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                                <option value="other">-- Outra unidade (digitar) --</option>
+                              </select>
+                            );
+                          }
+                          return <Input value={formData.unit} onChange={e => f('unit', e.target.value)} placeholder={selectedCompanyId ? 'Nenhuma unidade cadastrada' : 'Selecione uma empresa primeiro'} />;
+                        })()}
+                      </FormGroup>
+                      <FormGroup label="Produto / Atividade">
+                        <Input value={formData.product} onChange={e => f('product', e.target.value)} />
+                      </FormGroup>
+                    </div>
+                    <FormGroup label="Local (Cidade – UF)">
+                      <Input value={formData.location} onChange={e => f('location', e.target.value)} placeholder="Ex: São Paulo – SP" />
+                    </FormGroup>
                   </div>
-                </FormGroup>
-                <FormGroup label="1.3 Objetivo">
-                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
-                    <ReactQuill 
-                      theme="snow"
-                      modules={quillModules}
-                      value={formData.introObjetivo} 
-                      onChange={val => f('introObjetivo', val)} 
-                      className="min-h-[150px]"
-                    />
-                  </div>
-                </FormGroup>
-                <FormGroup label="1.4 Metodologia">
-                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
-                    <ReactQuill 
-                      theme="snow"
-                      modules={quillModules}
-                      value={formData.introMetodologia} 
-                      onChange={val => f('introMetodologia', val)} 
-                      className="min-h-[150px]"
-                    />
-                  </div>
-                </FormGroup>
+                )}
 
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                {activeTab === 'Responsável' && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormGroup label="Nome" required>
+                        <Input value={formData.evaluatorName} onChange={e => f('evaluatorName', e.target.value)} required />
+                      </FormGroup>
+                      <FormGroup label="Registro Profissional (CREFITO/CRP/etc.)" required>
+                        <Input value={formData.evaluatorCrefito} onChange={e => f('evaluatorCrefito', e.target.value)} required />
+                      </FormGroup>
+                      <FormGroup label="Formação">
+                        <Input value={formData.evaluatorFormation} onChange={e => f('evaluatorFormation', e.target.value)} placeholder="Ex: Fisioterapeuta" />
+                      </FormGroup>
+                      <FormGroup label="Empresa / Consultoria">
+                        <Input value={formData.evaluatorCompany} readOnly className="bg-slate-50 text-slate-500 cursor-not-allowed" />
+                      </FormGroup>
+                    </div>
+                    <FormGroup label="Data da Análise">
+                      <Input type="date" value={formData.date} onChange={e => f('date', e.target.value)} />
+                    </FormGroup>
+                  </div>
+                )}
+
+                {activeTab === 'Textos de Introdução' && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <FormGroup label="1.1 Ergonomia – texto conceitual">
+                      <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                        <ReactQuill 
+                          theme="snow"
+                          modules={quillModules}
+                          value={formData.introErgonomia} 
+                          onChange={val => f('introErgonomia', val)} 
+                          className="min-h-[150px]"
+                        />
+                      </div>
+                    </FormGroup>
+                    <FormGroup label="1.3 Objetivo">
+                      <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                        <ReactQuill 
+                          theme="snow"
+                          modules={quillModules}
+                          value={formData.introObjetivo} 
+                          onChange={val => f('introObjetivo', val)} 
+                          className="min-h-[150px]"
+                        />
+                      </div>
+                    </FormGroup>
+                    <FormGroup label="1.4 Metodologia">
+                      <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                        <ReactQuill 
+                          theme="snow"
+                          modules={quillModules}
+                          value={formData.introMetodologia} 
+                          onChange={val => f('introMetodologia', val)} 
+                          className="min-h-[150px]"
+                        />
+                      </div>
+                    </FormGroup>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
                   <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                  <Button type="submit">Criar Projeto</Button>
+                  
+                  <div className="flex gap-3">
+                    {activeTab === 'Empresa' && (
+                      <Button type="button" onClick={() => setActiveTab('Responsável')}>Próximo</Button>
+                    )}
+                    {activeTab === 'Responsável' && (
+                      <>
+                        <Button variant="outline" type="button" onClick={() => setActiveTab('Empresa')}>Voltar</Button>
+                        <Button type="button" onClick={() => setActiveTab('Textos de Introdução')}>Próximo</Button>
+                      </>
+                    )}
+                    {activeTab === 'Textos de Introdução' && (
+                      <>
+                        <Button variant="outline" type="button" onClick={() => setActiveTab('Responsável')}>Voltar</Button>
+                        <Button type="submit">Criar Projeto</Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </form>
             </CardContent>
