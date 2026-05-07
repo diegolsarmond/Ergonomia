@@ -9,7 +9,7 @@ import { MessageSquare, Edit, Trash2, CheckCircle, XCircle, GripVertical, Plus, 
 const CATEGORIES = ['Conforto térmico','Iluminação','Acústica','Organização do trabalho','Equipamentos','Ergonomia','Relacionamento','Outro'];
 const RESPONSE_TYPES = [
   { value: 'text', label: 'Texto curto' },
-  { value: 'textarea', label: 'Área de texto' },
+  { value: 'textarea', label: 'Ãrea de texto' },
   { value: 'yesno', label: 'Sim / Não' },
   { value: 'select', label: 'Seleção única' },
   { value: 'multiselect', label: 'Múltipla escolha' },
@@ -20,7 +20,7 @@ const EMPTY: Omit<SurveyQuestion, 'id'> = {
   question: '', category: '', responseType: 'text', options: [], required: false, order: 0, active: true,
 };
 
-// ── Sub-form: opções de múltipla escolha / seleção única ─────────────────────
+// ── Sub-form: opções de múltipla escolha / seleção única ────────────────────
 const OptionsEditor: React.FC<{
   options: string[];
   onChange: (options: string[]) => void;
@@ -96,7 +96,7 @@ const OptionsEditor: React.FC<{
   );
 };
 
-// ── Formulário principal ──────────────────────────────────────────────────────
+// ── Formulário principal ──────────────────────────────────────────────────
 const SurveyQuestionForm: React.FC<{
   form: Omit<SurveyQuestion, 'id'>;
   set: (field: keyof Omit<SurveyQuestion, 'id'>, value: any) => void;
@@ -187,7 +187,7 @@ const SurveyQuestionForm: React.FC<{
   );
 };
 
-// ── Tela principal ────────────────────────────────────────────────────────────
+// ── Tela principal ────────────────────────────────────────────────────────
 export const SurveyQuestions = () => {
   const { surveyQuestions, addSurveyQuestion, updateSurveyQuestion, deleteSurveyQuestion } = useAET();
   const [modalOpen, setModalOpen] = useState(false);
@@ -310,7 +310,7 @@ export const SurveyQuestions = () => {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-800">
                 {editingId ? 'Editar Pergunta' : 'Nova Pergunta'}

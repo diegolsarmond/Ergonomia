@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAET } from '../../context/AETContext';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -196,7 +196,7 @@ const CompanyForm: React.FC<{
       </FormGroup>
       <div className="grid grid-cols-3 gap-2">
         <FormGroup label="Número">
-          <Input value={form.numero} onChange={e => set('numero', e.target.value)} placeholder="Nº" />
+          <Input value={form.numero} onChange={e => set('numero', e.target.value)} placeholder="NÂº" />
         </FormGroup>
         <FormGroup label="Complemento">
           <Input value={form.complemento} onChange={e => set('complemento', e.target.value)} placeholder="Apto, Sala, Bloco..." />
@@ -225,7 +225,7 @@ const CompanyForm: React.FC<{
         <Input value={form.marketSituation} onChange={e => set('marketSituation', e.target.value)} placeholder="Ex: Empresa fornecedora com demanda crescente" />
       </FormGroup>
       <FormGroup label="Local de Produção">
-        <Input value={form.productionLocation} onChange={e => set('productionLocation', e.target.value)} placeholder="Ex: Galpão principal – Linha 1" />
+        <Input value={form.productionLocation} onChange={e => set('productionLocation', e.target.value)} placeholder="Ex: Galpão principal â€“ Linha 1" />
       </FormGroup>
       <FormGroup label="Grau de Risco">
         <Select value={form.riskDegree} onChange={e => set('riskDegree', e.target.value)}>
@@ -368,7 +368,7 @@ export const Companies = () => {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-800">
                 {editingId ? 'Editar Empresa' : 'Nova Empresa'}

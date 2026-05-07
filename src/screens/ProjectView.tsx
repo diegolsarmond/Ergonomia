@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -105,14 +105,14 @@ export const ProjectView = () => {
 
   return (
     <div className="p-6 lg:p-8 xl:p-10">
-      {/* ── Breadcrumb ──────────────────────────────────────────────── */}
+      {/* â”€â”€ Breadcrumb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-center gap-2 mb-6 text-sm text-slate-400">
         <button onClick={() => navigate('/')} className="hover:text-teal-600 transition-colors cursor-pointer">Projetos</button>
         <ChevronRight className="w-3.5 h-3.5" />
         <span className="text-slate-600 font-medium truncate">{project.companyName}</span>
       </div>
 
-      {/* ── Page Header ────────────────────────────────────────────── */}
+      {/* â”€â”€ Page Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="page-header mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center relative z-10 gap-4">
           <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -150,7 +150,7 @@ export const ProjectView = () => {
         </div>
       </div>
 
-      {/* ── Info Cards ─────────────────────────────────────────────── */}
+      {/* â”€â”€ Info Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
         <Card>
           <CardHeader>
@@ -186,7 +186,7 @@ export const ProjectView = () => {
         </Card>
       </div>
 
-      {/* ── Functions ──────────────────────────────────────────────── */}
+      {/* â”€â”€ Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-800">
@@ -198,7 +198,7 @@ export const ProjectView = () => {
         {project.functions.length === 0 ? (
           <div className="empty-state">
             <p className="text-slate-500 text-lg font-medium mb-2">Nenhuma função cadastrada</p>
-            <p className="text-slate-400 text-sm mb-6">Adicione funções para iniciar a análise ergonômica</p>
+            <p className="text-slate-400 text-sm mb-6">Adicione funções para iniciar a análise ergonÃ´mica</p>
             <PermissionGuard permission="PROJECTS_EDIT">
               <Button onClick={handleAddFunction} variant="outline">
                 <Plus className="w-4 h-4" /> Cadastrar Função
@@ -217,9 +217,9 @@ export const ProjectView = () => {
                     <div className="min-w-0">
                       <h3 className="font-semibold text-slate-800 text-[15px]">{func.name || 'Sem nome'}</h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {func.sector && `Setor: ${func.sector} • `}
+                        {func.sector && `Setor: ${func.sector} â€¢ `}
                         {func.numEmployees} colaboradores
-                        {func.improvements?.length > 0 && ` • ${func.improvements.length} riscos`}
+                        {func.improvements?.length > 0 && ` â€¢ ${func.improvements.length} riscos`}
                       </p>
                     </div>
                   </div>
@@ -254,10 +254,10 @@ export const ProjectView = () => {
         />
       )}
 
-      {/* ── Validation modal ───────────────────────────────────────── */}
+      {/* â”€â”€ Validation modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {validationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]">
             {/* Header */}
             <div className={`flex items-center gap-3 px-6 py-4 rounded-t-2xl ${validationModal.mode === 'errors' ? 'bg-red-50 border-b border-red-100' : 'bg-amber-50 border-b border-amber-100'}`}>
               {validationModal.mode === 'errors'
@@ -330,7 +330,7 @@ export const ProjectView = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveIntro} className="space-y-6">
-                <FormGroup label="1.1 Ergonomia – texto conceitual">
+                <FormGroup label="1.1 Ergonomia â€“ texto conceitual">
                   <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
                     <ReactQuill 
                       theme="snow"

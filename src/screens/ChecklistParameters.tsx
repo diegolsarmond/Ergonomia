@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -27,7 +27,7 @@ const ChecklistForm: React.FC<{
     </FormGroup>
 
     <div>
-      <label className="block text-[13px] font-medium text-slate-600 mb-2">Vincular às Funções</label>
+      <label className="block text-[13px] font-medium text-slate-600 mb-2">Vincular Ã s Funções</label>
       <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-2.5 space-y-1.5 bg-slate-50/50">
         {allFunctions.length === 0 && <p className="text-sm text-slate-400 p-2">Nenhuma função cadastrada.</p>}
         {allFunctions.map(fn => (
@@ -95,7 +95,7 @@ export const ChecklistParameters = () => {
 
   return (
     <div className="p-6 lg:p-8 xl:p-10 pb-24">
-      {/* ── Page Header ──────────────────────────────────────────── */}
+      {/* â”€â”€ Page Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="page-header mb-8">
         <div className="flex justify-between items-center relative z-10">
           <div>
@@ -120,7 +120,7 @@ export const ChecklistParameters = () => {
         </div>
       </div>
 
-      {/* ── List ────────────────────────────────────────────────── */}
+      {/* â”€â”€ List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Card>
         <CardContent className="pt-6">
           <h2 className="text-base font-semibold text-slate-800 mb-4">Perguntas Cadastradas</h2>
@@ -163,7 +163,7 @@ export const ChecklistParameters = () => {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-800">
                 {editingId ? 'Editar Pergunta' : 'Nova Pergunta'}

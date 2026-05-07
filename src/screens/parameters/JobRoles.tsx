@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { useAET } from '../../context/AETContext';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -11,7 +11,7 @@ const EMPTY: Omit<StandardJobRole, 'id'> = {
   epiIds: [], equipmentIds: [],
 };
 
-// ── Inline multi-select dropdown ─────────────────────────────────────────────
+// â”€â”€ Inline multi-select dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface CatalogItem { id: string; name: string; active: boolean; }
 
@@ -50,7 +50,7 @@ function CatalogMultiSelect({
           {selectedItems.map(item => (
             <span key={item.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium">
               {item.name}
-              <button type="button" onClick={() => toggle(item.id)} className="hover:text-teal-900 leading-none">×</button>
+              <button type="button" onClick={() => toggle(item.id)} className="hover:text-teal-900 leading-none">Ã—</button>
             </span>
           ))}
         </div>
@@ -91,7 +91,7 @@ function CatalogMultiSelect({
                       className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${isSel ? 'bg-teal-50 text-teal-700' : 'text-slate-700 hover:bg-slate-50'}`}
                     >
                       <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${isSel ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300'}`}>
-                        {isSel && '✓'}
+                        {isSel && 'âœ“'}
                       </span>
                       {item.name}
                     </button>
@@ -106,7 +106,7 @@ function CatalogMultiSelect({
   );
 }
 
-// ── Form ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const JobRoleForm: React.FC<{
   form: Omit<StandardJobRole, 'id'>;
@@ -159,7 +159,7 @@ const JobRoleForm: React.FC<{
   );
 };
 
-// ── Screen ────────────────────────────────────────────────────────────────────
+// â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const JobRoles = () => {
   const { jobRoles, addJobRole, updateJobRole, deleteJobRole, epis, equipment } = useAET();
@@ -272,7 +272,7 @@ export const JobRoles = () => {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <h2 className="text-base font-semibold text-slate-800">
                 {editingId ? 'Editar Função' : 'Nova Função'}

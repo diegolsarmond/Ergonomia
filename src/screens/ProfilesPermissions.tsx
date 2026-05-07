@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Save, Lock, AlertCircle, Plus, Trash2, X } from 'lucide-react';
 import type { CustomProfile, Permission } from '../domain/auth/authTypes';
 import {
@@ -9,7 +9,7 @@ import {
 import { ADMIN_PERMISSIONS } from '../domain/auth/permissions';
 import { useAuth } from '../context/AuthContext';
 
-// ── Metadata ──────────────────────────────────────────────────────────────────
+// â”€â”€ Metadata â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const PERMISSION_LABELS: Record<Permission, string> = {
   USERS_VIEW:    'Visualizar usuários',
@@ -57,7 +57,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 
 const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(g => g.permissions);
 
-// ── New Profile Modal ─────────────────────────────────────────────────────────
+// â”€â”€ New Profile Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface NewProfileModalProps {
   onClose: () => void;
@@ -84,7 +84,7 @@ function NewProfileModal({ onClose, onCreated }: NewProfileModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <h2 className="text-base font-semibold text-slate-800">Novo Perfil</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 transition-colors">
@@ -167,7 +167,7 @@ function NewProfileModal({ onClose, onCreated }: NewProfileModalProps) {
   );
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function ProfilesPermissions() {
   const { refreshRolePermissions } = useAuth();
