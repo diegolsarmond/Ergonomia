@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X } from 'lucide-react';
+import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X, AlignLeft } from 'lucide-react';
+import { FormGroup, Textarea } from '../components/ui/Forms';
 import { validateReport } from '../domain/reports/reportValidation';
 import type { ReportValidationResult } from '../domain/reports/reportValidationTypes';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +15,7 @@ import { PermissionGuard } from '../components/auth/PermissionGuard';
 export const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON } = useAET();
+  const { getProject, updateProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON } = useAET();
   const { hasPermission } = useAuth();
   const project = getProject(id!);
 
@@ -21,6 +24,40 @@ export const ProjectView = () => {
     result: ReportValidationResult;
     mode: 'errors' | 'warnings';
   } | null>(null);
+
+  const [isEditIntroModalOpen, setIsEditIntroModalOpen] = useState(false);
+  const [introData, setIntroData] = useState({
+    introErgonomia: project?.introErgonomia || '',
+    introObjetivo: project?.introObjetivo || '',
+    introMetodologia: project?.introMetodologia || '',
+  });
+
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'align': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['link'],
+      ['clean']
+    ]
+  };
+
+  React.useEffect(() => {
+    if (project) {
+      setIntroData({
+        introErgonomia: project.introErgonomia || '',
+        introObjetivo: project.introObjetivo || '',
+        introMetodologia: project.introMetodologia || '',
+      });
+    }
+  }, [project]);
+
+  const handleSaveIntro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateProject(project!.id, introData);
+    setIsEditIntroModalOpen(false);
+  };
 
   if (!project) return (
     <div className="flex items-center justify-center h-full">
@@ -97,6 +134,11 @@ export const ProjectView = () => {
             <PermissionGuard permission={project.reportType === 'AEP' ? 'AEP_PRINT' : 'AET_PRINT'}>
               <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50 flex-1 sm:flex-none" size="sm" disabled={isPrinting}>
                 <Printer className="w-4 h-4" />{isPrinting ? 'Preparando...' : 'Imprimir'}
+              </Button>
+            </PermissionGuard>
+            <PermissionGuard permission="PROJECTS_EDIT">
+              <Button onClick={() => setIsEditIntroModalOpen(true)} variant="outline" className="!bg-white/10 !border-white/20 !text-white hover:!bg-white/20 flex-1 sm:flex-none" size="sm">
+                <AlignLeft className="w-4 h-4" /> Textos
               </Button>
             </PermissionGuard>
             <PermissionGuard permission="PROJECTS_EDIT">
@@ -277,6 +319,58 @@ export const ProjectView = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {isEditIntroModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsEditIntroModalOpen(false)}>
+          <Card className="modal-content w-full max-w-2xl max-h-[90vh] overflow-y-auto !rounded-2xl" onClick={e => e.stopPropagation()}>
+            <CardHeader className="!bg-gradient-to-r !from-slate-50 !to-slate-100/50">
+              <CardTitle className="!text-lg">Editar Textos de Introdução</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveIntro} className="space-y-6">
+                <FormGroup label="1.1 Ergonomia – texto conceitual">
+                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                    <ReactQuill 
+                      theme="snow"
+                      modules={quillModules}
+                      value={introData.introErgonomia} 
+                      onChange={val => setIntroData(prev => ({ ...prev, introErgonomia: val }))} 
+                      className="min-h-[150px]"
+                    />
+                  </div>
+                </FormGroup>
+                <FormGroup label="1.3 Objetivo">
+                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                    <ReactQuill 
+                      theme="snow"
+                      modules={quillModules}
+                      value={introData.introObjetivo} 
+                      onChange={val => setIntroData(prev => ({ ...prev, introObjetivo: val }))} 
+                      className="min-h-[150px]"
+                    />
+                  </div>
+                </FormGroup>
+                <FormGroup label="1.4 Metodologia">
+                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                    <ReactQuill 
+                      theme="snow"
+                      modules={quillModules}
+                      value={introData.introMetodologia} 
+                      onChange={val => setIntroData(prev => ({ ...prev, introMetodologia: val }))} 
+                      className="min-h-[150px]"
+                    />
+                  </div>
+                </FormGroup>
+
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                  <Button variant="ghost" type="button" onClick={() => setIsEditIntroModalOpen(false)}>Cancelar</Button>
+                  <Button type="submit">Salvar Alterações</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
