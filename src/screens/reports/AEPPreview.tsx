@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem, IlluminanceMeasurement } from '../../types';
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
 import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, useSectionPages, PALETTE } from './components/ReportCommon';
+import { useAET } from '../../context/AETContext';
 
 // ── Risk Matrix ──────────────────────────────────────────────────────────────
 
@@ -116,28 +117,46 @@ const psyClassifColor: Record<string, { bg: string; color: string }> = {
   VERMELHO: { bg: '#fee2e2', color: '#7f1d1d' },
 };
 
-const BiomecTable: React.FC<{ title: string; items: BiomechanicalItem[] }> = ({ title, items }) => (
+const BiomecTable: React.FC<{
+  title: string;
+  items: BiomechanicalItem[];
+  riskFactorsCatalog: any[];
+}> = ({ title, items, riskFactorsCatalog }) => (
   <>
     <h4>{title}</h4>
     <table style={{ fontSize: '0.72rem' }}>
       <thead>
         <tr>
-          <th style={{ width: '40%' }}>Fator de Risco</th>
+          <th style={{ width: '30%' }}>Fator Biomecânico</th>
           <th style={{ width: '12%' }}>Avaliação</th>
+          <th style={{ width: '25%' }}>Fatores de Risco</th>
           <th>Descrição / Observação</th>
         </tr>
       </thead>
       <tbody>
         {items.map((item, i) => {
           const ac = item.assessment ? assessColor[item.assessment] : null;
+          const selectedRiskNames = (item.selectedRiskFactors || [])
+            .map(id => riskFactorsCatalog.find(rf => rf.id === id)?.name)
+            .filter(Boolean);
+
           return (
             <tr key={i}>
-              <td>{item.factor}</td>
+              <td style={{ fontWeight: 600 }}>{item.factor}</td>
               <td style={{ textAlign: 'center' }}>
                 {item.assessment ? (
                   <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: ac?.bg, color: ac?.color }}>
                     {item.assessment}
                   </span>
+                ) : '—'}
+              </td>
+              <td>
+                {selectedRiskNames.length > 0 ? (
+                  <ul style={{ margin: 0, paddingLeft: '14px' }}>
+                    {selectedRiskNames.map((name, idx) => (
+                      <li key={idx}>{name}</li>
+                    ))}
+                  </ul>
                 ) : '—'}
               </td>
               <td>{item.description || '—'}</td>
@@ -423,7 +442,11 @@ const IlluminanceSection: React.FC<{ measurements: IlluminanceMeasurement[] }> =
 
 // ── AEP Function Section ─────────────────────────────────────────────────────
 
-const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = ({ func, sectionNum }) => {
+const AEPFunctionSection: React.FC<{
+  func: AETFunction;
+  sectionNum: string;
+  riskFactorsCatalog: any[];
+}> = ({ func, sectionNum, riskFactorsCatalog }) => {
   const risks: ErgonomicRisk[] = func.risks || [];
   const aep = func.aep;
 
@@ -479,9 +502,8 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
         {(work.processDescription || work.workCycleDescription) && (
           <>
             <h3 style={{ marginTop: '32px' }}>2. Caracterização do Trabalho</h3>
-            <h4>2.1 Descrição do Processo e Ciclo de Trabalho</h4>
-            <Field label="Processo" value={work.processDescription} />
-            <Field label="Ciclo de Trabalho" value={work.workCycleDescription} />
+            <h4>2.1 Descrição</h4>
+            <Field label="Descrição do Processo e Ciclo de Trabalho" value={work.processDescription || work.workCycleDescription} />
 
             <h4>2.2 Organização do Trabalho</h4>
             <table style={{ fontSize: '0.75rem' }}>
@@ -521,11 +543,11 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
 
         {/* 4. Biomecânica */}
         <h3 style={{ marginTop: '32px' }}>4. Biomecânica</h3>
-        <BiomecTable title="4.1 Posturas e Alcances"          items={bio.postureAndReach} />
-        <BiomecTable title="4.2 Repetitividade e Ritmo"        items={bio.repetitivenessAndRhythm} />
-        <BiomecTable title="4.3 Força e Exigência Física"      items={bio.forceAndPhysicalDemand} />
-        <BiomecTable title="4.4 Movimentação Manual de Cargas" items={bio.manualMaterialHandling} />
-        <BiomecTable title="4.5 Mobiliário e Posto de Trabalho" items={bio.furnitureAndWorkstation} />
+        <BiomecTable title="Posturas e Alcances"           items={bio.postureAndReach}           riskFactorsCatalog={riskFactorsCatalog} />
+        <BiomecTable title="Repetitividade e Ritmo"         items={bio.repetitivenessAndRhythm}     riskFactorsCatalog={riskFactorsCatalog} />
+        <BiomecTable title="Força e Exigência Física"       items={bio.forceAndPhysicalDemand}      riskFactorsCatalog={riskFactorsCatalog} />
+        <BiomecTable title="Movimentação Manual de Cargas"  items={bio.manualMaterialHandling}      riskFactorsCatalog={riskFactorsCatalog} />
+        <BiomecTable title="Mobiliário e Posto de Trabalho" items={bio.furnitureAndWorkstation}      riskFactorsCatalog={riskFactorsCatalog} />
 
         <h4>4.6 Conforto Ambiental</h4>
         <table style={{ fontSize: '0.72rem' }}>
@@ -829,6 +851,7 @@ const AEPFunctionSection: React.FC<{ func: AETFunction; sectionNum: string }> = 
 // ── AEPPreview ───────────────────────────────────────────────────────────────
 
 export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
+  const { biomechanicalRiskFactors } = useAET();
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('print') === 'true') {
@@ -950,7 +973,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                   )}
                   {project.functions.map((func, fIdx) => (
                     <div key={func.id} id={`aep-func-${func.id}`}>
-                      <AEPFunctionSection func={func} sectionNum={`2.${fIdx + 1}`} />
+                      <AEPFunctionSection func={func} sectionNum={`2.${fIdx + 1}`} riskFactorsCatalog={biomechanicalRiskFactors} />
                     </div>
                   ))}
 

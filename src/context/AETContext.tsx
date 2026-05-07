@@ -5,6 +5,7 @@ import {
   AETProject, AETFunction, ChecklistQuestion, ScientificMethodTemplate,
   Company, Unit, Sector, StandardJobRole, EPI, StandardEquipment,
   SurveyQuestion, StandardPause, RiskClassification, ReportTextTemplate, Shift,
+  BiomechanicalRiskFactor,
 } from '../types';
 import type { IlluminanceNormativeParameter } from '../domain/illuminance/illuminanceTypes';
 import { DEFAULT_NORMATIVE_PARAMETERS } from '../domain/illuminance/illuminanceTypes';
@@ -14,7 +15,8 @@ import { Client, MOCK_CLIENTS } from '../data/mockClients';
 import {
   MOCK_COMPANIES, MOCK_UNITS, MOCK_SECTORS, MOCK_JOB_ROLES, MOCK_EPIS,
   MOCK_EQUIPMENT, MOCK_SURVEY_QUESTIONS, MOCK_PAUSES, MOCK_RISK_CLASSIFICATIONS,
-  MOCK_REPORT_TEXTS, MOCK_CHECKLIST_QUESTIONS, MOCK_SCIENTIFIC_METHODS, MOCK_SHIFTS
+  MOCK_REPORT_TEXTS, MOCK_CHECKLIST_QUESTIONS, MOCK_SCIENTIFIC_METHODS, MOCK_SHIFTS,
+  MOCK_BIOMECHANICAL_RISK_FACTORS
 } from '../data/mockParameters';
 
 interface AETContextType {
@@ -93,6 +95,10 @@ interface AETContextType {
   addIlluminanceNormativeParam: (p: Omit<IlluminanceNormativeParameter, 'id'>) => Promise<void>;
   updateIlluminanceNormativeParam: (id: string, p: Partial<IlluminanceNormativeParameter>) => Promise<void>;
   deleteIlluminanceNormativeParam: (id: string) => Promise<void>;
+  biomechanicalRiskFactors: BiomechanicalRiskFactor[];
+  addBiomechanicalRiskFactor: (p: Omit<BiomechanicalRiskFactor, 'id'>) => Promise<void>;
+  updateBiomechanicalRiskFactor: (id: string, p: Partial<BiomechanicalRiskFactor>) => Promise<void>;
+  deleteBiomechanicalRiskFactor: (id: string) => Promise<void>;
 }
 
 const AETContext = createContext<AETContextType | undefined>(undefined);
@@ -130,6 +136,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [reportTexts, setReportTexts] = useState<ReportTextTemplate[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [illuminanceNormativeParams, setIlluminanceNormativeParams] = useState<IlluminanceNormativeParameter[]>([]);
+  const [biomechanicalRiskFactors, setBiomechanicalRiskFactors] = useState<BiomechanicalRiskFactor[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -236,13 +243,32 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // Illuminance normative parameters
-      const storedIllumNorms = await localforage.getItem<IlluminanceNormativeParameter[]>('aet_illuminance_norms');
-      if (!storedIllumNorms || storedIllumNorms.length === 0) {
-        await localforage.setItem('aet_illuminance_norms', DEFAULT_NORMATIVE_PARAMETERS);
-        setIlluminanceNormativeParams(DEFAULT_NORMATIVE_PARAMETERS);
-      } else {
-        setIlluminanceNormativeParams(storedIllumNorms);
+      await loadSimple<IlluminanceNormativeParameter>('aet_illuminance_norms', setIlluminanceNormativeParams, DEFAULT_NORMATIVE_PARAMETERS);
+      {
+        const raw = await localforage.getItem<BiomechanicalRiskFactor[]>('aet_biomechanical_risk_factors');
+        if (!raw || raw.length === 0) {
+          await localforage.setItem('aet_biomechanical_risk_factors', MOCK_BIOMECHANICAL_RISK_FACTORS);
+          setBiomechanicalRiskFactors(MOCK_BIOMECHANICAL_RISK_FACTORS);
+        } else {
+          let migrated = false;
+          const cleaned = raw.map((f: any) => {
+            let factors = f.biomechanicalFactors;
+            // Migration: biomechanicalFactor (string) -> biomechanicalFactors (array)
+            if (!factors && f.biomechanicalFactor) {
+              migrated = true;
+              // Strip numbers from the old string if present
+              const name = f.biomechanicalFactor.replace(/^\d+\.\d+\s+/, '');
+              factors = [name];
+            }
+            if (!Array.isArray(factors)) {
+              migrated = true;
+              factors = [];
+            }
+            return { ...f, biomechanicalFactors: factors };
+          });
+          if (migrated) await localforage.setItem('aet_biomechanical_risk_factors', cleaned);
+          setBiomechanicalRiskFactors(cleaned);
+        }
       }
 
       setLoading(false);
@@ -413,6 +439,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
   const shiftCRUD = makeCRUD('aet_shifts', shifts, setShifts);
   const illuminanceNormCRUD = makeCRUD('aet_illuminance_norms', illuminanceNormativeParams, setIlluminanceNormativeParams);
+  const biomechanicalRiskFactorCRUD = makeCRUD('aet_biomechanical_risk_factors', biomechanicalRiskFactors, setBiomechanicalRiskFactors);
 
   const resetDevelopmentData = async () => {
     await localforage.clear();
@@ -442,6 +469,10 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addIlluminanceNormativeParam: illuminanceNormCRUD.add,
       updateIlluminanceNormativeParam: illuminanceNormCRUD.update,
       deleteIlluminanceNormativeParam: illuminanceNormCRUD.remove,
+      biomechanicalRiskFactors,
+      addBiomechanicalRiskFactor: biomechanicalRiskFactorCRUD.add,
+      updateBiomechanicalRiskFactor: biomechanicalRiskFactorCRUD.update,
+      deleteBiomechanicalRiskFactor: biomechanicalRiskFactorCRUD.remove,
     }}>
       {children}
     </AETContext.Provider>

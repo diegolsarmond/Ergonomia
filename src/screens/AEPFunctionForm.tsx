@@ -307,9 +307,9 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const {
     companies, units, sectors, jobRoles,
     addJobRole, addUnit, addSector,
-    epis: epiCatalog, addEPI, equipment: equipmentCatalog, addEquipment,
     shifts: shiftCatalog, pauses: pauseCatalog,
     scientificMethodTemplates,
+    biomechanicalRiskFactors,
   } = useAET();
 
   const matchedCompany = companies.find(c =>
@@ -421,7 +421,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
     idx: number,
     field: keyof BiomechanicalItem,
-    value: string,
+    value: any,
   ) =>
     setAep(a => {
       const list = [...(a.biomechanics[group] as BiomechanicalItem[])];
@@ -558,40 +558,70 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-slate-50">
-              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-2/5">Fator de Risco</th>
-              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/5">Avaliação</th>
+              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/4">Fator Biomecânico</th>
+              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/6">Avaliação</th>
+              <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-1/4">Fatores de Risco</th>
               <th className="text-left p-2 border border-slate-200 font-medium text-slate-600">Descrição / Observação</th>
             </tr>
           </thead>
           <tbody>
-            {(aep.biomechanics[group] as BiomechanicalItem[]).map((item, idx) => (
-              <tr key={idx} className="hover:bg-slate-50/50">
-                <td className="p-2 border border-slate-200 text-slate-700">{item.factor}</td>
-                <td className="p-2 border border-slate-200">
-                  <select
-                    value={item.assessment}
-                    onChange={e => updateBiomecItem(group, idx, 'assessment', e.target.value)}
-                    className={`w-full rounded-lg border px-2 py-1 text-xs font-medium ${
-                      item.assessment ? classifColor[item.assessment] || 'border-slate-200' : 'border-slate-200 text-slate-400'
-                    }`}
-                  >
-                    <option value="">—</option>
-                    {ASSESSMENT_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="p-2 border border-slate-200">
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={e => updateBiomecItem(group, idx, 'description', e.target.value)}
-                    placeholder="Observação..."
-                    className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-teal-500 focus:outline-none"
-                  />
-                </td>
-              </tr>
-            ))}
+            {(aep.biomechanics[group] as BiomechanicalItem[]).map((item, idx) => {
+              const linkedRisks = biomechanicalRiskFactors.filter(rf => rf.active && rf.biomechanicalFactors?.includes(title));
+              return (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="p-2 border border-slate-200 text-slate-700 text-xs">{item.factor}</td>
+                  <td className="p-2 border border-slate-200">
+                    <select
+                      value={item.assessment}
+                      onChange={e => updateBiomecItem(group, idx, 'assessment', e.target.value)}
+                      className={`w-full rounded-lg border px-2 py-1 text-[10px] font-medium ${
+                        item.assessment ? classifColor[item.assessment] || 'border-slate-200' : 'border-slate-200 text-slate-400'
+                      }`}
+                    >
+                      <option value="">—</option>
+                      {ASSESSMENT_OPTIONS.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-2 border border-slate-200">
+                    <div className="space-y-1">
+                      {linkedRisks.length === 0 ? (
+                        <span className="text-[10px] text-slate-400 italic">Nenhum fator vinculado</span>
+                      ) : (
+                        linkedRisks.map(rf => {
+                          const isSelected = (item.selectedRiskFactors || []).includes(rf.id);
+                          return (
+                            <label key={rf.id} className="flex items-center gap-1.5 cursor-pointer group">
+                              <Checkbox
+                                checked={isSelected}
+                                onChange={() => {
+                                  const current = item.selectedRiskFactors || [];
+                                  const next = isSelected ? current.filter(id => id !== rf.id) : [...current, rf.id];
+                                  updateBiomecItem(group, idx, 'selectedRiskFactors', next);
+                                }}
+                              />
+                              <span className={`text-[10px] transition-colors ${isSelected ? 'text-teal-700 font-medium' : 'text-slate-500 group-hover:text-slate-700'}`}>
+                                {rf.name}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-2 border border-slate-200">
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={e => updateBiomecItem(group, idx, 'description', e.target.value)}
+                      placeholder="Observação..."
+                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-[10px] focus:border-teal-500 focus:outline-none"
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -607,7 +637,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         </Button>
         <div className="text-center">
           <h1 className="text-lg font-bold text-slate-800">
-            {funcId === 'new' ? 'Nova Função AEP' : 'Editar Função AEP'}
+            {funcId === 'new' ? 'Nova Função AEP (v2.1)' : 'Editar Função AEP (v2.1)'}
           </h1>
           <p className="text-xs text-slate-500">{project.companyName}</p>
         </div>
@@ -746,13 +776,36 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
               <SectionTitle>2.2 Organização do Trabalho</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
-                <ChipSelector
-                  label="Jornada de Trabalho"
-                  value={aep.workCharacterization.workOrganization.workday}
-                  onChange={v => setWorkOrg('workday', v)}
-                  options={['6h/Dia', '8h/Dia', '12h/Dia', 'Outro']}
-                  placeholder="Descreva a jornada..."
-                />
+                <FormGroup label="Jornada de Trabalho">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {['6h/Dia', '8h/Dia', '12h/Dia'].map(opt => {
+                      const selected = aep.workCharacterization.workOrganization.workday.split(', ').includes(opt);
+                      return (
+                        <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox checked={selected} onChange={() => {
+                            const cur = aep.workCharacterization.workOrganization.workday.split(', ').filter(Boolean);
+                            const nxt = selected ? cur.filter(v => v !== opt) : [...cur, opt];
+                            setWorkOrg('workday', nxt.join(', '));
+                          }} />
+                          {opt}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <Input
+                    value={(() => {
+                      const options = ['6h/Dia', '8h/Dia', '12h/Dia'];
+                      return aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const options = ['6h/Dia', '8h/Dia', '12h/Dia'];
+                      const fromOptions = aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && options.includes(v));
+                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                      setWorkOrg('workday', [...fromOptions, ...extra].join(', '));
+                    }}
+                    placeholder="Outra jornada..."
+                  />
+                </FormGroup>
                 <FormGroup label="Escala / Turno">
                   <div className="flex flex-wrap gap-2 mb-2">
                     {shiftCatalog.filter(s => s.active).map(s => {
@@ -774,13 +827,36 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 <FormGroup label="Horas Extras">
                   <Input value={aep.workCharacterization.workOrganization.overtime} onChange={e => setWorkOrg('overtime', e.target.value)} placeholder="Ex: Eventualmente" />
                 </FormGroup>
-                <ChipSelector
-                  label="Pausa para o almoço"
-                  value={aep.workCharacterization.workOrganization.lunchBreak}
-                  onChange={v => setWorkOrg('lunchBreak', v)}
-                  options={['60min.', '15min.', 'N/A', 'Outro']}
-                  placeholder="Descreva a pausa..."
-                />
+                <FormGroup label="Pausa para o almoço">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {['60min.', '15min.', 'N/A'].map(opt => {
+                      const selected = aep.workCharacterization.workOrganization.lunchBreak.split(', ').includes(opt);
+                      return (
+                        <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox checked={selected} onChange={() => {
+                            const cur = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(Boolean);
+                            const nxt = selected ? cur.filter(v => v !== opt) : [...cur, opt];
+                            setWorkOrg('lunchBreak', nxt.join(', '));
+                          }} />
+                          {opt}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <Input
+                    value={(() => {
+                      const options = ['60min.', '15min.', 'N/A'];
+                      return aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const options = ['60min.', '15min.', 'N/A'];
+                      const fromOptions = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && options.includes(v));
+                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                      setWorkOrg('lunchBreak', [...fromOptions, ...extra].join(', '));
+                    }}
+                    placeholder="Outra pausa..."
+                  />
+                </FormGroup>
                 <FormGroup label="Outras Pausas">
                   <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Descreva outras pausas existentes..." />
                 </FormGroup>
@@ -902,11 +978,11 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               <p className="text-xs text-slate-500 mb-4">
                 Avalie cada fator como: <span className="font-medium text-green-700">OK</span> · <span className="font-medium text-amber-700">Atenção</span> · <span className="font-medium text-red-700">Crítico</span> · <span className="font-medium text-slate-600">N.A.</span>
               </p>
-              {renderBiomecGroup('4.1 Posturas e Alcances', 'postureAndReach')}
-              {renderBiomecGroup('4.2 Repetitividade e Ritmo', 'repetitivenessAndRhythm')}
-              {renderBiomecGroup('4.3 Força e Exigência Física', 'forceAndPhysicalDemand')}
-              {renderBiomecGroup('4.4 Movimentação Manual de Cargas', 'manualMaterialHandling')}
-              {renderBiomecGroup('4.5 Mobiliário e Posto de Trabalho', 'furnitureAndWorkstation')}
+              {renderBiomecGroup('Posturas e Alcances', 'postureAndReach')}
+              {renderBiomecGroup('Repetitividade e Ritmo', 'repetitivenessAndRhythm')}
+              {renderBiomecGroup('Força e Exigência Física', 'forceAndPhysicalDemand')}
+              {renderBiomecGroup('Movimentação Manual de Cargas', 'manualMaterialHandling')}
+              {renderBiomecGroup('Mobiliário e Posto de Trabalho', 'furnitureAndWorkstation')}
 
               <div className="mb-6">
                 <h4 className="text-sm font-semibold text-slate-700 mb-3">4.6 Conforto Ambiental</h4>

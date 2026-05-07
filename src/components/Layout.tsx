@@ -30,6 +30,7 @@ const PARAM_GROUPS = [
       { to: '/parameters/checklist', icon: List, label: 'Checklist NHO 11' },
       { to: '/parameters/scientific-methods', icon: FlaskConical, label: 'Métodos Científicos' },
       { to: '/parameters/risk-classifications', icon: AlertTriangle, label: 'Classificação de Risco' },
+      { to: '/parameters/biomechanical-risk-factors', icon: AlertTriangle, label: 'Fatores de Risco Biomecânicos' },
       { to: '/parameters/report-texts', icon: FileText, label: 'Textos Padrão' },
       { to: '/parameters/illuminance-norms', icon: Lightbulb, label: 'Parâmetros de Iluminância' },
     ],

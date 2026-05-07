@@ -53,13 +53,33 @@ export function normalizeFunction(raw: any): AETFunction {
     requiresAET:              base.requiresAET              ?? false,
     requiresAETJustification: base.requiresAETJustification ?? '',
     // Structured AEP assessment — merge with defaults so old functions get the full shape
-    aep: base.aep
-      ? {
-          ...createEmptyAEPFunctionAssessment(),
-          ...base.aep,
-          illuminanceMeasurements: Array.isArray(base.aep?.illuminanceMeasurements) ? base.aep.illuminanceMeasurements : [],
+    aep: (() => {
+      const a = base.aep ? { ...createEmptyAEPFunctionAssessment(), ...base.aep } : createEmptyAEPFunctionAssessment();
+      
+      // Migration: Merge processDescription and workCycleDescription into a single field if needed
+      if (a.workCharacterization.workCycleDescription && !a.workCharacterization.processDescription) {
+        a.workCharacterization.processDescription = a.workCharacterization.workCycleDescription;
+        a.workCharacterization.workCycleDescription = '';
+      }
+
+      // Ensure biomechanics items have selectedRiskFactors array
+      const bio = a.biomechanics;
+      const groups = ['postureAndReach', 'repetitivenessAndRhythm', 'forceAndPhysicalDemand', 'manualMaterialHandling', 'furnitureAndWorkstation'] as const;
+      groups.forEach(g => {
+        if (Array.isArray(bio[g])) {
+          bio[g] = bio[g].map((item: any) => ({
+            ...item,
+            selectedRiskFactors: Array.isArray(item.selectedRiskFactors) ? item.selectedRiskFactors : [],
+          }));
         }
-      : createEmptyAEPFunctionAssessment(),
+      });
+      a.illuminanceMeasurements = Array.isArray(a.illuminanceMeasurements) ? a.illuminanceMeasurements : [];
+      a.raciActionPlan = Array.isArray(a.raciActionPlan) ? a.raciActionPlan : [];
+      a.photographicRecords = Array.isArray(a.photographicRecords) ? a.photographicRecords : [];
+      a.psychosocialAnswers = Array.isArray(a.psychosocialAnswers) ? a.psychosocialAnswers : [];
+      a.aetTriggers = Array.isArray(a.aetTriggers) ? a.aetTriggers : [];
+      return a;
+    })(),
   };
 }
 
@@ -101,26 +121,11 @@ export function normalizeProject(raw: any): AETProject {
 export function normalizeProjectsOnLoad(
   stored: any[],
 ): { projects: AETProject[]; changed: boolean } {
-  let changed = false;
-  const projects = stored.map((p: any) => {
-    const needsUpdate =
-      !p.reportType ||
-      !Array.isArray(p.functions) ||
-      (p.functions as any[]).some(
-        (f: any) =>
-          !f.illumination ||
-          !Array.isArray(f.illumination?.measurementPoints) ||
-          typeof f.illumination?.referenceLux !== 'number' ||
-          !f.illumination?.modelType ||
-          !Array.isArray(f.risks) ||
-          f.ghe === undefined ||
-          f.aep === undefined,
-      );
-    if (needsUpdate) {
-      changed = true;
-      return normalizeProject(p);
-    }
-    return p as AETProject;
-  });
-  return { projects, changed };
+  // Always normalize to ensure nested structures (like biomechanical risk factors)
+  // are correctly initialized even if the top-level 'aep' field already exists.
+  const projects = stored.map((p: any) => normalizeProject(p));
+  
+  // We check for changes by comparing stringified versions, or just assume changed for safety
+  // since this only happens once on app load.
+  return { projects, changed: true };
 }

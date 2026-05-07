@@ -250,16 +250,13 @@ export const MOCK_PAUSES: StandardPause[] = [
 ];
 
 export const MOCK_SHIFTS: Shift[] = [
-  { id: 'shift-6x1', name: '6x1', description: 'Trabalha 6 dias e folga 1 dia.', active: true },
-  { id: 'shift-5x2', name: '5x2', description: 'Trabalha 5 dias e folga 2 dias.', active: true },
-  { id: 'shift-12x36-new', name: '12x36', description: 'Trabalha 12 horas e folga 36 horas.', active: true },
-  { id: 'shift-outro', name: 'Outro', description: 'Outra escala não listada.', active: true },
-  { id: 'shift-comercial', name: 'Turno Comercial', description: 'Horário: 08:00 às 17:00 com 1 hora de intervalo para refeição. Jornada de 8 horas diárias, de segunda a sexta-feira.', active: true },
-  { id: 'shift-diurno', name: 'Turno Diurno', description: 'Horário: 07:00 às 16:48 com 48 minutos de intervalo. Jornada de 8h48 com descanso compensado semanalmente.', active: true },
-  { id: 'shift-vespertino', name: 'Turno Vespertino', description: 'Horário: 14:00 às 22:00 com intervalo de 60 minutos. Utilizado em empresas com dois turnos de produção.', active: true },
-  { id: 'shift-noturno', name: 'Turno Noturno', description: 'Acontece à noite. Geralmente entre 22:00 e 06:00. Sujeito a adicional noturno conforme CLT (art. 73).', active: true },
-  { id: 'shift-rotativo', name: 'Turno Rotativo (Revezamento)', description: 'O trabalhador alterna entre turnos (dia/noite/tarde). Pode mudar semanalmente ou mensalmente conforme escala.', active: true },
-  { id: 'shift-ininterrupto', name: 'Turno Ininterrupto de Revezamento', description: 'Usado em empresas que funcionam 24h. Equipes se alternam continuamente. Jornada reduzida (6h/dia) conforme CF/88, art. 7°, XIV.', active: true },
+  { id: 'shift-1', name: '6x1', description: '6 dias de trabalho por 1 de folga', active: true },
+  { id: 'shift-2', name: '5x2', description: '5 dias de trabalho por 2 de folga', active: true },
+  { id: 'shift-3', name: '12x36', description: '12 horas de trabalho por 36 de folga', active: true },
+  { id: 'shift-4', name: 'Administrativo (8h às 18h)', description: 'Horário comercial padrão', active: true },
+  { id: 'shift-5', name: 'Turno A (06h às 14h)', description: 'Primeiro turno', active: true },
+  { id: 'shift-6', name: 'Turno B (14h às 22h)', description: 'Segundo turno', active: true },
+  { id: 'shift-7', name: 'Turno C (22h às 06h)', description: 'Terceiro turno (noturno)', active: true },
 ];
 
 export const MOCK_SCIENTIFIC_METHODS: ScientificMethodTemplate[] = [
@@ -348,4 +345,48 @@ export const MOCK_REPORT_TEXTS: ReportTextTemplate[] = [
     text: 'Com base na análise ergonômica realizada na função de {funcao} da empresa {empresa}, recomenda-se a implementação das medidas propostas no inventário de riscos, priorizando as ações de curto prazo. A reavaliação ergonômica deve ser realizada após a implementação das melhorias, ou no prazo máximo de 12 meses, conforme preconiza a NR-17.',
     active: true,
   },
+];
+
+export const MOCK_BIOMECHANICAL_RISK_FACTORS: BiomechanicalRiskFactor[] = [
+  // Posturas e Alcances
+  { id: 'brf-1', biomechanicalFactors: ['Posturas e Alcances'], name: 'Abdução de ombros', active: true },
+  { id: 'brf-2', biomechanicalFactors: ['Posturas e Alcances'], name: 'Elevação de ombros', active: true },
+  { id: 'brf-3', biomechanicalFactors: ['Posturas e Alcances'], name: 'Postura estática', active: true },
+  { id: 'brf-4', biomechanicalFactors: ['Posturas e Alcances'], name: 'Desvio ulnar/radial', active: true },
+  { id: 'brf-5', biomechanicalFactors: ['Posturas e Alcances'], name: 'Extensão de punho', active: true },
+  { id: 'brf-6', biomechanicalFactors: ['Posturas e Alcances'], name: 'Uso de pinça', active: true },
+  { id: 'brf-7', biomechanicalFactors: ['Posturas e Alcances'], name: 'Flexão de tronco', active: true },
+  { id: 'brf-8', biomechanicalFactors: ['Posturas e Alcances'], name: 'Rotação de tronco', active: true },
+  { id: 'brf-9', biomechanicalFactors: ['Posturas e Alcances'], name: 'Flexão/rotação cervical', active: true },
+  { id: 'brf-10', biomechanicalFactors: ['Posturas e Alcances'], name: 'Braços elevados', active: true },
+  { id: 'brf-11', biomechanicalFactors: ['Posturas e Alcances'], name: 'Alcance excessivo', active: true },
+  { id: 'brf-12', biomechanicalFactors: ['Posturas e Alcances'], name: 'Ortostatismo prolongado', active: true },
+  { id: 'brf-13', biomechanicalFactors: ['Posturas e Alcances'], name: 'Sedentarismo prolongado', active: true },
+
+  // Repetitividade e Ritmo
+  { id: 'brf-14', biomechanicalFactors: ['Repetitividade e Ritmo'], name: 'Alta frequência de movimentos', active: true },
+  { id: 'brf-15', biomechanicalFactors: ['Repetitividade e Ritmo'], name: 'Ciclos curtos', active: true },
+  { id: 'brf-16', biomechanicalFactors: ['Repetitividade e Ritmo'], name: 'Velocidade excessiva', active: true },
+  { id: 'brf-17', biomechanicalFactors: ['Repetitividade e Ritmo'], name: 'Metas de produção agressivas', active: true },
+  { id: 'brf-18', biomechanicalFactors: ['Repetitividade e Ritmo'], name: 'Trabalho monótono', active: true },
+
+  // Força e Exigência Física
+  { id: 'brf-19', biomechanicalFactors: ['Força e Exigência Física'], name: 'Esforço físico intenso', active: true },
+  { id: 'brf-20', biomechanicalFactors: ['Força e Exigência Física'], name: 'Peso excessivo', active: true },
+  { id: 'brf-21', biomechanicalFactors: ['Força e Exigência Física'], name: 'Carga estática', active: true },
+  { id: 'brf-22', biomechanicalFactors: ['Força e Exigência Física'], name: 'Vibração de mãos e braços', active: true },
+
+  // Movimentação Manual de Cargas
+  { id: 'brf-23', biomechanicalFactors: ['Movimentação Manual de Cargas'], name: 'Levantamento de peso frequente', active: true },
+  { id: 'brf-24', biomechanicalFactors: ['Movimentação Manual de Cargas'], name: 'Transporte manual por longa distância', active: true },
+  { id: 'brf-25', biomechanicalFactors: ['Movimentação Manual de Cargas'], name: 'Falta de equipamentos de auxílio', active: true },
+
+  // Mobiliário e Posto de Trabalho
+  { id: 'brf-26', biomechanicalFactors: ['Mobiliário e Posto de Trabalho'], name: 'Bancada muito alta/baixa', active: true },
+  { id: 'brf-27', biomechanicalFactors: ['Mobiliário e Posto de Trabalho'], name: 'Falta de espaço para joelhos', active: true },
+  { id: 'brf-28', biomechanicalFactors: ['Mobiliário e Posto de Trabalho'], name: 'Impossibilidade de alternância postural', active: true },
+  { id: 'brf-29', biomechanicalFactors: ['Mobiliário e Posto de Trabalho'], name: 'Cadeira sem ajustes', active: true },
+  { id: 'brf-30', biomechanicalFactors: ['Mobiliário e Posto de Trabalho'], name: 'Falta de apoio para pés', active: true },
+  { id: 'brf-31', biomechanicalFactors: ['Mobiliário e Posto de Trabalho'], name: 'Monitor em altura inadequada', active: true },
+  { id: 'brf-32', biomechanicalFactors: ['Mobiliário e Posto de Trabalho'], name: 'Distâncias excessivas no layout', active: true },
 ];
