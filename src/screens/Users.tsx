@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, KeyRound, AlertCircle, X, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
-import type { AppUser, UserRole, UserStatus } from '../domain/auth/authTypes';
+import type { AppUser, CustomProfile, UserRole, UserStatus } from '../domain/auth/authTypes';
 import {
   getUsers,
   createUser,
@@ -11,15 +11,12 @@ import {
   deleteUser,
 } from '../domain/auth/userRepository';
 import { createPasswordRecord } from '../domain/auth/passwordService';
-import { getRolePermissions } from '../domain/auth/rolePermissionRepository';
+import { getCustomProfiles, getRolePermissions } from '../domain/auth/rolePermissionRepository';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ROLE_LABELS: Record<UserRole, string> = {
+const FIXED_ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
-  TECHNICAL_RESPONSIBLE: 'Resp. Técnico',
-  CONSULTANT: 'Consultor',
-  CLIENT_VIEWER: 'Visualizador',
 };
 
 const STATUS_LABELS: Record<UserStatus, string> = {
@@ -52,7 +49,7 @@ const EMPTY_FORM: FormState = {
   name: '',
   email: '',
   username: '',
-  role: 'CONSULTANT',
+  role: 'ADMIN',
   status: 'active',
   password: '',
   mustChangePassword: false,
@@ -62,11 +59,12 @@ const EMPTY_FORM: FormState = {
 
 interface ModalProps {
   editing: AppUser | null;
+  profiles: CustomProfile[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-function UserModal({ editing, onClose, onSaved }: ModalProps) {
+function UserModal({ editing, profiles, onClose, onSaved }: ModalProps) {
   const [form, setForm] = useState<FormState>(
     editing
       ? {
@@ -213,8 +211,9 @@ function UserModal({ editing, onClose, onSaved }: ModalProps) {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Perfil">
               <select value={form.role} onChange={e => set('role', e.target.value as UserRole)} className={INPUT_CLS}>
-                {(Object.keys(ROLE_LABELS) as UserRole[]).map(r => (
-                  <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                <option value="ADMIN">Administrador</option>
+                {profiles.map(p => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
                 ))}
               </select>
             </Field>
@@ -281,6 +280,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 export function Users() {
   const { hasPermission } = useAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [profiles, setProfiles] = useState<CustomProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<'new' | AppUser | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AppUser | null>(null);
@@ -291,7 +291,9 @@ export function Users() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    setUsers(await getUsers());
+    const [fetchedUsers, fetchedProfiles] = await Promise.all([getUsers(), getCustomProfiles()]);
+    setUsers(fetchedUsers);
+    setProfiles(fetchedProfiles);
     setLoading(false);
   }, []);
 
@@ -348,7 +350,9 @@ export function Users() {
                   <td className="px-4 py-3 font-medium text-slate-800">{user.name}</td>
                   <td className="px-4 py-3 text-slate-500 font-mono text-xs">{user.username}</td>
                   <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{user.email}</td>
-                  <td className="px-4 py-3 text-slate-600">{ROLE_LABELS[user.role]}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {FIXED_ROLE_LABELS[user.role] ?? profiles.find(p => p.id === user.role)?.label ?? user.role}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[user.status]}`}>
                       {STATUS_LABELS[user.status]}
@@ -390,6 +394,7 @@ export function Users() {
       {modal !== null && (
         <UserModal
           editing={modal === 'new' ? null : modal}
+          profiles={profiles}
           onClose={() => setModal(null)}
           onSaved={() => { setModal(null); reload(); }}
         />

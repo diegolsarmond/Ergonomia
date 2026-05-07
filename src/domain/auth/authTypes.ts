@@ -1,10 +1,13 @@
 export type UserStatus = 'active' | 'inactive' | 'blocked';
 
-export type UserRole =
-  | 'ADMIN'
-  | 'TECHNICAL_RESPONSIBLE'
-  | 'CONSULTANT'
-  | 'CLIENT_VIEWER';
+/** 'ADMIN' é o único perfil fixo do sistema. Qualquer outra string é um ID de perfil customizado. */
+export type UserRole = 'ADMIN' | string;
+
+export interface CustomProfile {
+  id: string;
+  label: string;
+  permissions: Permission[];
+}
 
 export type Permission =
   | 'USERS_VIEW'

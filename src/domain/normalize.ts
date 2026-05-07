@@ -62,8 +62,25 @@ export function normalizeFunction(raw: any): AETFunction {
         a.workCharacterization.workCycleDescription = '';
       }
 
-      // Ensure biomechanics items have selectedRiskFactors array
       const bio = a.biomechanics;
+      if (!bio.environmentalComfort) {
+        bio.environmentalComfort = {
+          lightingComplaint: 'Não',
+          lightingValue: '',
+          lightingDescription: '',
+          noiseComplaint: 'Não',
+          noiseValue: '',
+          noiseDescription: '',
+          temperatureComplaint: 'Não',
+          temperatureValue: '',
+          temperatureDescription: '',
+        };
+      } else {
+        bio.environmentalComfort.lightingComplaint = bio.environmentalComfort.lightingComplaint || 'Não';
+        bio.environmentalComfort.noiseComplaint = bio.environmentalComfort.noiseComplaint || 'Não';
+        bio.environmentalComfort.temperatureComplaint = bio.environmentalComfort.temperatureComplaint || 'Não';
+      }
+
       const groups = ['postureAndReach', 'repetitivenessAndRhythm', 'forceAndPhysicalDemand', 'manualMaterialHandling', 'furnitureAndWorkstation'] as const;
       groups.forEach(g => {
         if (Array.isArray(bio[g])) {
@@ -77,7 +94,7 @@ export function normalizeFunction(raw: any): AETFunction {
       a.raciActionPlan = Array.isArray(a.raciActionPlan) ? a.raciActionPlan : [];
       a.photographicRecords = Array.isArray(a.photographicRecords) ? a.photographicRecords : [];
       a.psychosocialAnswers = Array.isArray(a.psychosocialAnswers) ? a.psychosocialAnswers : [];
-      a.aetTriggers = Array.isArray(a.aetTriggers) ? a.aetTriggers : [];
+      a.aetTriggers = Array.isArray(a.aetTriggers) ? a.aetTriggers.map((t: any) => ({ ...t, answer: t.answer || 'Não' })) : [];
       return a;
     })(),
   };

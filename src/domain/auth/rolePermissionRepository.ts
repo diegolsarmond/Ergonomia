@@ -1,40 +1,73 @@
 import localforage from 'localforage';
-import type { Permission, UserRole } from './authTypes';
-import { ROLE_PERMISSIONS_STORAGE_KEY } from './authDefaults';
-import { ROLE_PERMISSIONS } from './permissions';
+import type { CustomProfile, Permission } from './authTypes';
+import {
+  ROLE_PERMISSIONS_STORAGE_KEY,
+  CUSTOM_PROFILES_STORAGE_KEY,
+} from './authDefaults';
+import { ADMIN_PERMISSIONS } from './permissions';
 
-export type RolePermissionsMap = Record<UserRole, Permission[]>;
+export type RolePermissionsMap = Record<string, Permission[]>;
+
+// ── Custom Profiles ────────────────────────────────────────────────────────────
+
+export async function getCustomProfiles(): Promise<CustomProfile[]> {
+  return (await localforage.getItem<CustomProfile[]>(CUSTOM_PROFILES_STORAGE_KEY)) ?? [];
+}
+
+export async function saveCustomProfile(profile: CustomProfile): Promise<void> {
+  const profiles = await getCustomProfiles();
+  const idx = profiles.findIndex(p => p.id === profile.id);
+  if (idx >= 0) {
+    profiles[idx] = profile;
+  } else {
+    profiles.push(profile);
+  }
+  await localforage.setItem(CUSTOM_PROFILES_STORAGE_KEY, profiles);
+}
+
+export async function deleteCustomProfile(id: string): Promise<void> {
+  const profiles = await getCustomProfiles();
+  await localforage.setItem(
+    CUSTOM_PROFILES_STORAGE_KEY,
+    profiles.filter(p => p.id !== id),
+  );
+}
+
+// ── Role Permissions Map ───────────────────────────────────────────────────────
 
 /**
  * Retorna o mapa de permissões por perfil.
- * Se não houver configuração salva, retorna o padrão definido em permissions.ts.
+ * ADMIN sempre possui todas as permissões. Os demais são perfis customizados.
  */
 export async function getRolePermissions(): Promise<RolePermissionsMap> {
-  const saved = await localforage.getItem<RolePermissionsMap>(ROLE_PERMISSIONS_STORAGE_KEY);
-  if (!saved) return { ...ROLE_PERMISSIONS };
-
-  // Garante que ADMIN sempre possui todas as permissões, independente do que estiver salvo.
-  return {
-    ...saved,
-    ADMIN: [...ROLE_PERMISSIONS.ADMIN],
-  };
+  const customProfiles = await getCustomProfiles();
+  const map: RolePermissionsMap = { ADMIN: [...ADMIN_PERMISSIONS] };
+  for (const p of customProfiles) {
+    map[p.id] = p.permissions;
+  }
+  return map;
 }
 
 /**
- * Persiste o mapa de permissões por perfil.
- * ADMIN é sempre restaurado para todas as permissões antes de salvar.
+ * Persiste as permissões de um perfil customizado.
+ * Ignora alterações no ADMIN (sempre possui todas as permissões).
+ * @deprecated Prefira saveCustomProfile() diretamente. Mantido para compatibilidade.
  */
 export async function saveRolePermissions(map: RolePermissionsMap): Promise<void> {
-  const safe: RolePermissionsMap = {
-    ...map,
-    ADMIN: [...ROLE_PERMISSIONS.ADMIN],
-  };
-  await localforage.setItem(ROLE_PERMISSIONS_STORAGE_KEY, safe);
+  const profiles = await getCustomProfiles();
+  const updated = profiles.map(p => ({
+    ...p,
+    permissions: map[p.id] ?? p.permissions,
+  }));
+  await localforage.setItem(CUSTOM_PROFILES_STORAGE_KEY, updated);
+  // Limpa a chave antiga de role_permissions caso exista
+  await localforage.removeItem(ROLE_PERMISSIONS_STORAGE_KEY);
 }
 
 /**
- * Remove a configuração salva e volta ao padrão de permissions.ts.
+ * Remove todos os perfis customizados.
  */
 export async function resetRolePermissionsToDefault(): Promise<void> {
+  await localforage.removeItem(CUSTOM_PROFILES_STORAGE_KEY);
   await localforage.removeItem(ROLE_PERMISSIONS_STORAGE_KEY);
 }

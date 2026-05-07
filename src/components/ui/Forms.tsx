@@ -77,3 +77,43 @@ export const Combobox = React.forwardRef<HTMLInputElement, React.InputHTMLAttrib
   )
 );
 Combobox.displayName = 'Combobox';
+export const Toggle = ({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) => (
+  <label className="flex items-center cursor-pointer select-none group">
+    <div className="relative">
+      <input type="checkbox" className="sr-only" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <div className={`block w-10 h-6 rounded-full transition-colors ${checked ? 'bg-teal-500' : 'bg-slate-300'}`} />
+      <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform transform ${checked ? 'translate-x-4' : ''}`} />
+    </div>
+    {label && <span className="ml-3 text-sm text-slate-600 font-medium group-hover:text-slate-800 transition-colors">{label}</span>}
+  </label>
+);
+Toggle.displayName = 'Toggle';
+
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+
+const QUILL_MODULES = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'align': [] }],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    ['link'],
+    ['clean']
+  ]
+};
+
+export const RichText = ({ value, onChange, placeholder, className = "" }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) => (
+  <div className={`bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-500/20 transition-all ${className}`}>
+    <ReactQuill 
+      theme="snow"
+      modules={QUILL_MODULES}
+      value={value} 
+      onChange={onChange} 
+      placeholder={placeholder}
+      className="min-h-[120px]"
+    />
+  </div>
+);
+RichText.displayName = 'RichText';
+

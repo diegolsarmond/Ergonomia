@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
+import { FormGroup, Input, Textarea, Select, Checkbox, Combobox, Toggle, RichText } from '../components/ui/Forms';
 import { Modal } from '../components/ui/Modal';
 import { UnitModalForm, SectorModalForm, JobRoleModalForm, EMPTY_UNIT, EMPTY_SECTOR, EMPTY_ROLE } from '../components/SharedParameterModals';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
@@ -43,7 +43,7 @@ const ASSESSMENT_OPTIONS: { value: BiomechanicalAssessment; label: string; color
   { value: 'N.A.',     label: 'N.A.',    color: 'bg-slate-100 text-slate-600 border-slate-300' },
 ];
 
-const PSYCHOSOCIAL_SCALE = ['', '1', '2', '3', '4', '5'];
+
 
 // ── CatalogMultiSelect ────────────────────────────────────────────────────────
 
@@ -685,7 +685,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         </Button>
         <div className="text-center">
           <h1 className="text-lg font-bold text-slate-800">
-            {funcId === 'new' ? 'Nova Função AEP (v2.3)' : 'Editar Função AEP (v2.3)'}
+            {funcId === 'new' ? 'Nova Função AEP' : 'Editar Função AEP'}
           </h1>
           <p className="text-xs text-slate-500">{project.companyName}</p>
         </div>
@@ -1039,12 +1039,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Iluminação</p>
                     <div className="grid grid-cols-3 gap-3">
-                      <FormGroup label="Queixa">
-                        <select value={aep.biomechanics.environmentalComfort.lightingComplaint} onChange={e => setEnvComfort('lightingComplaint', e.target.value)} className="w-full rounded-xl border border-slate-200 p-2 text-sm bg-white focus:border-teal-500 focus:outline-none">
-                          <option value="">—</option>
-                          <option value="Sim">Sim</option>
-                          <option value="Não">Não</option>
-                        </select>
+                      <FormGroup label="Haveria Queixa?">
+                        <Toggle 
+                          checked={aep.biomechanics.environmentalComfort.lightingComplaint === 'Sim'} 
+                          onChange={v => setEnvComfort('lightingComplaint', v ? 'Sim' : 'Não')}
+                          label={aep.biomechanics.environmentalComfort.lightingComplaint === 'Sim' ? 'Sim' : 'Não'}
+                        />
                       </FormGroup>
                       <FormGroup label="Valor Medido (lux)">
                         <Input value={aep.biomechanics.environmentalComfort.lightingValue} onChange={e => setEnvComfort('lightingValue', e.target.value)} placeholder="Ex: 480 lux" />
@@ -1058,12 +1058,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Ruído</p>
                     <div className="grid grid-cols-3 gap-3">
-                      <FormGroup label="Queixa">
-                        <select value={aep.biomechanics.environmentalComfort.noiseComplaint} onChange={e => setEnvComfort('noiseComplaint', e.target.value)} className="w-full rounded-xl border border-slate-200 p-2 text-sm bg-white focus:border-teal-500 focus:outline-none">
-                          <option value="">—</option>
-                          <option value="Sim">Sim</option>
-                          <option value="Não">Não</option>
-                        </select>
+                      <FormGroup label="Haveria Queixa?">
+                        <Toggle 
+                          checked={aep.biomechanics.environmentalComfort.noiseComplaint === 'Sim'} 
+                          onChange={v => setEnvComfort('noiseComplaint', v ? 'Sim' : 'Não')}
+                          label={aep.biomechanics.environmentalComfort.noiseComplaint === 'Sim' ? 'Sim' : 'Não'}
+                        />
                       </FormGroup>
                       <FormGroup label="Valor Medido (dB)">
                         <Input value={aep.biomechanics.environmentalComfort.noiseValue} onChange={e => setEnvComfort('noiseValue', e.target.value)} placeholder="Ex: 72 dB" />
@@ -1077,12 +1077,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Temperatura</p>
                     <div className="grid grid-cols-3 gap-3">
-                      <FormGroup label="Queixa">
-                        <select value={aep.biomechanics.environmentalComfort.temperatureComplaint} onChange={e => setEnvComfort('temperatureComplaint', e.target.value)} className="w-full rounded-xl border border-slate-200 p-2 text-sm bg-white focus:border-teal-500 focus:outline-none">
-                          <option value="">—</option>
-                          <option value="Sim">Sim</option>
-                          <option value="Não">Não</option>
-                        </select>
+                      <FormGroup label="Haveria Queixa?">
+                        <Toggle 
+                          checked={aep.biomechanics.environmentalComfort.temperatureComplaint === 'Sim'} 
+                          onChange={v => setEnvComfort('temperatureComplaint', v ? 'Sim' : 'Não')}
+                          label={aep.biomechanics.environmentalComfort.temperatureComplaint === 'Sim' ? 'Sim' : 'Não'}
+                        />
                       </FormGroup>
                       <FormGroup label="Valor Medido (°C)">
                         <Input value={aep.biomechanics.environmentalComfort.temperatureValue} onChange={e => setEnvComfort('temperatureValue', e.target.value)} placeholder="Ex: 29°C" />
@@ -1153,102 +1153,122 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           )}
 
           {/* ── Tab 6: Psicossocial ── */}
-          {activeTab === 5 && (
-            <div className="space-y-4">
-              <SectionTitle>6. Avaliação Psicossocial</SectionTitle>
-              <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <p>
-                  Esta seção visa identificar fatores de risco psicossociais no ambiente de trabalho, conforme as diretrizes mais recentes da NR-17. As perguntas são baseadas em escalas de percepção. O objetivo é uma triagem para direcionamento de ações de gestão e saúde ocupacional, não um diagnóstico clínico.
-                </p>
-                <p>
-                  <strong>Instrução:</strong> Por favor, avalie a frequência com que você experimentou as seguintes situações no seu trabalho nas últimas 4 semanas, utilizando a escala abaixo.
-                </p>
-                <div className="flex gap-2 items-start text-amber-800 bg-amber-100 p-3 rounded-lg border border-amber-300">
-                  <span className="text-lg leading-none">⚠️</span>
-                  <p className="font-medium text-xs leading-relaxed">
-                    IMPORTANTE: Leia atentamente cada item. Algumas perguntas são positivas e outras negativas. Evite responder de forma automática; a escala muda de sentido conforme a frase.
+          {activeTab === 5 && (() => {
+            const groups = Array.from(new Set(aep.psychosocialAnswers.map(q => q.group)));
+            return (
+              <div className="space-y-4">
+                <SectionTitle>6. Avaliação Psicossocial</SectionTitle>
+                <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 mb-6">
+                  <p>
+                    Esta seção visa identificar fatores de risco psicossociais no ambiente de trabalho, conforme as diretrizes mais recentes da NR-17. As perguntas são baseadas em escalas de percepção. O objetivo é uma triagem para direcionamento de ações de gestão e saúde ocupacional, não um diagnóstico clínico.
                   </p>
+                  <p>
+                    <strong>Instrução:</strong> Por favor, avalie a frequência com que você experimentou as seguintes situações no seu trabalho nas últimas 4 semanas, utilizando a escala abaixo.
+                  </p>
+                  <div className="flex gap-2 items-start text-amber-800 bg-amber-100 p-3 rounded-lg border border-amber-300">
+                    <span className="text-lg leading-none">⚠️</span>
+                    <p className="font-medium text-xs leading-relaxed">
+                      IMPORTANTE: Leia atentamente cada item. Algumas perguntas são positivas e outras negativas. Evite responder de forma automática; a escala muda de sentido conforme a frase.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <p className="text-xs text-slate-500 font-medium bg-white p-3 rounded-xl border border-slate-200">
-                Escala: 1 = Nunca · 2 = Raramente · 3 = Às vezes · 4 = Frequentemente · 5 = Sempre
-              </p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <th className="text-left p-2 border border-slate-200 font-medium text-slate-600">Grupo</th>
-                      <th className="text-left p-2 border border-slate-200 font-medium text-slate-600">Fator Psicossocial</th>
-                      <th className="text-center p-2 border border-slate-200 font-medium text-slate-600 w-24">Pontuação</th>
-                      <th className="text-left p-2 border border-slate-200 font-medium text-slate-600 w-40">Observações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {aep.psychosocialAnswers.map((q, idx) => (
-                      <tr key={q.id} className={q.inverted ? 'bg-teal-50/30' : ''}>
-                        <td className="p-2 border border-slate-200 text-xs text-slate-500">{q.group}</td>
-                        <td className="p-2 border border-slate-200 text-slate-700">
-                          {q.question}
-                          {q.inverted && <span className="ml-1 text-[10px] text-teal-600 font-medium">(invertida)</span>}
-                        </td>
-                        <td className="p-2 border border-slate-200 text-center">
-                          <select
-                            value={q.score === '' ? '' : String(q.score)}
-                            onChange={e => updatePsy(idx, 'score', e.target.value === '' ? '' : Number(e.target.value))}
-                            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm text-center bg-white focus:border-teal-500 focus:outline-none"
-                          >
-                            {PSYCHOSOCIAL_SCALE.map(v => (
-                              <option key={v} value={v}>{v || '—'}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="p-2 border border-slate-200">
-                          <input
-                            type="text"
-                            value={q.comments}
-                            onChange={e => updatePsy(idx, 'comments', e.target.value)}
-                            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-teal-500 focus:outline-none"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                <p className="text-xs text-slate-500 font-medium bg-white p-3 rounded-xl border border-slate-200 mb-6">
+                  Escala: 1 = Nunca · 2 = Raramente · 3 = Às vezes · 4 = Frequentemente · 5 = Sempre
+                </p>
 
-              {/* Médias e Classificação */}
-              {aep.psychosocialClassification && (
-                <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-700">Resultado Automático</h4>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {[
-                      ['Demandas / Ritmo',                   aep.psychosocialAverages.demandRhythm],
-                      ['Autonomia / Controle',               aep.psychosocialAverages.autonomyControl],
-                      ['Clareza / Conflito de Papéis',       aep.psychosocialAverages.roleClarityConflict],
-                      ['Apoio Social e Liderança',           aep.psychosocialAverages.socialSupportLeadership],
-                      ['Reconhecimento / Segurança Psic.',   aep.psychosocialAverages.recognitionJusticePsychSafety],
-                    ].map(([label, val]) => (
-                      <div key={label as string} className="flex justify-between">
-                        <span className="text-slate-600">{label}</span>
-                        <span className="font-semibold text-slate-800">{(val as number).toFixed(2)}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between col-span-2 pt-1 border-t border-slate-200">
-                      <span className="font-semibold text-slate-700">Média Geral</span>
-                      <span className="font-bold text-slate-900">{aep.psychosocialAverages.overall.toFixed(2)}</span>
+                {groups.map(groupName => (
+                  <div key={groupName} className="mb-8">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-2 px-1">{groupName}</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50">
+                            <th className="text-left p-2 border border-slate-200 font-medium text-slate-600">Fator Psicossocial</th>
+                            <th className="text-center p-2 border border-slate-200 font-medium text-slate-600 w-48">Pontuação</th>
+                            <th className="text-left p-2 border border-slate-200 font-medium text-slate-600">Observações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {aep.psychosocialAnswers
+                            .map((q, idx) => ({ q, idx }))
+                            .filter(x => x.q.group === groupName)
+                            .map(({ q, idx }) => (
+                              <tr key={q.id} className={`hover:bg-slate-50/50 ${q.inverted ? 'bg-teal-50/20' : ''}`}>
+                                <td className="p-2 border border-slate-200 text-slate-700 text-xs">
+                                  {q.question}
+                                  {q.inverted && <span className="ml-1 text-[10px] text-teal-600 font-medium">(invertida)</span>}
+                                </td>
+                                <td className="p-2 border border-slate-200 text-center">
+                                  <div className="flex justify-center gap-1">
+                                    {[1, 2, 3, 4, 5].map(n => {
+                                      const isSelected = q.score === n;
+                                      return (
+                                        <button
+                                          key={n}
+                                          type="button"
+                                          onClick={() => updatePsy(idx, 'score', isSelected ? '' : n)}
+                                          className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all border-2 ${
+                                            isSelected 
+                                              ? 'bg-teal-600 text-white border-teal-600 shadow-md transform scale-110' 
+                                              : 'bg-white text-slate-400 border-slate-200 hover:border-teal-300 hover:text-teal-600'
+                                          }`}
+                                        >
+                                          {n}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </td>
+                                <td className="p-2 border border-slate-200">
+                                  <input
+                                    type="text"
+                                    value={q.comments}
+                                    onChange={e => updatePsy(idx, 'comments', e.target.value)}
+                                    className="w-full rounded-lg border border-slate-200 px-2 py-1 text-[10px] focus:border-teal-500 focus:outline-none"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-600">Classificação:</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${classifColor[aep.psychosocialClassification] || ''}`}>
-                      {aep.psychosocialClassification}
-                    </span>
+                ))}
+
+                {/* Médias e Classificação */}
+                {aep.psychosocialClassification && (
+                  <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <h4 className="text-sm font-semibold text-slate-700">Resultado Automático</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {[
+                        ['Demandas / Ritmo',                   aep.psychosocialAverages.demandRhythm],
+                        ['Autonomia / Controle',               aep.psychosocialAverages.autonomyControl],
+                        ['Clareza / Conflito de Papéis',       aep.psychosocialAverages.roleClarityConflict],
+                        ['Apoio Social e Liderança',           aep.psychosocialAverages.socialSupportLeadership],
+                        ['Reconhecimento / Segurança Psic.',   aep.psychosocialAverages.recognitionJusticePsychSafety],
+                      ].map(([label, val]) => (
+                        <div key={label as string} className="flex justify-between">
+                          <span className="text-slate-600">{label}</span>
+                          <span className="font-semibold text-slate-800">{(val as number).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between col-span-2 pt-1 border-t border-slate-200">
+                        <span className="font-semibold text-slate-700">Média Geral</span>
+                        <span className="font-bold text-slate-900">{aep.psychosocialAverages.overall.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-600">Classificação:</span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold border ${classifColor[aep.psychosocialClassification] || ''}`}>
+                        {aep.psychosocialClassification}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 italic">{aep.psychosocialInterpretation}</p>
                   </div>
-                  <p className="text-xs text-slate-600 italic">{aep.psychosocialInterpretation}</p>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── Tab 7: Classificação de Risco / Gatilhos AET ── */}
           {activeTab === 6 && (
@@ -1269,18 +1289,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       <tr key={t.id} className={t.answer === 'Sim' ? 'bg-red-50' : ''}>
                         <td className="p-2 border border-slate-200 text-center text-slate-500 font-medium">{idx + 1}</td>
                         <td className="p-2 border border-slate-200 text-slate-700">{t.description}</td>
-                        <td className="p-2 border border-slate-200 text-center">
-                          <select
-                            value={t.answer}
-                            onChange={e => updateTrigger(idx, 'answer', e.target.value)}
-                            className={`w-full rounded-lg border px-2 py-1 text-xs font-medium bg-white focus:outline-none ${
-                              t.answer === 'Sim' ? 'border-red-300 text-red-700' : t.answer === 'Não' ? 'border-green-300 text-green-700' : 'border-slate-200 text-slate-400'
-                            }`}
-                          >
-                            <option value="">—</option>
-                            <option value="Sim">Sim</option>
-                            <option value="Não">Não</option>
-                          </select>
+                        <td className="p-2 border border-slate-200 text-center flex justify-center">
+                          <Toggle 
+                            checked={t.answer === 'Sim'} 
+                            onChange={v => updateTrigger(idx, 'answer', v ? 'Sim' : 'Não')}
+                            label={t.answer === 'Sim' ? 'Sim' : 'Não'}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -1294,17 +1308,28 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${formData.requiresAET ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                   {formData.requiresAET ? 'Requer AET' : 'Não requer AET'}
                 </span>
-                <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
-                  <input type="checkbox" checked={formData.requiresAET ?? false} onChange={e => setField('requiresAET', e.target.checked)} className="rounded" />
-                  Editar manualmente
-                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Editar manualmente:</span>
+                  <Toggle 
+                    checked={formData.requiresAET ?? false} 
+                    onChange={v => setField('requiresAET', v)} 
+                  />
+                </div>
               </div>
 
-              <FormGroup label="Orientação Final">
-                <Textarea value={aep.finalGuidance} onChange={e => setAep(a => ({ ...a, finalGuidance: e.target.value }))} rows={3} placeholder="Orientações gerais ao cliente após a avaliação preliminar." />
+               <FormGroup label="Orientação Final">
+                <RichText 
+                  value={aep.finalGuidance} 
+                  onChange={val => setAep(a => ({ ...a, finalGuidance: val }))} 
+                  placeholder="Orientações gerais ao cliente após a avaliação preliminar." 
+                />
               </FormGroup>
               <FormGroup label="Justificativa da Decisão">
-                <Textarea value={aep.decisionJustification} onChange={e => setAep(a => ({ ...a, decisionJustification: e.target.value }))} rows={3} placeholder="Justifique a decisão de indicar ou não a AET." />
+                <RichText 
+                  value={aep.decisionJustification} 
+                  onChange={val => setAep(a => ({ ...a, decisionJustification: val }))} 
+                  placeholder="Justifique a decisão de indicar ou não a AET." 
+                />
               </FormGroup>
             </div>
           )}
