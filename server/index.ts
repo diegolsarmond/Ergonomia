@@ -1,4 +1,6 @@
 import express from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger.js';
 import { pool } from './db.js';
 import companiesRouter from './routes/companies.js';
 import unitsRouter from './routes/units.js';
@@ -22,6 +24,9 @@ const app = express();
 const PORT = process.env.PORT ?? 3001;
 
 app.use(express.json({ limit: '50mb' }));
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
 
 // Health check + teste de conexão
 app.get('/api/health', async (_req, res) => {
