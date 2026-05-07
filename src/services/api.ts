@@ -3,12 +3,23 @@
  * Substitui o LocalForage como camada de persistência.
  */
 
+import type { AppUser, Permission, UserStatus } from '../domain/auth/authTypes';
+
 const BASE = '/api';
+const TOKEN_KEY = 'auth_token';
+
+export function getToken(): string | null { return localStorage.getItem(TOKEN_KEY); }
+export function setToken(t: string): void { localStorage.setItem(TOKEN_KEY, t); }
+export function clearToken(): void { localStorage.removeItem(TOKEN_KEY); }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -23,6 +34,73 @@ const get  = <T>(path: string)                  => request<T>('GET',    path);
 const post = <T>(path: string, body: unknown)   => request<T>('POST',   path, body);
 const put  = <T>(path: string, body: unknown)   => request<T>('PUT',    path, body);
 const del  = (path: string)                     => request<void>('DELETE', path);
+
+// ── Mapeamento backend ↔ frontend ────────────────────────────────────────────
+
+const STATUS_TO_FRONTEND: Record<string, UserStatus> = {
+  ativo: 'active', inativo: 'inactive', bloqueado: 'blocked',
+};
+const STATUS_TO_BACKEND: Record<UserStatus, string> = {
+  active: 'ativo', inactive: 'inativo', blocked: 'bloqueado',
+};
+
+function backendUserToApp(r: any): AppUser {
+  return {
+    id: r.id,
+    name: r.nome,
+    email: r.email,
+    username: r.nomeUsuario,
+    passwordHash: '',
+    role: r.perfil,
+    permissions: (r.permissions ?? []) as Permission[],
+    status: STATUS_TO_FRONTEND[r.status] ?? 'active',
+    mustChangePassword: r.alterarSenha ?? false,
+    formation: r.formacao ?? '',
+    crefito: r.crefito ?? '',
+    createdAt: r.criadoEm ?? new Date().toISOString(),
+    updatedAt: r.atualizadoEm ?? new Date().toISOString(),
+    lastLoginAt: r.ultimoAcessoEm ?? undefined,
+  };
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export const authApi = {
+  login: async (nomeUsuario: string, senha: string): Promise<{ token: string; user: AppUser }> => {
+    const data = await post<{ token: string; user: any }>('/auth/login', { nomeUsuario, senha });
+    return { token: data.token, user: backendUserToApp(data.user) };
+  },
+  me: async (): Promise<AppUser> => {
+    const data = await get<any>('/auth/me');
+    return backendUserToApp(data);
+  },
+  changePassword: (senhaAtual: string, novaSenha: string) =>
+    post<{ message: string }>('/auth/change-password', { senhaAtual, novaSenha }),
+};
+
+// ── Usuários ─────────────────────────────────────────────────────────────────
+
+export const usersApi = {
+  list: async (): Promise<AppUser[]> => {
+    const rows = await get<any[]>('/users');
+    return rows.map(backendUserToApp);
+  },
+  create: (data: {
+    nome: string; email: string; nomeUsuario: string; senha: string;
+    perfil?: string; status?: string; formacao?: string; crefito?: string; alterarSenha?: boolean;
+  }) => post<any>('/users', data),
+  update: async (id: string, data: {
+    nome?: string; email?: string; formacao?: string; crefito?: string;
+    perfil?: string; status?: string; alterarSenha?: boolean;
+  }): Promise<AppUser> => {
+    const r = await put<any>(`/users/${id}`, data);
+    return backendUserToApp(r);
+  },
+  delete: (id: string) => del(`/users/${id}`),
+  resetPassword: (id: string, novaSenha: string) =>
+    post<{ message: string }>(`/users/${id}/reset-password`, { novaSenha }),
+};
+
 
 // ── Empresas ────────────────────────────────────────────────────────────────
 export const companiesApi = {
