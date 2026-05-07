@@ -194,7 +194,8 @@ INSERT INTO classificacoes_risco (id, nome, pontuacao_minima, pontuacao_maxima, 
   (md5('risk-1')::uuid, 'Aceitável / Baixo',     1,  3,  '#10b981', 'Risco tolerável. Situação aceitável. Nenhuma ação corretiva urgente é necessária, porém devem ser mantidos os controles existentes e monitorada periodicamente a condição.'),
   (md5('risk-2')::uuid, 'Moderado',              4,  6,  '#f59e0b', 'Investigar o risco e implementar medidas de controle a médio prazo. A exposição ao risco deve ser reduzida. Monitorar a eficácia das medidas adotadas.'),
   (md5('risk-3')::uuid, 'Substancial / Alto',    7,  9,  '#f97316', 'Risco elevado que requer ação corretiva em curto prazo. As atividades devem continuar somente com medidas de controle implementadas. Não deve-se iniciar o trabalho até que o risco seja reduzido.'),
-  (md5('risk-4')::uuid, 'Crítico / Intolerável', 10, 25, '#ef4444', 'Risco intolerável. Paralisar imediatamente a atividade. O trabalho só pode ser retomado após a implementação de medidas de controle que reduzam o risco a nível tolerável ou moderado.');
+  (md5('risk-4')::uuid, 'Crítico / Intolerável', 10, 25, '#ef4444', 'Risco intolerável. Paralisar imediatamente a atividade. O trabalho só pode ser retomado após a implementação de medidas de controle que reduzam o risco a nível tolerável ou moderado.')
+ON CONFLICT (id) DO NOTHING;
 
 -- ------------------------------------------------------------
 -- Modelos de métodos científicos
@@ -218,7 +219,8 @@ INSERT INTO modelos_texto_relatorio (id, secao, titulo, texto, ativo) VALUES
   (md5('rt-5')::uuid, 'Descrição do REBA',        'Método REBA – Descrição Padrão',                          'O método REBA (Rapid Entire Body Assessment) foi desenvolvido por Hignett e McAtamney (2000) para avaliação de posturas de corpo inteiro em tarefas dinâmicas e imprevisíveis, comuns em serviços de saúde e indústrias. A pontuação varia de 1 a 15, classificando o risco de lesão musculoesquelética em cinco níveis de ação.', TRUE),
   (md5('rt-6')::uuid, 'Descrição do NIOSH',       'Equação de NIOSH – Descrição Padrão',                     'A Equação Revisada de NIOSH (Waters et al., 1993) é um método para avaliar tarefas de levantamento manual de cargas. O método calcula o Limite de Peso Recomendado (LPR) e o Índice de Levantamento (IL). Quando IL > 1,0, indica risco aumentado de lesão lombar para a maioria dos trabalhadores. Quando IL > 3,0, o risco é considerado muito elevado para praticamente todos os trabalhadores.', TRUE),
   (md5('rt-7')::uuid, 'Interpretação da iluminação','Iluminância – Interpretação NHO 11 Padrão',              'A medição de iluminância foi realizada conforme os procedimentos técnicos da NHO 11 – Norma de Higiene Ocupacional da Fundacentro, que estabelece critérios para avaliação dos níveis de iluminamento nos ambientes de trabalho. Os valores de referência foram obtidos da ABNT NBR ISO/CIE 8995-1:2013. A interpretação dos resultados considera a iluminância média medida (Emed) comparada ao nível mínimo recomendado para a atividade desenvolvida na {unidade}.', TRUE),
-  (md5('rt-8')::uuid, 'Conclusão',                'Conclusão Padrão – Recomendações Gerais',                  'Com base na análise ergonômica realizada na função de {funcao} da empresa {empresa}, recomenda-se a implementação das medidas propostas no inventário de riscos, priorizando as ações de curto prazo. A reavaliação ergonômica deve ser realizada após a implementação das melhorias, ou no prazo máximo de 12 meses, conforme preconiza a NR-17.', TRUE);
+  (md5('rt-8')::uuid, 'Conclusão',                'Conclusão Padrão – Recomendações Gerais',                  'Com base na análise ergonômica realizada na função de {funcao} da empresa {empresa}, recomenda-se a implementação das medidas propostas no inventário de riscos, priorizando as ações de curto prazo. A reavaliação ergonômica deve ser realizada após a implementação das melhorias, ou no prazo máximo de 12 meses, conforme preconiza a NR-17.', TRUE)
+ON CONFLICT (id) DO NOTHING;
 
 -- ------------------------------------------------------------
 -- Fatores de risco biomecânico
@@ -308,4 +310,5 @@ INSERT INTO parametros_normativos_iluminancia (descricao_atividade, lux_minimo, 
   ('Usinagem de precisão',                                        500, 80, 10, 5, 'ABNT NBR ISO/CIE 8995-1:2013', 'Tabela 5.2'),
   ('Laboratório — análises gerais',                               500, 80, 10, 5, 'ABNT NBR ISO/CIE 8995-1:2013', 'Tabela 5.3'),
   ('Refeitório / copa',                                           200, 80, 10, 5, 'ABNT NBR ISO/CIE 8995-1:2013', 'Tabela 5.1'),
-  ('Sanitários e vestiários',                                     200, 80, 10, 5, 'ABNT NBR ISO/CIE 8995-1:2013', 'Tabela 5.1');
+  ('Sanitários e vestiários',                                     200, 80, 10, 5, 'ABNT NBR ISO/CIE 8995-1:2013', 'Tabela 5.1')
+ON CONFLICT DO NOTHING;

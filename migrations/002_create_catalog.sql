@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS setores (
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS cargos_padrao (
   id           UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id   UUID    NOT NULL,
+  empresa_id   UUID,   -- NULL = cargo do catálogo global (não vinculado a empresa específica)
   setor_id     UUID,
   cargo_pai_id UUID,
   nome         TEXT    NOT NULL,
@@ -262,7 +262,7 @@ ALTER TABLE setores
 
 ALTER TABLE cargos_padrao
   ADD CONSTRAINT fk_cargos_empresa
-  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE;
+  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE SET NULL;
 
 ALTER TABLE cargos_padrao
   ADD CONSTRAINT fk_cargos_setor
