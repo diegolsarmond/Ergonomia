@@ -6,18 +6,16 @@
 
 -- ------------------------------------------------------------
 -- Análise Ergonômica do Trabalho — AET
--- Documento completo com seções 1–9 e avaliação detalhada por função
 -- ------------------------------------------------------------
-CREATE TABLE analise_trabalho (
+CREATE TABLE IF NOT EXISTS analise_trabalho (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id    UUID        NOT NULL REFERENCES empresas(id),
-  unidade_id    UUID        REFERENCES unidades(id) ON DELETE SET NULL,
-
+  empresa_id    UUID        NOT NULL,
+  unidade_id    UUID,
 
   -- Seção 1 — Introdução
-  intro_ergonomia          TEXT,
-  intro_objetivo           TEXT,
-  intro_metodologia        TEXT,
+  intro_ergonomia   TEXT,
+  intro_objetivo    TEXT,
+  intro_metodologia TEXT,
 
   data          DATE,
   criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -26,28 +24,25 @@ CREATE TABLE analise_trabalho (
 
 -- Avaliadores da AET — N:N com usuarios
 -- responsavel = TRUE indica o responsável técnico que assina o documento
-CREATE TABLE aet_avaliadores (
-  analise_trabalho_id UUID    NOT NULL REFERENCES analise_trabalho(id) ON DELETE CASCADE,
-  usuario_id          UUID    NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS aet_avaliadores (
+  analise_trabalho_id UUID    NOT NULL,
+  usuario_id          UUID    NOT NULL,
   responsavel         BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (analise_trabalho_id, usuario_id)
 );
 
 -- ------------------------------------------------------------
 -- Análise Ergonômica Preliminar — AEP
--- Avaliação preliminar; o responsável técnico fica por função (aep_avaliacoes.resp_*)
 -- ------------------------------------------------------------
-CREATE TABLE analise_preliminar (
+CREATE TABLE IF NOT EXISTS analise_preliminar (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id    UUID        NOT NULL REFERENCES empresas(id),
-  unidade_id    UUID        REFERENCES unidades(id) ON DELETE SET NULL,
-
-
+  empresa_id    UUID        NOT NULL,
+  unidade_id    UUID,
 
   -- Introdução
-  intro_ergonomia          TEXT,
-  intro_objetivo           TEXT,
-  intro_metodologia        TEXT,
+  intro_ergonomia   TEXT,
+  intro_objetivo    TEXT,
+  intro_metodologia TEXT,
 
   data          DATE,
   criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -58,11 +53,11 @@ CREATE TABLE analise_preliminar (
 -- Funções avaliadas — compartilhada entre AET e AEP
 -- Apenas uma das chaves pai deve estar preenchida (CHECK abaixo)
 -- ------------------------------------------------------------
-CREATE TABLE funcoes (
-  id                    UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  analise_trabalho_id   UUID  REFERENCES analise_trabalho(id)  ON DELETE CASCADE,
-  analise_preliminar_id UUID  REFERENCES analise_preliminar(id) ON DELETE CASCADE,
-  ordem                 INT   NOT NULL DEFAULT 0,
+CREATE TABLE IF NOT EXISTS funcoes (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  analise_trabalho_id   UUID,
+  analise_preliminar_id UUID,
+  ordem                 INT  NOT NULL DEFAULT 0,
 
   CONSTRAINT chk_funcao_analise CHECK (
     (analise_trabalho_id IS NOT NULL AND analise_preliminar_id IS NULL) OR
@@ -70,9 +65,9 @@ CREATE TABLE funcoes (
   ),
 
   -- 4.1 Cabeçalho
-  cargo_id         UUID REFERENCES cargos_padrao(id) ON DELETE SET NULL,
-  unidade_id       UUID REFERENCES unidades(id)      ON DELETE SET NULL,
-  setor_id         UUID REFERENCES setores(id)       ON DELETE SET NULL,
+  cargo_id         UUID,
+  unidade_id       UUID,
+  setor_id         UUID,
   data_analise     DATE,
   num_funcionarios TEXT,
 
@@ -99,12 +94,12 @@ CREATE TABLE funcoes (
   avaliador_qualidade TEXT,
 
   -- 4.7 Organização do trabalho
-  turno_id               UUID REFERENCES turnos(id)        ON DELETE SET NULL,
+  turno_id               UUID,
   inicio_turno           TEXT,
   fim_turno              TEXT,
   dias_trabalho          TEXT,
   horas_extras           TEXT,
-  pausa_id               UUID REFERENCES pausas_padrao(id) ON DELETE SET NULL,
+  pausa_id               UUID,
   rodizio_tarefas        TEXT,
   distancia_banheiro     TEXT,
   condicao_banheiro      TEXT,
@@ -113,7 +108,7 @@ CREATE TABLE funcoes (
 
   -- 4.8 Colaborador
   formacao_colaborador TEXT,
-  turno_colaborador_id UUID REFERENCES turnos(id) ON DELETE SET NULL,
+  turno_colaborador_id UUID,
   opiniao_genero       TEXT,
   opiniao_idade        TEXT,
   opiniao_tempo        TEXT,
@@ -191,11 +186,10 @@ CREATE TABLE funcoes (
 
 -- ------------------------------------------------------------
 -- Iluminação da função (AETIllumination) — 1:1 com funcao
--- Utilizada na AET; na AEP a iluminância fica em medicoes_iluminancia
 -- ------------------------------------------------------------
-CREATE TABLE funcao_iluminacoes (
+CREATE TABLE IF NOT EXISTS funcao_iluminacoes (
   id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id UUID NOT NULL UNIQUE REFERENCES funcoes(id) ON DELETE CASCADE,
+  funcao_id UUID NOT NULL UNIQUE,
 
   local                TEXT,
   data                 DATE,
@@ -219,95 +213,95 @@ CREATE TABLE funcao_iluminacoes (
   lux_referencia       NUMERIC(10,2) NOT NULL DEFAULT 0
 );
 
--- Pontos de medição NHO 11 da iluminação (NHO11MeasurementPoint)
-CREATE TABLE iluminacao_pontos_medicao (
-  id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
-  iluminacao_id UUID          NOT NULL REFERENCES funcao_iluminacoes(id) ON DELETE CASCADE,
+-- Pontos de medição NHO 11 da iluminação
+CREATE TABLE IF NOT EXISTS iluminacao_pontos_medicao (
+  id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  iluminacao_id UUID         NOT NULL,
   rotulo        TEXT,
   lux           NUMERIC(10,2),
-  ordem         INT           NOT NULL DEFAULT 0
+  ordem         INT          NOT NULL DEFAULT 0
 );
 
--- Checklist de iluminação (IlluminationChecklistItem)
-CREATE TABLE iluminacao_checklist_itens (
-  id               UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  iluminacao_id    UUID  NOT NULL REFERENCES funcao_iluminacoes(id) ON DELETE CASCADE,
-  descricao        TEXT  NOT NULL,
-  conforme         TEXT  CHECK (conforme IN ('sim','nao','')),
+-- Checklist de iluminação
+CREATE TABLE IF NOT EXISTS iluminacao_checklist_itens (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  iluminacao_id    UUID NOT NULL,
+  descricao        TEXT NOT NULL,
+  conforme         TEXT CHECK (conforme IN ('sim','nao','')),
   acao_recomendada TEXT,
   prazo            TEXT,
   responsavel      TEXT,
   observacoes      TEXT,
-  ordem            INT   NOT NULL DEFAULT 0
+  ordem            INT  NOT NULL DEFAULT 0
 );
 
 -- ------------------------------------------------------------
 -- Métodos científicos da função — AETScientificMethod (AET)
 -- ------------------------------------------------------------
-CREATE TABLE funcao_metodos_cientificos (
-  id                     UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id              UUID  NOT NULL REFERENCES funcoes(id) ON DELETE CASCADE,
-  modelo_id              UUID  REFERENCES modelos_metodo_cientifico(id) ON DELETE SET NULL,
-  classificacao_risco_id UUID  REFERENCES classificacoes_risco(id) ON DELETE SET NULL,
+CREATE TABLE IF NOT EXISTS funcao_metodos_cientificos (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcao_id              UUID NOT NULL,
+  modelo_id              UUID,
+  classificacao_risco_id UUID,
   descricao              TEXT,
   resultado              TEXT,
   interpretacao          TEXT,
   imagem_url             TEXT,
   recomendacoes          TEXT,
-  ordem                  INT   NOT NULL DEFAULT 0
+  ordem                  INT  NOT NULL DEFAULT 0
 );
 
 -- ------------------------------------------------------------
 -- Imagens da função — AETImage (AET e AEP)
 -- ------------------------------------------------------------
-CREATE TABLE funcao_imagens (
-  id         UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id  UUID  NOT NULL REFERENCES funcoes(id) ON DELETE CASCADE,
-  imagem_url TEXT  NOT NULL,
+CREATE TABLE IF NOT EXISTS funcao_imagens (
+  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcao_id UUID NOT NULL,
+  imagem_url TEXT NOT NULL,
   legenda    TEXT,
-  categoria  TEXT  CHECK (categoria IN ('posto_trabalho','banheiro','equipamento','postura','metodo','evidencia_risco','outro')),
-  ordem      INT   NOT NULL DEFAULT 0
+  categoria  TEXT CHECK (categoria IN ('posto_trabalho','banheiro','equipamento','postura','metodo','evidencia_risco','outro')),
+  ordem      INT  NOT NULL DEFAULT 0
 );
 
 -- ------------------------------------------------------------
 -- Equipamentos da função — AETEquipmentItem (AET)
 -- ------------------------------------------------------------
-CREATE TABLE funcao_equipamentos (
-  id             UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id      UUID  NOT NULL REFERENCES funcoes(id) ON DELETE CASCADE,
-  equipamento_id UUID  REFERENCES equipamentos_padrao(id) ON DELETE SET NULL,
+CREATE TABLE IF NOT EXISTS funcao_equipamentos (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcao_id      UUID NOT NULL,
+  equipamento_id UUID,
   nome           TEXT,  -- preenchido quando não vem do catálogo
   quantidade     TEXT,
   dimensoes      TEXT,
-  principio      TEXT  CHECK (principio IN ('manual','eletrico','hidraulico','pneumatico','')),
+  principio      TEXT CHECK (principio IN ('manual','eletrico','hidraulico','pneumatico','')),
   condicao       TEXT,
   observacoes    TEXT,
-  ordem          INT   NOT NULL DEFAULT 0
+  ordem          INT  NOT NULL DEFAULT 0
 );
 
 -- ------------------------------------------------------------
 -- EPIs da função — AETEPIItem (AET)
 -- ------------------------------------------------------------
-CREATE TABLE funcao_epis (
-  id          UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id   UUID     NOT NULL REFERENCES funcoes(id) ON DELETE CASCADE,
-  epi_id      UUID     REFERENCES epis(id) ON DELETE SET NULL,
+CREATE TABLE IF NOT EXISTS funcao_epis (
+  id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcao_id   UUID    NOT NULL,
+  epi_id      UUID,
   nome        TEXT,    -- preenchido quando não vem do catálogo
-  obrigatorio BOOLEAN  NOT NULL DEFAULT FALSE,
-  eventual    BOOLEAN  NOT NULL DEFAULT FALSE,
+  obrigatorio BOOLEAN NOT NULL DEFAULT FALSE,
+  eventual    BOOLEAN NOT NULL DEFAULT FALSE,
   local       TEXT,
   observacoes TEXT,
-  ordem       INT      NOT NULL DEFAULT 0
+  ordem       INT     NOT NULL DEFAULT 0
 );
 
 -- ------------------------------------------------------------
 -- Riscos ergonômicos — ErgonomicRisk (AET e AEP)
 -- ------------------------------------------------------------
-CREATE TABLE funcao_riscos_ergonomicos (
+CREATE TABLE IF NOT EXISTS funcao_riscos_ergonomicos (
   id                         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id                  UUID NOT NULL REFERENCES funcoes(id) ON DELETE CASCADE,
-  classificacao_risco_id     UUID REFERENCES classificacoes_risco(id) ON DELETE SET NULL,
-  fator_risco_biomecanico_id UUID REFERENCES fatores_risco_biomecanico(id) ON DELETE SET NULL,
+  funcao_id                  UUID NOT NULL,
+  classificacao_risco_id     UUID,
+  fator_risco_biomecanico_id UUID,
   agente                     TEXT,
   efeito_saude_possivel      TEXT,
   situacao_encontrada        TEXT,
@@ -327,64 +321,195 @@ CREATE TABLE funcao_riscos_ergonomicos (
 -- ------------------------------------------------------------
 -- Melhorias / plano de ação simples — AETImprovement (AET)
 -- ------------------------------------------------------------
-CREATE TABLE funcao_melhorias (
-  id                      UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id               UUID  NOT NULL REFERENCES funcoes(id) ON DELETE CASCADE,
-  classificacao_risco_id  UUID  REFERENCES classificacoes_risco(id) ON DELETE SET NULL,
-  foto_url                TEXT,
-  perigo                  TEXT,
-  probabilidade           TEXT,
-  gravidade               TEXT,
-  nivel_risco_bruto       TEXT,
-  avaliacao_risco         TEXT,
-  acoes                   TEXT,
+CREATE TABLE IF NOT EXISTS funcao_melhorias (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcao_id              UUID NOT NULL,
+  classificacao_risco_id UUID,
+  foto_url               TEXT,
+  perigo                 TEXT,
+  probabilidade          TEXT,
+  gravidade              TEXT,
+  nivel_risco_bruto      TEXT,
+  avaliacao_risco        TEXT,
+  acoes                  TEXT,
   probabilidade_atenuacao TEXT,
-  prazo                   TEXT,
-  responsavel             TEXT,
-  observacoes             TEXT,
-  ordem                   INT   NOT NULL DEFAULT 0
+  prazo                  TEXT,
+  responsavel            TEXT,
+  observacoes            TEXT,
+  ordem                  INT  NOT NULL DEFAULT 0
 );
 
 -- ------------------------------------------------------------
 -- Respostas do checklist da função (AET)
 -- ------------------------------------------------------------
-CREATE TABLE funcao_respostas_checklist (
-  id                    UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
-  funcao_id             UUID  NOT NULL REFERENCES funcoes(id) ON DELETE CASCADE,
-  pergunta_checklist_id UUID  NOT NULL REFERENCES perguntas_checklist(id) ON DELETE CASCADE,
-  resposta              TEXT  CHECK (resposta IN ('sim','nao','nao_se_aplica',''))
+CREATE TABLE IF NOT EXISTS funcao_respostas_checklist (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcao_id             UUID NOT NULL,
+  pergunta_checklist_id UUID NOT NULL,
+  resposta              TEXT CHECK (resposta IN ('sim','nao','nao_se_aplica',''))
 );
+
+-- ------------------------------------------------------------
+-- Chaves estrangeiras
+-- ------------------------------------------------------------
+ALTER TABLE analise_trabalho
+  ADD CONSTRAINT fk_aet_empresa
+  FOREIGN KEY (empresa_id) REFERENCES empresas(id);
+
+ALTER TABLE analise_trabalho
+  ADD CONSTRAINT fk_aet_unidade
+  FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE SET NULL;
+
+ALTER TABLE aet_avaliadores
+  ADD CONSTRAINT fk_aet_aval_analise
+  FOREIGN KEY (analise_trabalho_id) REFERENCES analise_trabalho(id) ON DELETE CASCADE;
+
+ALTER TABLE aet_avaliadores
+  ADD CONSTRAINT fk_aet_aval_usuario
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE;
+
+ALTER TABLE analise_preliminar
+  ADD CONSTRAINT fk_aep_empresa
+  FOREIGN KEY (empresa_id) REFERENCES empresas(id);
+
+ALTER TABLE analise_preliminar
+  ADD CONSTRAINT fk_aep_unidade
+  FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE SET NULL;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_analise_trabalho
+  FOREIGN KEY (analise_trabalho_id) REFERENCES analise_trabalho(id) ON DELETE CASCADE;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_analise_prelim
+  FOREIGN KEY (analise_preliminar_id) REFERENCES analise_preliminar(id) ON DELETE CASCADE;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_cargo
+  FOREIGN KEY (cargo_id) REFERENCES cargos_padrao(id) ON DELETE SET NULL;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_unidade
+  FOREIGN KEY (unidade_id) REFERENCES unidades(id) ON DELETE SET NULL;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_setor
+  FOREIGN KEY (setor_id) REFERENCES setores(id) ON DELETE SET NULL;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_turno
+  FOREIGN KEY (turno_id) REFERENCES turnos(id) ON DELETE SET NULL;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_pausa
+  FOREIGN KEY (pausa_id) REFERENCES pausas_padrao(id) ON DELETE SET NULL;
+
+ALTER TABLE funcoes
+  ADD CONSTRAINT fk_funcoes_turno_colaborador
+  FOREIGN KEY (turno_colaborador_id) REFERENCES turnos(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_iluminacoes
+  ADD CONSTRAINT fk_func_iluminacoes_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE iluminacao_pontos_medicao
+  ADD CONSTRAINT fk_iluminacao_pontos_iluminacao
+  FOREIGN KEY (iluminacao_id) REFERENCES funcao_iluminacoes(id) ON DELETE CASCADE;
+
+ALTER TABLE iluminacao_checklist_itens
+  ADD CONSTRAINT fk_iluminacao_checklist_iluminacao
+  FOREIGN KEY (iluminacao_id) REFERENCES funcao_iluminacoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_metodos_cientificos
+  ADD CONSTRAINT fk_func_metodos_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_metodos_cientificos
+  ADD CONSTRAINT fk_func_metodos_modelo
+  FOREIGN KEY (modelo_id) REFERENCES modelos_metodo_cientifico(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_metodos_cientificos
+  ADD CONSTRAINT fk_func_metodos_class_risco
+  FOREIGN KEY (classificacao_risco_id) REFERENCES classificacoes_risco(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_imagens
+  ADD CONSTRAINT fk_func_imagens_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_equipamentos
+  ADD CONSTRAINT fk_func_equipamentos_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_equipamentos
+  ADD CONSTRAINT fk_func_equipamentos_equipamento
+  FOREIGN KEY (equipamento_id) REFERENCES equipamentos_padrao(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_epis
+  ADD CONSTRAINT fk_func_epis_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_epis
+  ADD CONSTRAINT fk_func_epis_epi
+  FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_riscos_ergonomicos
+  ADD CONSTRAINT fk_func_riscos_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_riscos_ergonomicos
+  ADD CONSTRAINT fk_func_riscos_class_risco
+  FOREIGN KEY (classificacao_risco_id) REFERENCES classificacoes_risco(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_riscos_ergonomicos
+  ADD CONSTRAINT fk_func_riscos_fator_biom
+  FOREIGN KEY (fator_risco_biomecanico_id) REFERENCES fatores_risco_biomecanico(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_melhorias
+  ADD CONSTRAINT fk_func_melhorias_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_melhorias
+  ADD CONSTRAINT fk_func_melhorias_class_risco
+  FOREIGN KEY (classificacao_risco_id) REFERENCES classificacoes_risco(id) ON DELETE SET NULL;
+
+ALTER TABLE funcao_respostas_checklist
+  ADD CONSTRAINT fk_func_respostas_funcao
+  FOREIGN KEY (funcao_id) REFERENCES funcoes(id) ON DELETE CASCADE;
+
+ALTER TABLE funcao_respostas_checklist
+  ADD CONSTRAINT fk_func_respostas_pergunta
+  FOREIGN KEY (pergunta_checklist_id) REFERENCES perguntas_checklist(id) ON DELETE CASCADE;
 
 -- ------------------------------------------------------------
 -- Índices
 -- ------------------------------------------------------------
 -- analise_trabalho
-CREATE INDEX idx_aet_empresa               ON analise_trabalho(empresa_id);
-CREATE INDEX idx_aet_unidade               ON analise_trabalho(unidade_id);
-CREATE INDEX idx_aet_aval_usuario          ON aet_avaliadores(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_aet_empresa      ON analise_trabalho(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_aet_unidade      ON analise_trabalho(unidade_id);
+CREATE INDEX IF NOT EXISTS idx_aet_aval_usuario ON aet_avaliadores(usuario_id);
 
 -- analise_preliminar
-CREATE INDEX idx_aep_empresa               ON analise_preliminar(empresa_id);
-CREATE INDEX idx_aep_unidade               ON analise_preliminar(unidade_id);
+CREATE INDEX IF NOT EXISTS idx_aep_empresa  ON analise_preliminar(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_aep_unidade  ON analise_preliminar(unidade_id);
 
 -- funcoes
-CREATE INDEX idx_funcoes_analise_trabalho   ON funcoes(analise_trabalho_id);
-CREATE INDEX idx_funcoes_analise_prelim     ON funcoes(analise_preliminar_id);
-CREATE INDEX idx_funcoes_cargo              ON funcoes(cargo_id);
-CREATE INDEX idx_funcoes_setor              ON funcoes(setor_id);
-CREATE INDEX idx_funcoes_unidade            ON funcoes(unidade_id);
-CREATE INDEX idx_funcoes_turno              ON funcoes(turno_id);
+CREATE INDEX IF NOT EXISTS idx_funcoes_analise_trabalho ON funcoes(analise_trabalho_id);
+CREATE INDEX IF NOT EXISTS idx_funcoes_analise_prelim   ON funcoes(analise_preliminar_id);
+CREATE INDEX IF NOT EXISTS idx_funcoes_cargo            ON funcoes(cargo_id);
+CREATE INDEX IF NOT EXISTS idx_funcoes_setor            ON funcoes(setor_id);
+CREATE INDEX IF NOT EXISTS idx_funcoes_unidade          ON funcoes(unidade_id);
+CREATE INDEX IF NOT EXISTS idx_funcoes_turno            ON funcoes(turno_id);
 
 -- sub-tabelas de funcao
-CREATE INDEX idx_func_iluminacoes_funcao    ON funcao_iluminacoes(funcao_id);
-CREATE INDEX idx_func_metodos_funcao        ON funcao_metodos_cientificos(funcao_id);
-CREATE INDEX idx_func_metodos_modelo        ON funcao_metodos_cientificos(modelo_id);
-CREATE INDEX idx_func_imagens_funcao        ON funcao_imagens(funcao_id);
-CREATE INDEX idx_func_equipamentos_funcao   ON funcao_equipamentos(funcao_id);
-CREATE INDEX idx_func_epis_funcao           ON funcao_epis(funcao_id);
-CREATE INDEX idx_func_riscos_funcao         ON funcao_riscos_ergonomicos(funcao_id);
-CREATE INDEX idx_func_riscos_class_risco    ON funcao_riscos_ergonomicos(classificacao_risco_id);
-CREATE INDEX idx_func_riscos_fator_biom     ON funcao_riscos_ergonomicos(fator_risco_biomecanico_id);
-CREATE INDEX idx_func_melhorias_funcao      ON funcao_melhorias(funcao_id);
-CREATE INDEX idx_func_melhorias_class_risco ON funcao_melhorias(classificacao_risco_id);
-CREATE INDEX idx_func_respostas_checklist   ON funcao_respostas_checklist(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_iluminacoes_funcao    ON funcao_iluminacoes(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_metodos_funcao        ON funcao_metodos_cientificos(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_metodos_modelo        ON funcao_metodos_cientificos(modelo_id);
+CREATE INDEX IF NOT EXISTS idx_func_imagens_funcao        ON funcao_imagens(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_equipamentos_funcao   ON funcao_equipamentos(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_epis_funcao           ON funcao_epis(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_riscos_funcao         ON funcao_riscos_ergonomicos(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_riscos_class_risco    ON funcao_riscos_ergonomicos(classificacao_risco_id);
+CREATE INDEX IF NOT EXISTS idx_func_riscos_fator_biom     ON funcao_riscos_ergonomicos(fator_risco_biomecanico_id);
+CREATE INDEX IF NOT EXISTS idx_func_melhorias_funcao      ON funcao_melhorias(funcao_id);
+CREATE INDEX IF NOT EXISTS idx_func_melhorias_class_risco ON funcao_melhorias(classificacao_risco_id);
+CREATE INDEX IF NOT EXISTS idx_func_respostas_checklist   ON funcao_respostas_checklist(funcao_id);
