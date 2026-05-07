@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -25,6 +27,17 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
+
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'align': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['link'],
+      ['clean']
+    ]
+  };
 
   const introDefaults = (type: ReportType) => ({
     introErgonomia:   type === 'AEP' ? DEFAULT_AEP_INTRO_ERGONOMIA   : DEFAULT_AET_INTRO_ERGONOMIA,
@@ -352,13 +365,37 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
 
                 <div className="section-title">Textos de Introdução (editáveis)</div>
                 <FormGroup label="1.1 Ergonomia – texto conceitual">
-                  <Textarea value={formData.introErgonomia} onChange={e => f('introErgonomia', e.target.value)} rows={3} />
+                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                    <ReactQuill 
+                      theme="snow"
+                      modules={quillModules}
+                      value={formData.introErgonomia} 
+                      onChange={val => f('introErgonomia', val)} 
+                      className="min-h-[150px]"
+                    />
+                  </div>
                 </FormGroup>
                 <FormGroup label="1.3 Objetivo">
-                  <Textarea value={formData.introObjetivo} onChange={e => f('introObjetivo', e.target.value)} rows={3} />
+                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                    <ReactQuill 
+                      theme="snow"
+                      modules={quillModules}
+                      value={formData.introObjetivo} 
+                      onChange={val => f('introObjetivo', val)} 
+                      className="min-h-[150px]"
+                    />
+                  </div>
                 </FormGroup>
                 <FormGroup label="1.4 Metodologia">
-                  <Textarea value={formData.introMetodologia} onChange={e => f('introMetodologia', e.target.value)} rows={3} />
+                  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                    <ReactQuill 
+                      theme="snow"
+                      modules={quillModules}
+                      value={formData.introMetodologia} 
+                      onChange={val => f('introMetodologia', val)} 
+                      className="min-h-[150px]"
+                    />
+                  </div>
                 </FormGroup>
 
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">

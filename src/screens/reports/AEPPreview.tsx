@@ -918,7 +918,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                     <h2>1. Introdução</h2>
 
                     <h3>1.1 Ergonomia</h3>
-                    <p className="field-value">{introErgonomia}</p>
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introErgonomia }} />
 
                     <h3>1.2 Análise Global da Empresa</h3>
                     <div className="grid grid-cols-2 gap-x-8 mt-2">
@@ -933,10 +933,10 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                     </div>
 
                     <h3>1.3 Objetivo</h3>
-                    <p className="field-value">{introObjetivo}</p>
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introObjetivo }} />
 
                     <h3>1.4 Metodologia</h3>
-                    <p className="field-value">{introMetodologia}</p>
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introMetodologia }} />
                   </section>
 
                   {/* ── 2. Funções ── */}

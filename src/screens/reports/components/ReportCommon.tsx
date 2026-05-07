@@ -164,7 +164,11 @@ export const PDF_STYLES = `
   .pdf-preview :not(.pdf-cover) > h4 { font-size: .92rem; font-weight: 600; color: ${PALETTE.muted}; margin-top: 1rem; margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .05em; }
   .pdf-preview .field { margin-bottom: .6rem; }
   .pdf-preview .field-label { font-weight: 600; font-size: .82rem; color: ${PALETTE.muted}; text-transform: uppercase; letter-spacing: .04em; }
-  .pdf-preview .field-value { font-size: 1rem; color: #2A3D3A; white-space: pre-wrap; }
+  .pdf-preview .field-value { font-size: 1rem; color: #2A3D3A; white-space: pre-wrap; word-wrap: break-word; word-break: break-word; }
+  .pdf-preview .field-value p { margin-bottom: 0.5rem; }
+  .pdf-preview .ql-align-center { text-align: center; }
+  .pdf-preview .ql-align-right { text-align: right; }
+  .pdf-preview .ql-align-justify { text-align: justify; }
   .pdf-preview :not(.pdf-cover) table { width: 100%; border-collapse: collapse; font-size: .92rem; margin-top: .5rem; }
   .pdf-preview :not(.pdf-cover) th { background: ${PALETTE.light}; color: ${PALETTE.dark}; font-weight: 600; text-align: left; padding: .45rem .65rem; border: 1px solid ${PALETTE.border}; }
   .pdf-preview :not(.pdf-cover) td { padding: .45rem .65rem; border: 1px solid #D4E4E1; vertical-align: top; }
