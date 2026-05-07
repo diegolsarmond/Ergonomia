@@ -510,10 +510,10 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           </section>
 
           {/* ── Cabeçalho / Rodapé repetidos ── */}
-          <table className="w-full">
+          <table className="w-full" style={{ border: 'none' }}>
             <thead>
               <tr>
-                <td>
+                <td style={{ border: 'none' }}>
                   <div className="flex justify-end mb-4 px-12">
                     {project.companyLogoDataUrl
                       ? <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-12 object-contain" />
@@ -522,10 +522,10 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                 </td>
               </tr>
             </thead>
-            <tfoot><tr><td><div className="flex justify-between items-center mt-4 px-12" /></td></tr></tfoot>
+            <tfoot><tr><td style={{ border: 'none' }}><div className="flex justify-between items-center mt-4 px-12" /></td></tr></tfoot>
             <tbody>
               <tr>
-                <td className="p-0">
+                <td className="p-0" style={{ border: 'none' }}>
 
                   {/* ── 1. Introdução ── */}
                   <section id="aet-intro" className="pdf-page px-12 py-8 print:break-after-page">
