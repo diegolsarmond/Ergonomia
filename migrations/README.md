@@ -12,6 +12,7 @@ Scripts SQL para PostgreSQL ≥ 14, mapeando todas as entidades do sistema (atua
 | `004_create_illuminance_measurements.sql` | Malha de medição de iluminância (geometrias A1–A6, NHO 11) |
 | `005_create_aep_assessment.sql` | Avaliação AEP estruturada: biomecânica, psicossocial, RACI, gatilhos AET |
 | `006_seed_defaults.sql` | Dados iniciais: classificações de risco, parâmetros normativos, textos padrão, usuário ADMIN |
+| `007_seed_mock_catalog.sql` | Dados mock do catálogo: 5 empresas, 6 unidades, 12 setores, 10 cargos, 14 EPIs, 20 equipamentos, 7 turnos, 11 pausas, 13 perguntas de entrevista, 10 checklist, 4 classificações de risco, 6 métodos científicos, 8 textos de relatório, 32 fatores de risco biomecânico, 13 parâmetros normativos de iluminância |
 
 ## Como executar
 
@@ -22,7 +23,8 @@ psql -U postgres -d ergonomia_db \
   -f migrations/003_create_projects.sql \
   -f migrations/004_create_illuminance_measurements.sql \
   -f migrations/005_create_aep_assessment.sql \
-  -f migrations/006_seed_defaults.sql
+  -f migrations/006_seed_defaults.sql \
+  -f migrations/007_seed_mock_catalog.sql
 ```
 
 ## Diagrama de dependências
