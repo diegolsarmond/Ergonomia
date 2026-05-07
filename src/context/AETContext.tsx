@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import localforage from 'localforage';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AETProject, AETFunction, ChecklistQuestion, ScientificMethodTemplate,
@@ -8,15 +7,14 @@ import {
   BiomechanicalRiskFactor,
 } from '../types';
 import type { IlluminanceNormativeParameter } from '../domain/illuminance/illuminanceTypes';
-import { DEFAULT_NORMATIVE_PARAMETERS } from '../domain/illuminance/illuminanceTypes';
 import { normalizeFunction, normalizeProject, normalizeProjectsOnLoad } from '../domain/normalize';
-import { createMockAEPProject, createMockAETProject } from '../utils/mockData';
-import { Client, MOCK_CLIENTS } from '../data/mockClients';
+import { Client } from '../data/mockClients';
 import {
-  MOCK_COMPANIES, MOCK_UNITS, MOCK_SECTORS, MOCK_JOB_ROLES, MOCK_EPIS,
-  MOCK_EQUIPMENT, MOCK_SURVEY_QUESTIONS, MOCK_PAUSES, MOCK_RISK_CLASSIFICATIONS,
-  MOCK_REPORT_TEXTS, MOCK_CHECKLIST_QUESTIONS, MOCK_SCIENTIFIC_METHODS, MOCK_SHIFTS,
-} from '../data/mockParameters';
+  companiesApi, unitsApi, sectorsApi, jobRolesApi, episApi, equipmentApi,
+  surveyQuestionsApi, pausesApi, shiftsApi, riskClassificationsApi, reportTextsApi,
+  scientificMethodsApi, checklistQuestionsApi, biomechanicalFactorsApi,
+  illuminanceParamsApi, projectsApi, clientsApi,
+} from '../services/api';
 
 interface AETContextType {
   projects: AETProject[];
@@ -44,7 +42,6 @@ interface AETContextType {
   addScientificMethodTemplate: (template: Omit<ScientificMethodTemplate, 'id'>) => Promise<void>;
   updateScientificMethodTemplate: (id: string, template: Partial<ScientificMethodTemplate>) => Promise<void>;
   deleteScientificMethodTemplate: (id: string) => Promise<void>;
-  // New parameter entities
   companies: Company[];
   addCompany: (c: Omit<Company, 'id'>) => Promise<void>;
   updateCompany: (id: string, c: Partial<Company>) => Promise<void>;
@@ -89,7 +86,6 @@ interface AETContextType {
   addShift: (s: Omit<Shift, 'id'>) => Promise<void>;
   updateShift: (id: string, s: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
-  // Illuminance normative parameters
   illuminanceNormativeParams: IlluminanceNormativeParameter[];
   addIlluminanceNormativeParam: (p: Omit<IlluminanceNormativeParameter, 'id'>) => Promise<void>;
   updateIlluminanceNormativeParam: (id: string, p: Partial<IlluminanceNormativeParameter>) => Promise<void>;
@@ -101,22 +97,6 @@ interface AETContextType {
 }
 
 const AETContext = createContext<AETContextType | undefined>(undefined);
-
-function makeCRUD<T extends { id: string }>(
-  key: string,
-  state: T[],
-  setState: React.Dispatch<React.SetStateAction<T[]>>
-) {
-  const save = async (next: T[]) => {
-    await localforage.setItem(key, next);
-    setState(next);
-  };
-  return {
-    add: async (item: Omit<T, 'id'>) => { await save([...state, { ...item, id: uuidv4() } as T]); },
-    update: async (id: string, item: Partial<T>) => { await save(state.map(x => x.id === id ? { ...x, ...item } : x)); },
-    remove: async (id: string) => { await save(state.filter(x => x.id !== id)); },
-  };
-}
 
 export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<AETProject[]>([]);
@@ -140,163 +120,102 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     const loadData = async () => {
-      let stored = await localforage.getItem<AETProject[]>('aet_projects');
-      if (!stored || stored.length === 0) {
-        stored = [createMockAEPProject(), createMockAETProject()];
-        await localforage.setItem('aet_projects', stored);
-      }
-      // Normalize all projects (fills missing fields, guarantees arrays, AEP fields, etc.)
-      {
-        const { projects: normalized, changed } = normalizeProjectsOnLoad(stored);
-        if (changed) await localforage.setItem('aet_projects', normalized);
-        stored = normalized as any;
-      }
-      setProjects(stored);
+      try {
+        const [
+          rawProjects, rawClients, rawChecklist, rawMethods,
+          rawCompanies, rawUnits, rawSectors, rawJobRoles,
+          rawEpis, rawEquipment, rawSurvey, rawPauses,
+          rawShifts, rawRisks, rawTexts, rawBiomech,
+          rawIllum,
+        ] = await Promise.all([
+          projectsApi.list(),
+          clientsApi.list(),
+          checklistQuestionsApi.list(),
+          scientificMethodsApi.list(),
+          companiesApi.list(),
+          unitsApi.list(),
+          sectorsApi.list(),
+          jobRolesApi.list(),
+          episApi.list(),
+          equipmentApi.list(),
+          surveyQuestionsApi.list(),
+          pausesApi.list(),
+          shiftsApi.list(),
+          riskClassificationsApi.list(),
+          reportTextsApi.list(),
+          biomechanicalFactorsApi.list(),
+          illuminanceParamsApi.list(),
+        ]);
 
-      let storedClients = await localforage.getItem<Client[]>('aet_clients');
-      if (!storedClients || storedClients.length === 0) {
-        storedClients = MOCK_CLIENTS;
-        await localforage.setItem('aet_clients', storedClients);
-      }
-      setClients(storedClients);
+        // Normaliza projetos (garante campos obrigatórios e arrays)
+        const { projects: normalized } = normalizeProjectsOnLoad(rawProjects as AETProject[]);
+        setProjects(normalized as AETProject[]);
 
-      let storedQuestions = await localforage.getItem<ChecklistQuestion[]>('aet_checklist_questions');
-      if (!storedQuestions || storedQuestions.length === 0) {
-        storedQuestions = MOCK_CHECKLIST_QUESTIONS;
-        await localforage.setItem('aet_checklist_questions', storedQuestions);
+        setClients(rawClients as Client[]);
+        setChecklistQuestions(rawChecklist as ChecklistQuestion[]);
+        setScientificMethodTemplates(rawMethods as ScientificMethodTemplate[]);
+        setCompanies(rawCompanies as Company[]);
+        setUnits(rawUnits as Unit[]);
+        setSectors(rawSectors as Sector[]);
+        setJobRoles(rawJobRoles as StandardJobRole[]);
+        setEPIs(rawEpis as EPI[]);
+        setEquipment(rawEquipment as StandardEquipment[]);
+        setSurveyQuestions(rawSurvey as SurveyQuestion[]);
+        setPauses(rawPauses as StandardPause[]);
+        setShifts(rawShifts as Shift[]);
+        setRiskClassifications(rawRisks as RiskClassification[]);
+        setReportTexts(rawTexts as ReportTextTemplate[]);
+        setBiomechanicalRiskFactors(rawBiomech as BiomechanicalRiskFactor[]);
+        setIlluminanceNormativeParams(rawIllum as IlluminanceNormativeParameter[]);
+      } catch (err) {
+        console.error('Erro ao carregar dados do servidor:', err);
+      } finally {
+        setLoading(false);
       }
-      setChecklistQuestions(storedQuestions);
-
-      let storedMethodTemplates = await localforage.getItem<ScientificMethodTemplate[]>('aet_scientific_method_templates');
-      if (!storedMethodTemplates || storedMethodTemplates.length === 0) {
-        storedMethodTemplates = MOCK_SCIENTIFIC_METHODS;
-        await localforage.setItem('aet_scientific_method_templates', storedMethodTemplates);
-      }
-      let migrated = false;
-      storedMethodTemplates = storedMethodTemplates.map((t: any) => {
-        if (typeof t.imageDataUrl === 'string' && !t.imageDataUrls) {
-          migrated = true;
-          const { imageDataUrl, ...rest } = t;
-          return { ...rest, imageDataUrls: imageDataUrl ? [imageDataUrl] : [] };
-        }
-        if (!t.imageDataUrls) { migrated = true; return { ...t, imageDataUrls: [] }; }
-        return t;
-      });
-      if (migrated) await localforage.setItem('aet_scientific_method_templates', storedMethodTemplates);
-      setScientificMethodTemplates(storedMethodTemplates);
-
-      const loadSimple = async <T,>(key: string, setter: React.Dispatch<React.SetStateAction<T[]>>, mockData: T[] = []) => {
-        const data = await localforage.getItem<T[]>(key);
-        if (!data || data.length === 0) {
-          if (mockData.length > 0) {
-            await localforage.setItem(key, mockData);
-            setter(mockData);
-            return;
-          }
-        }
-        setter(data ?? []);
-      };
-      {
-        const raw = await localforage.getItem<Company[]>('aet_companies');
-        if (!raw || raw.length === 0) {
-          await localforage.setItem('aet_companies', MOCK_COMPANIES);
-          setCompanies(MOCK_COMPANIES);
-        } else {
-          let migrated = false;
-          const patched = raw.map((c: any) => {
-            const needs = c.marketSituation === undefined || c.productionLocation === undefined;
-            if (!needs) return c;
-            migrated = true;
-            return { ...c, marketSituation: c.marketSituation ?? '', productionLocation: c.productionLocation ?? '' };
-          });
-          if (migrated) await localforage.setItem('aet_companies', patched);
-          setCompanies(patched);
-        }
-      }
-      await loadSimple<Unit>('aet_units', setUnits, MOCK_UNITS);
-      await loadSimple<Sector>('aet_sectors', setSectors, MOCK_SECTORS);
-      await loadSimple<StandardJobRole>('aet_job_roles', setJobRoles, MOCK_JOB_ROLES);
-      await loadSimple<EPI>('aet_epis', setEPIs, MOCK_EPIS);
-      await loadSimple<StandardEquipment>('aet_equipment', setEquipment, MOCK_EQUIPMENT);
-      await loadSimple<SurveyQuestion>('aet_survey_questions', setSurveyQuestions, MOCK_SURVEY_QUESTIONS);
-      await loadSimple<StandardPause>('aet_pauses', setPauses, MOCK_PAUSES);
-      await loadSimple<RiskClassification>('aet_risk_classifications', setRiskClassifications, MOCK_RISK_CLASSIFICATIONS);
-      await loadSimple<ReportTextTemplate>('aet_report_texts', setReportTexts, MOCK_REPORT_TEXTS);
-      
-      const loadedShifts = await localforage.getItem<Shift[]>('aet_shifts');
-      if (!loadedShifts || loadedShifts.length === 0) {
-        await localforage.setItem('aet_shifts', MOCK_SHIFTS);
-        setShifts(MOCK_SHIFTS);
-      } else {
-        // Migration: strip emojis from existing names
-        const emojiRegex = /[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
-        const cleaned = loadedShifts.map(s => ({
-          ...s,
-          name: s.name.replace(emojiRegex, '').trim()
-        }));
-        if (JSON.stringify(cleaned) !== JSON.stringify(loadedShifts)) {
-          await localforage.setItem('aet_shifts', cleaned);
-          setShifts(cleaned);
-        } else {
-          setShifts(loadedShifts);
-        }
-      }
-
-      await loadSimple<IlluminanceNormativeParameter>('aet_illuminance_norms', setIlluminanceNormativeParams, DEFAULT_NORMATIVE_PARAMETERS);
-      {
-        // Remove dados mockados antigos e usa apenas o que foi cadastrado em Parâmetros
-        await localforage.removeItem('aet_biomechanical_risk_factors');
-        const raw = await localforage.getItem<BiomechanicalRiskFactor[]>('aet_biomechanical_risk_factors_v2');
-        if (!raw) {
-          await localforage.setItem('aet_biomechanical_risk_factors_v2', []);
-          setBiomechanicalRiskFactors([]);
-        } else {
-          setBiomechanicalRiskFactors(raw);
-        }
-      }
-
-      setLoading(false);
     };
     loadData();
   }, []);
 
-  const saveToStorage = async (newProjects: AETProject[]) => {
-    await localforage.setItem('aet_projects', newProjects);
-    setProjects(newProjects);
+  // ── Projetos ───────────────────────────────────────────────────────────────
+
+  const saveProject = async (project: AETProject) => {
+    await projectsApi.update(project.id, project);
+    setProjects(prev => prev.map(p => p.id === project.id ? project : p));
   };
 
   const addProject = async (projectData: Omit<AETProject, 'id' | 'functions'>) => {
     const newProject = normalizeProject({ ...projectData, id: uuidv4(), functions: [] });
-    await saveToStorage([...projects, newProject]);
+    await projectsApi.save(newProject);
+    setProjects(prev => [...prev, newProject]);
     return newProject.id;
   };
+
   const updateProject = async (id: string, projectData: Partial<AETProject>) => {
-    await saveToStorage(projects.map(p => p.id === id ? { ...p, ...projectData } : p));
+    setProjects(prev => {
+      const next = prev.map(p => p.id === id ? { ...p, ...projectData } : p);
+      const updated = next.find(p => p.id === id)!;
+      projectsApi.update(id, updated).catch(console.error);
+      return next;
+    });
   };
-  const deleteProject = async (id: string) => { await saveToStorage(projects.filter(p => p.id !== id)); };
+
+  const deleteProject = async (id: string) => {
+    await projectsApi.delete(id);
+    setProjects(prev => prev.filter(p => p.id !== id));
+  };
+
   const getProject = (id: string) => projects.find(p => p.id === id);
 
   const addFunction = async (projectId: string, funcData: Partial<AETFunction>) => {
-    console.log('Context: addFunction starting...', { projectId });
     const newFunc = normalizeFunction({ ...funcData, id: uuidv4() });
-    
     return new Promise<string>((resolve, reject) => {
       setProjects(prev => {
         try {
-          const projectExists = prev.some(p => p.id === projectId);
-          if (!projectExists) {
-            console.error('Context: Project not found!', projectId);
-            throw new Error('Projeto não encontrado');
-          }
-          
-          const next = prev.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
-          localforage.setItem('aet_projects', next).then(() => {
-            console.log('Context: Function saved to storage');
-            resolve(newFunc.id);
-          }).catch(err => {
-            console.error('Context: Error saving to storage', err);
-            reject(err);
-          });
+          const next = prev.map(p =>
+            p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p
+          );
+          const updated = next.find(p => p.id === projectId)!;
+          projectsApi.update(projectId, updated).then(() => resolve(newFunc.id)).catch(reject);
           return next;
         } catch (err) {
           reject(err);
@@ -305,40 +224,46 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     });
   };
+
   const updateFunction = async (projectId: string, functionId: string, funcData: Partial<AETFunction>) => {
     setProjects(prev => {
       const next = prev.map(p =>
-        p.id === projectId ? { ...p, functions: p.functions.map(f => f.id === functionId ? { ...f, ...funcData } : f) } : p
+        p.id === projectId
+          ? { ...p, functions: p.functions.map(f => f.id === functionId ? { ...f, ...funcData } : f) }
+          : p
       );
-      localforage.setItem('aet_projects', next);
+      const updated = next.find(p => p.id === projectId)!;
+      projectsApi.update(projectId, updated).catch(console.error);
       return next;
     });
   };
+
   const deleteFunction = async (projectId: string, functionId: string) => {
     setProjects(prev => {
       const next = prev.map(p =>
         p.id === projectId ? { ...p, functions: p.functions.filter(f => f.id !== functionId) } : p
       );
-      localforage.setItem('aet_projects', next);
+      const updated = next.find(p => p.id === projectId)!;
+      projectsApi.update(projectId, updated).catch(console.error);
       return next;
     });
   };
+
   const duplicateFunction = async (projectId: string, functionId: string) => {
     let finalId = '';
     setProjects(prev => {
       const project = prev.find(p => p.id === projectId);
       const func = project?.functions.find(f => f.id === functionId);
       if (!func) return prev;
-      
       const newFunc: AETFunction = { ...JSON.parse(JSON.stringify(func)), id: uuidv4(), name: `${func.name} (Cópia)` };
       newFunc.improvements = newFunc.improvements.map((imp: any) => ({ ...imp, id: uuidv4() }));
       newFunc.scientificMethods = newFunc.scientificMethods.map((m: any) => ({ ...m, id: uuidv4() }));
       newFunc.images = newFunc.images.map((img: any) => ({ ...img, id: uuidv4() }));
       newFunc.illumination.checklist = newFunc.illumination.checklist.map((c: any) => ({ ...c, id: uuidv4() }));
-      
       finalId = newFunc.id;
       const next = prev.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
-      localforage.setItem('aet_projects', next);
+      const updated = next.find(p => p.id === projectId)!;
+      projectsApi.update(projectId, updated).catch(console.error);
       return next;
     });
     return finalId;
@@ -346,89 +271,119 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const exportProjectJSON = (projectId: string): string | null => {
     const project = projects.find(p => p.id === projectId);
-    if (!project) return null;
-    return JSON.stringify(project, null, 2);
+    return project ? JSON.stringify(project, null, 2) : null;
   };
+
   const importProjectJSON = async (json: string): Promise<string | null> => {
     try {
       const raw = JSON.parse(json);
-      const imported = normalizeProject({
-        ...raw,
-        id: uuidv4(),
-        companyName: `${raw.companyName ?? ''} (Importado)`,
-      });
-      await saveToStorage([...projects, imported]);
+      const imported = normalizeProject({ ...raw, id: uuidv4(), companyName: `${raw.companyName ?? ''} (Importado)` });
+      await projectsApi.save(imported);
+      setProjects(prev => [...prev, imported]);
       return imported.id;
     } catch { return null; }
   };
 
-  const saveClientsToStorage = async (newClients: Client[]) => {
-    await localforage.setItem('aet_clients', newClients);
-    setClients(newClients);
+  const resetDevelopmentData = async () => {
+    // Remove todos os projetos e clientes do banco
+    await Promise.all(projects.map(p => projectsApi.delete(p.id)));
+    await Promise.all(clients.map(c => clientsApi.delete(c.id)));
+    setProjects([]);
+    setClients([]);
   };
+
+  // ── Clientes ───────────────────────────────────────────────────────────────
+
   const addClient = async (clientData: Omit<Client, 'id'>) => {
     const newClient: Client = { ...clientData, id: uuidv4() };
-    await saveClientsToStorage([...clients, newClient]);
+    await clientsApi.save(newClient);
+    setClients(prev => [...prev, newClient]);
     return newClient.id;
   };
-  const updateClient = async (id: string, clientData: Partial<Client>) => {
-    await saveClientsToStorage(clients.map(c => c.id === id ? { ...c, ...clientData } : c));
-  };
-  const deleteClient = async (id: string) => { await saveClientsToStorage(clients.filter(c => c.id !== id)); };
 
-  const addChecklistQuestion = async (questionData: Omit<ChecklistQuestion, 'id'>) => {
-    const newQ: ChecklistQuestion = { ...questionData, id: uuidv4() };
-    const next = [...checklistQuestions, newQ];
-    await localforage.setItem('aet_checklist_questions', next);
-    setChecklistQuestions(next);
+  const updateClient = async (id: string, clientData: Partial<Client>) => {
+    setClients(prev => {
+      const next = prev.map(c => c.id === id ? { ...c, ...clientData } : c);
+      const updated = next.find(c => c.id === id)!;
+      clientsApi.update(id, updated).catch(console.error);
+      return next;
+    });
   };
-  const updateChecklistQuestion = async (id: string, questionData: Partial<ChecklistQuestion>) => {
-    const next = checklistQuestions.map(q => q.id === id ? { ...q, ...questionData } : q);
-    await localforage.setItem('aet_checklist_questions', next);
-    setChecklistQuestions(next);
+
+  const deleteClient = async (id: string) => {
+    await clientsApi.delete(id);
+    setClients(prev => prev.filter(c => c.id !== id));
+  };
+
+  // ── Checklist ──────────────────────────────────────────────────────────────
+
+  const addChecklistQuestion = async (data: Omit<ChecklistQuestion, 'id'>) => {
+    const created = await checklistQuestionsApi.create(data);
+    setChecklistQuestions(prev => [...prev, created as ChecklistQuestion]);
+  };
+  const updateChecklistQuestion = async (id: string, data: Partial<ChecklistQuestion>) => {
+    const prev = checklistQuestions.find(q => q.id === id)!;
+    const updated = await checklistQuestionsApi.update(id, { ...prev, ...data });
+    setChecklistQuestions(qs => qs.map(q => q.id === id ? updated as ChecklistQuestion : q));
   };
   const deleteChecklistQuestion = async (id: string) => {
-    const next = checklistQuestions.filter(q => q.id !== id);
-    await localforage.setItem('aet_checklist_questions', next);
-    setChecklistQuestions(next);
+    await checklistQuestionsApi.delete(id);
+    setChecklistQuestions(qs => qs.filter(q => q.id !== id));
   };
 
-  const addScientificMethodTemplate = async (templateData: Omit<ScientificMethodTemplate, 'id'>) => {
-    const newT: ScientificMethodTemplate = { ...templateData, id: uuidv4() };
-    const updated = [...scientificMethodTemplates, newT];
-    await localforage.setItem('aet_scientific_method_templates', updated);
-    setScientificMethodTemplates(updated);
+  // ── Métodos científicos ────────────────────────────────────────────────────
+
+  const addScientificMethodTemplate = async (data: Omit<ScientificMethodTemplate, 'id'>) => {
+    const created = await scientificMethodsApi.create(data);
+    setScientificMethodTemplates(prev => [...prev, created as ScientificMethodTemplate]);
   };
-  const updateScientificMethodTemplate = async (id: string, templateData: Partial<ScientificMethodTemplate>) => {
-    const updated = scientificMethodTemplates.map((t: ScientificMethodTemplate) => t.id === id ? { ...t, ...templateData } : t);
-    await localforage.setItem('aet_scientific_method_templates', updated);
-    setScientificMethodTemplates(updated);
+  const updateScientificMethodTemplate = async (id: string, data: Partial<ScientificMethodTemplate>) => {
+    const prev = scientificMethodTemplates.find(t => t.id === id)!;
+    const updated = await scientificMethodsApi.update(id, { ...prev, ...data });
+    setScientificMethodTemplates(ts => ts.map(t => t.id === id ? updated as ScientificMethodTemplate : t));
   };
   const deleteScientificMethodTemplate = async (id: string) => {
-    const updated = scientificMethodTemplates.filter((t: ScientificMethodTemplate) => t.id !== id);
-    await localforage.setItem('aet_scientific_method_templates', updated);
-    setScientificMethodTemplates(updated);
+    await scientificMethodsApi.delete(id);
+    setScientificMethodTemplates(ts => ts.filter(t => t.id !== id));
   };
 
-  // Generic CRUD helpers for new parameter entities
-  const companyCRUD = makeCRUD('aet_companies', companies, setCompanies);
-  const unitCRUD = makeCRUD('aet_units', units, setUnits);
-  const sectorCRUD = makeCRUD('aet_sectors', sectors, setSectors);
-  const jobRoleCRUD = makeCRUD('aet_job_roles', jobRoles, setJobRoles);
-  const epiCRUD = makeCRUD('aet_epis', epis, setEPIs);
-  const equipmentCRUD = makeCRUD('aet_equipment', equipment, setEquipment);
-  const surveyQuestionCRUD = makeCRUD('aet_survey_questions', surveyQuestions, setSurveyQuestions);
-  const pauseCRUD = makeCRUD('aet_pauses', pauses, setPauses);
-  const riskClassificationCRUD = makeCRUD('aet_risk_classifications', riskClassifications, setRiskClassifications);
-  const reportTextCRUD = makeCRUD('aet_report_texts', reportTexts, setReportTexts);
-  const shiftCRUD = makeCRUD('aet_shifts', shifts, setShifts);
-  const illuminanceNormCRUD = makeCRUD('aet_illuminance_norms', illuminanceNormativeParams, setIlluminanceNormativeParams);
-  const biomechanicalRiskFactorCRUD = makeCRUD('aet_biomechanical_risk_factors_v2', biomechanicalRiskFactors, setBiomechanicalRiskFactors);
+  // ── Helpers genéricos para entidades de catálogo ──────────────────────────
 
-  const resetDevelopmentData = async () => {
-    await localforage.clear();
-    window.location.reload();
-  };
+  function makeCatalogCRUD<T extends { id: string }>(
+    api: { list: () => Promise<any[]>; create: (d: any) => Promise<any>; update: (id: string, d: any) => Promise<any>; delete: (id: string) => Promise<void> },
+    state: T[],
+    setState: React.Dispatch<React.SetStateAction<T[]>>
+  ) {
+    return {
+      add: async (data: Omit<T, 'id'>) => {
+        const created = await api.create(data);
+        setState(prev => [...prev, created as T]);
+      },
+      update: async (id: string, data: Partial<T>) => {
+        const prev = state.find(x => x.id === id)!;
+        const updated = await api.update(id, { ...prev, ...data });
+        setState(xs => xs.map(x => x.id === id ? updated as T : x));
+      },
+      remove: async (id: string) => {
+        await api.delete(id);
+        setState(xs => xs.filter(x => x.id !== id));
+      },
+    };
+  }
+
+  const companyCRUD          = makeCatalogCRUD(companiesApi,          companies,          setCompanies);
+  const unitCRUD             = makeCatalogCRUD(unitsApi,              units,              setUnits);
+  const sectorCRUD           = makeCatalogCRUD(sectorsApi,            sectors,            setSectors);
+  const jobRoleCRUD          = makeCatalogCRUD(jobRolesApi,           jobRoles,           setJobRoles);
+  const epiCRUD              = makeCatalogCRUD(episApi,               epis,               setEPIs);
+  const equipmentCRUD        = makeCatalogCRUD(equipmentApi,          equipment,          setEquipment);
+  const surveyQuestionCRUD   = makeCatalogCRUD(surveyQuestionsApi,    surveyQuestions,    setSurveyQuestions);
+  const pauseCRUD            = makeCatalogCRUD(pausesApi,             pauses,             setPauses);
+  const riskClassCRUD        = makeCatalogCRUD(riskClassificationsApi,riskClassifications,setRiskClassifications);
+  const reportTextCRUD       = makeCatalogCRUD(reportTextsApi,        reportTexts,        setReportTexts);
+  const shiftCRUD            = makeCatalogCRUD(shiftsApi,             shifts,             setShifts);
+  const illuminanceCRUD      = makeCatalogCRUD(illuminanceParamsApi,  illuminanceNormativeParams, setIlluminanceNormativeParams);
+  const biomechCRUD          = makeCatalogCRUD(biomechanicalFactorsApi, biomechanicalRiskFactors, setBiomechanicalRiskFactors);
 
   return (
     <AETContext.Provider value={{
@@ -438,25 +393,25 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clients, addClient, updateClient, deleteClient,
       checklistQuestions, addChecklistQuestion, updateChecklistQuestion, deleteChecklistQuestion,
       scientificMethodTemplates, addScientificMethodTemplate, updateScientificMethodTemplate, deleteScientificMethodTemplate,
-      companies, addCompany: companyCRUD.add, updateCompany: companyCRUD.update, deleteCompany: companyCRUD.remove,
-      units, addUnit: unitCRUD.add, updateUnit: unitCRUD.update, deleteUnit: unitCRUD.remove,
-      sectors, addSector: sectorCRUD.add, updateSector: sectorCRUD.update, deleteSector: sectorCRUD.remove,
-      jobRoles, addJobRole: jobRoleCRUD.add, updateJobRole: jobRoleCRUD.update, deleteJobRole: jobRoleCRUD.remove,
-      epis, addEPI: epiCRUD.add, updateEPI: epiCRUD.update, deleteEPI: epiCRUD.remove,
-      equipment, addEquipment: equipmentCRUD.add, updateEquipment: equipmentCRUD.update, deleteEquipment: equipmentCRUD.remove,
+      companies,    addCompany: companyCRUD.add,        updateCompany: companyCRUD.update,        deleteCompany: companyCRUD.remove,
+      units,        addUnit: unitCRUD.add,              updateUnit: unitCRUD.update,              deleteUnit: unitCRUD.remove,
+      sectors,      addSector: sectorCRUD.add,          updateSector: sectorCRUD.update,          deleteSector: sectorCRUD.remove,
+      jobRoles,     addJobRole: jobRoleCRUD.add,         updateJobRole: jobRoleCRUD.update,         deleteJobRole: jobRoleCRUD.remove,
+      epis,         addEPI: epiCRUD.add,               updateEPI: epiCRUD.update,               deleteEPI: epiCRUD.remove,
+      equipment,    addEquipment: equipmentCRUD.add,    updateEquipment: equipmentCRUD.update,    deleteEquipment: equipmentCRUD.remove,
       surveyQuestions, addSurveyQuestion: surveyQuestionCRUD.add, updateSurveyQuestion: surveyQuestionCRUD.update, deleteSurveyQuestion: surveyQuestionCRUD.remove,
-      pauses, addPause: pauseCRUD.add, updatePause: pauseCRUD.update, deletePause: pauseCRUD.remove,
-      riskClassifications, addRiskClassification: riskClassificationCRUD.add, updateRiskClassification: riskClassificationCRUD.update, deleteRiskClassification: riskClassificationCRUD.remove,
-      reportTexts, addReportText: reportTextCRUD.add, updateReportText: reportTextCRUD.update, deleteReportText: reportTextCRUD.remove,
-      shifts, addShift: shiftCRUD.add, updateShift: shiftCRUD.update, deleteShift: shiftCRUD.remove,
+      pauses,       addPause: pauseCRUD.add,            updatePause: pauseCRUD.update,            deletePause: pauseCRUD.remove,
+      riskClassifications, addRiskClassification: riskClassCRUD.add, updateRiskClassification: riskClassCRUD.update, deleteRiskClassification: riskClassCRUD.remove,
+      reportTexts,  addReportText: reportTextCRUD.add,  updateReportText: reportTextCRUD.update,  deleteReportText: reportTextCRUD.remove,
+      shifts,       addShift: shiftCRUD.add,            updateShift: shiftCRUD.update,            deleteShift: shiftCRUD.remove,
       illuminanceNormativeParams,
-      addIlluminanceNormativeParam: illuminanceNormCRUD.add,
-      updateIlluminanceNormativeParam: illuminanceNormCRUD.update,
-      deleteIlluminanceNormativeParam: illuminanceNormCRUD.remove,
+      addIlluminanceNormativeParam: illuminanceCRUD.add,
+      updateIlluminanceNormativeParam: illuminanceCRUD.update,
+      deleteIlluminanceNormativeParam: illuminanceCRUD.remove,
       biomechanicalRiskFactors,
-      addBiomechanicalRiskFactor: biomechanicalRiskFactorCRUD.add,
-      updateBiomechanicalRiskFactor: biomechanicalRiskFactorCRUD.update,
-      deleteBiomechanicalRiskFactor: biomechanicalRiskFactorCRUD.remove,
+      addBiomechanicalRiskFactor: biomechCRUD.add,
+      updateBiomechanicalRiskFactor: biomechCRUD.update,
+      deleteBiomechanicalRiskFactor: biomechCRUD.remove,
     }}>
       {children}
     </AETContext.Provider>
