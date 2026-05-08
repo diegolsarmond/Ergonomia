@@ -4,7 +4,7 @@ import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight, Lock } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight, Lock, CheckCircle, XCircle, Shield, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION, ErgonomicRisk, NHO11MeasurementPoint, NHO11ModelType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -527,6 +527,62 @@ export const FunctionForm = () => {
                 <FormGroup label="Objetivo da Análise">
                   <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
                 </FormGroup>
+
+                {companyJobRoles.length > 0 && (
+                  <>
+                    <SectionTitle>Funções Disponíveis na Empresa</SectionTitle>
+                    <div className="space-y-3">
+                      {companyJobRoles.map(r => {
+                        const sector = companySectors.find(s => s.id === r.sectorId);
+                        const isSelected = formData.name === r.name;
+                        return (
+                          <div
+                            key={r.id}
+                            className={`border rounded-xl p-4 flex justify-between items-start transition-colors ${isSelected ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-slate-800 text-sm">{r.name}</p>
+                                {r.active
+                                  ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                  : <XCircle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                {r.cbo && <span className="stat-badge !text-[11px] !px-2 !py-0.5">CBO {r.cbo}</span>}
+                                {sector && <span className="stat-badge !text-[11px] !px-2 !py-0.5 !bg-violet-50 !text-violet-600 !border-violet-200">{sector.name}</span>}
+                              </div>
+                              {r.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{r.description}</p>}
+                              {((r.epiIds?.length ?? 0) > 0 || (r.equipmentIds?.length ?? 0) > 0) && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {(r.epiIds ?? []).map(eid => { const e = epis.find(x => x.id === eid); return e ? (
+                                    <span key={eid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-700">
+                                      <Shield className="w-2.5 h-2.5" />{e.name}
+                                    </span>
+                                  ) : null; })}
+                                  {(r.equipmentIds ?? []).map(eid => { const e = equipment.find(x => x.id === eid); return e ? (
+                                    <span key={eid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-700">
+                                      <Wrench className="w-2.5 h-2.5" />{e.name}
+                                    </span>
+                                  ) : null; })}
+                                </div>
+                              )}
+                            </div>
+                            <div className="ml-3 shrink-0">
+                              <Button
+                                variant={isSelected ? 'default' : 'ghost'}
+                                size="sm"
+                                className="!rounded-lg"
+                                onClick={() => handleApplyJobRole(r.id)}
+                              >
+                                {isSelected ? 'Selecionado' : 'Selecionar'}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
 
               </div>
             );

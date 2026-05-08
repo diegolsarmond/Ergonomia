@@ -6,6 +6,7 @@ import {
   HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/images/logo_3.png';
 
 const PARAM_GROUPS = [
   {
@@ -68,12 +69,8 @@ export const Layout = () => {
       {/* ── Mobile Header ──────────────────────────────────────────────── */}
       <div className="md:hidden flex items-center justify-between px-5 py-4 bg-slate-900 text-white shadow-md z-40 print:hidden shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-            <FileText className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-[14px] font-bold text-white tracking-tight">Ergo System</h1>
-          </div>
+          <img src={logoImg} alt="Ergominas Logo" className="h-8 w-auto object-contain" />
+          <h1 className="text-[14px] font-bold text-white tracking-tight leading-tight">ERGOMINAS<br/>Process</h1>
         </div>
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1 rounded-md hover:bg-slate-800 transition-colors">
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -93,13 +90,8 @@ export const Layout = () => {
         {/* Brand */}
         <div className="px-6 py-5 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-[15px] font-bold text-white tracking-tight">Ergo System</h1>
-              <p className="text-[11px] text-slate-400 font-medium">ERGOMINAS</p>
-            </div>
+            <img src={logoImg} alt="Ergominas Logo" className="h-9 w-auto object-contain" />
+            <h1 className="text-[15px] font-bold text-white tracking-tight leading-tight">ERGOMINAS<br/>Process</h1>
           </div>
         </div>
 

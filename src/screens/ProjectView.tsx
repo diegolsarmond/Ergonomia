@@ -19,7 +19,7 @@ export const ProjectView = () => {
   const { hasPermission } = useAuth();
   const project = getProject(id!);
 
-  const [isPrinting, setIsPrinting] = useState(false);
+
   const [validationModal, setValidationModal] = useState<{
     result: ReportValidationResult;
     mode: 'errors' | 'warnings';
@@ -124,8 +124,7 @@ export const ProjectView = () => {
   };
 
   const doPrint = () => {
-    setIsPrinting(true);
-    setTimeout(() => setIsPrinting(false), 5000);
+    window.open(`/project/${project.id}/preview?print=true`, '_blank');
   };
 
   const handlePrintDirectly = () => {
@@ -186,8 +185,8 @@ export const ProjectView = () => {
               <Download className="w-4 h-4" />Exportar
             </Button>
             <PermissionGuard permission={project.reportType === 'AEP' ? 'AEP_PRINT' : 'AET_PRINT'}>
-              <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50 flex-1 sm:flex-none" size="sm" disabled={isPrinting}>
-                <Printer className="w-4 h-4" />{isPrinting ? 'Preparando...' : 'Imprimir'}
+              <Button variant="secondary" onClick={handlePrintDirectly} className="!bg-white !text-teal-700 hover:!bg-teal-50 flex-1 sm:flex-none" size="sm">
+                <Printer className="w-4 h-4" />Imprimir
               </Button>
             </PermissionGuard>
             <PermissionGuard permission="PROJECTS_EDIT">
@@ -313,14 +312,6 @@ export const ProjectView = () => {
         )}
       </div>
 
-      {/* Hidden iframe for direct printing */}
-      {isPrinting && (
-        <iframe
-          src={`/project/${project.id}/preview?print=true`}
-          style={{ position: 'absolute', width: '0', height: '0', border: 'none' }}
-          title="Print Preview"
-        />
-      )}
 
       {/* â”€â”€ Validation modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {validationModal && (
