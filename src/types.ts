@@ -256,6 +256,9 @@ export interface ErgonomicRisk {
 
 export interface AETFunction {
   id: string;
+  // FK relationships
+  unidadeId?: string;
+  setorId?: string;
   // 4.1 Cabeçalho
   name: string;
   unit: string;
@@ -469,6 +472,8 @@ export interface AEPFunctionAssessment {
     contemplatedFunctions: string;
     evaluatedActivity: string;
     code: string;
+    unitId?: string;
+    sectorId?: string;
   };
 
   // 2. Caracterização do Trabalho
@@ -553,6 +558,8 @@ export function createEmptyAEPFunctionAssessment(): AEPFunctionAssessment {
       contemplatedFunctions: '',
       evaluatedActivity: '',
       code: '',
+      unitId: '',
+      sectorId: '',
     },
     workCharacterization: {
       processDescription: '',
@@ -646,6 +653,9 @@ export type ReportType = 'AEP' | 'AET';
 export interface AETProject {
   id: string;
   reportType: ReportType;
+  // FK relationships
+  empresaId?: string;
+  unidadeId?: string;
   // Logos
   consultoriaLogoDataUrl: string;
   companyLogoDataUrl: string;
@@ -728,6 +738,8 @@ export const EMPTY_ILLUMINATION: AETIllumination = {
 
 export const EMPTY_FUNCTION: AETFunction = {
   id: '',
+  unidadeId: '',
+  setorId: '',
   name: '',
   unit: '',
   sector: '',

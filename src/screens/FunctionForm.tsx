@@ -107,11 +107,10 @@ export const FunctionForm = () => {
       if (!canEdit) return;
       if (isNew) {
         const newId = await addFunction(id!, data);
-        navigate(`/project/${id}`);
-        void newId;
+        navigate(`/project/${id}/function/${newId}`, { replace: true });
       } else {
         await updateFunction(id!, funcId!, data);
-        navigate(`/project/${id}`);
+        // Permanece no formulário — o AEPFunctionForm exibe a confirmação de sucesso
       }
     };
     return (
@@ -481,7 +480,12 @@ export const FunctionForm = () => {
                       listId="unitsList"
                       options={companyUnits}
                       value={formData.unit}
-                      onChange={(e) => set('unit', e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const matched = companyUnits.find(u => u.name === val);
+                        set('unit', val);
+                        set('unidadeId', matched?.id ?? '');
+                      }}
                       placeholder="Digite ou selecione a unidade..."
                     />
                   </FormGroup>
@@ -490,7 +494,12 @@ export const FunctionForm = () => {
                       listId="sectorsList"
                       options={companySectors}
                       value={formData.sector}
-                      onChange={(e) => set('sector', e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const matched = companySectors.find(s => s.name === val);
+                        set('sector', val);
+                        set('setorId', matched?.id ?? '');
+                      }}
                       placeholder="Digite ou selecione o setor..."
                     />
                   </FormGroup>

@@ -303,6 +303,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const [formData, setFormData] = useState<AETFunction>(initialData);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const {
     companies, units, sectors, jobRoles,
@@ -404,8 +405,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
       .map(id => equipmentCatalog.find(e => e.id === id)?.name)
       .filter(Boolean) as string[];
     setFormData(prev => ({ ...prev, name: role.name }));
-    if (sector) setIdent('sectorArea', sector.name);
-    if (unit)   setIdent('unitBranch', unit.name);
+    if (sector) { setIdent('sectorArea', sector.name); setIdent('sectorId', sector.id); }
+    if (unit)   { setIdent('unitBranch', unit.name);   setIdent('unitId', unit.id); }
     if (roleEpiNames.length > 0)   setTools('epis',        roleEpiNames.join(', '));
     if (roleEquipNames.length > 0) setTools('description', roleEquipNames.join(', '));
   };
@@ -540,18 +541,34 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
       return;
     }
     setSaving(true);
+    setSaved(false);
     try {
       setError(null);
-      // sync legacy fields from aep data
+      // Base: registro já armazenado (preserva campos AET em funções convertidas).
+      // Para funções novas (id ausente no projeto), usa formData como base.
+      const existingFunc = project.functions.find(f => f.id === formData.id);
       const synced: AETFunction = {
-        ...formData,
+        ...(existingFunc ?? formData),
+        // Campos core gerenciados pelo formulário AEP
+        id:                       formData.id,
+        name:                     formData.name,
+        unit:                     formData.unit,
+        sector:                   formData.sector,
+        numEmployees:             formData.numEmployees,
+        analysisDate:             formData.analysisDate,
+        requiresAET:              formData.requiresAET,
+        requiresAETJustification: formData.requiresAETJustification,
+        // Objeto AEP estruturado — fonte da verdade para funções AEP
+        aep: formData.aep,
+        // Campos ponte legados (AEPPreview usa como fallback)
         prescribedTask: formData.aep?.workCharacterization.processDescription || formData.prescribedTask,
-        realTask:        formData.aep?.workCharacterization.workCycleDescription || formData.realTask,
-        conclusion:      formData.aep?.decisionJustification || formData.conclusion,
-        demandFound:     formData.aep?.identification.evaluatedActivity || formData.demandFound,
-        requiresAET:     formData.requiresAET,
+        realTask:       formData.aep?.workCharacterization.workCycleDescription || formData.realTask,
+        conclusion:     formData.aep?.decisionJustification || formData.conclusion,
+        demandFound:    formData.aep?.identification.evaluatedActivity || formData.demandFound,
       };
       await onSave(synced);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch {
       setError('Não foi possível salvar a função.');
     } finally {
@@ -700,6 +717,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         </div>
       )}
 
+      {saved && (
+        <div className="mb-4 flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">
+          <Save className="w-4 h-4 shrink-0" /> Dados salvos com sucesso em todas as abas.
+        </div>
+      )}
+
       {/* ── Tabs ── */}
       <div className="flex gap-1 mb-6 overflow-x-auto pb-1">
         {AEP_TABS.map((tab, i) => (
@@ -759,10 +782,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     onChange={e => {
                       if (e.target.value === '__NEW__') {
                         handleOpenCreateModal('unit');
-
                       } else if (e.target.value !== 'custom') {
                         const u = companyUnits.find(x => x.id === e.target.value);
-                        if (u) setIdent('unitBranch', u.name);
+                        if (u) {
+                          setIdent('unitBranch', u.name);
+                          setIdent('unitId', u.id);
+                        }
                       }
                     }}
                   >
@@ -781,10 +806,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     onChange={e => {
                       if (e.target.value === '__NEW__') {
                         handleOpenCreateModal('sector');
-
                       } else if (e.target.value !== 'custom') {
                         const s = companySectors.find(x => x.id === e.target.value);
-                        if (s) setIdent('sectorArea', s.name);
+                        if (s) {
+                          setIdent('sectorArea', s.name);
+                          setIdent('sectorId', s.id);
+                        }
                       }
                     }}
                   >

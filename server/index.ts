@@ -18,6 +18,8 @@ import checklistQuestionsRouter from './routes/checklistQuestions.js';
 import biomechanicalFactorsRouter from './routes/biomechanicalFactors.js';
 import illuminanceParamsRouter from './routes/illuminanceParams.js';
 import projectsRouter from './routes/projects.js';
+import aepRouter from './routes/aep.js';
+import aetRouter from './routes/aet.js';
 import clientsRouter from './routes/clients.js';
 import ocupacoesRouter from './routes/ocupacoes.js';
 import authRouter from './routes/auth.js';
@@ -62,7 +64,10 @@ app.use('/api/illuminance-params',     illuminanceParamsRouter);
 app.use('/api/auth',                   authRouter);
 app.use('/api/users',                  usersRouter);
 
-// Projetos e Clientes (JSONB)
+// Projetos AEP e AET (tabelas relacionais separadas)
+app.use('/api/aep',                    aepRouter);
+app.use('/api/aet',                    aetRouter);
+// Fachada unificada — mantém compatibilidade com o frontend existente
 app.use('/api/projects',               projectsRouter);
 app.use('/api/clients',                clientsRouter);
 app.use('/api/ocupacoes',              ocupacoesRouter);

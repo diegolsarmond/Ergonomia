@@ -229,7 +229,12 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProjects(prev => {
       const next = prev.map(p =>
         p.id === projectId
-          ? { ...p, functions: p.functions.map(f => f.id === functionId ? { ...f, ...funcData } : f) }
+          ? {
+              ...p,
+              functions: p.functions.map(f =>
+                f.id === functionId ? normalizeFunction({ ...f, ...funcData }) : f
+              ),
+            }
           : p
       );
       const updated = next.find(p => p.id === projectId)!;

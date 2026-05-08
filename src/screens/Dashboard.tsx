@@ -48,6 +48,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
 
   const [formData, setFormData] = useState(() => ({
     reportType,
+    empresaId: '', unidadeId: '',
     companyName: '', fantasyName: '', cnpj: '', address: '', unit: '', product: '',
     riskDegree: '', location: '',
     evaluatorName: currentUser?.name ?? '', evaluatorFormation: currentUser?.formation ?? '', evaluatorCrefito: currentUser?.crefito ?? '', evaluatorCompany: 'Ergominas',
@@ -282,6 +283,8 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
                           setSelectedCompanyId(e.target.value || '');
                           if (client) setFormData(prev => ({
                             ...prev,
+                            empresaId: client.id,
+                            unidadeId: '',
                             companyName: client.razaoSocial,
                             fantasyName: client.nomeFantasia,
                             cnpj: client.cnpj,
@@ -338,12 +341,13 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
                                   if (u) {
                                     setFormData(prev => ({
                                       ...prev,
+                                      unidadeId: u.id,
                                       unit: u.name,
                                       address: u.address || `${u.logradouro}${u.numero ? ', ' + u.numero : ''}${u.bairro ? ' - ' + u.bairro : ''}`,
                                       location: (u.city || u.uf) ? `${u.city || ''}${u.uf ? ' - ' + u.uf : ''}` : prev.location,
                                     }));
                                   } else {
-                                    f('unit', '');
+                                    setFormData(prev => ({ ...prev, unidadeId: '', unit: '' }));
                                   }
                                 }}
                               >
