@@ -1,7 +1,11 @@
 import express from 'express';
+import { fileURLToPath } from 'url';
+import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger.js';
 import { pool } from './db.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import companiesRouter from './routes/companies.js';
 import unitsRouter from './routes/units.js';
 import sectorsRouter from './routes/sectors.js';
@@ -71,6 +75,13 @@ app.use('/api/aet',                    aetRouter);
 app.use('/api/projects',               projectsRouter);
 app.use('/api/clients',                clientsRouter);
 app.use('/api/ocupacoes',              ocupacoesRouter);
+
+// Serve frontend static files when the dist/ folder exists (production build)
+const distPath = path.resolve(__dirname, '../dist');
+app.use(express.static(distPath));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);

@@ -1,4 +1,4 @@
-# Build stage
+# Stage 1 — build frontend
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -9,15 +9,22 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Stage 2 — runtime (backend serves API + built frontend)
+FROM node:20-alpine
 
-RUN apk add --no-cache gettext
+WORKDIR /app
 
-COPY nginx.conf /etc/nginx/templates/default.conf.template
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-EXPOSE 80
+COPY server/ ./server/
+COPY migrations/ ./migrations/
+COPY tsconfig.json ./
+COPY --from=builder /app/dist ./dist
 
-# envsubst substitutes only $BACKEND_URL, leaving nginx variables ($uri, $host, etc.) intact
-CMD ["/bin/sh", "-c", "envsubst '$BACKEND_URL' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:3001/api/health || exit 1
+
+CMD ["npm", "run", "start"]
