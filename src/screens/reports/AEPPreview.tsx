@@ -127,9 +127,8 @@ const BiomecTable: React.FC<{
     <table style={{ fontSize: '0.72rem' }}>
       <thead>
         <tr>
-          <th style={{ width: '30%' }}>Fator Biomecânico</th>
           <th style={{ width: '12%' }}>Avaliação</th>
-          <th style={{ width: '25%' }}>Fatores de Risco</th>
+          <th style={{ width: '30%' }}>Fatores de Risco</th>
           <th>Descrição / Observação</th>
         </tr>
       </thead>
@@ -141,26 +140,30 @@ const BiomecTable: React.FC<{
             .filter(Boolean);
 
           return (
-            <tr key={i}>
-              <td style={{ fontWeight: 600 }}>{item.factor}</td>
-              <td style={{ textAlign: 'center' }}>
-                {item.assessment ? (
-                  <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: ac?.bg, color: ac?.color }}>
-                    {item.assessment}
-                  </span>
-                ) : '—'}
-              </td>
-              <td>
-                {selectedRiskNames.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: '14px' }}>
-                    {selectedRiskNames.map((name, idx) => (
-                      <li key={idx}>{name}</li>
-                    ))}
-                  </ul>
-                ) : '—'}
-              </td>
-              <td>{item.description || '—'}</td>
-            </tr>
+            <React.Fragment key={i}>
+              {item.factor && (
+                <tr>
+                  <th colSpan={3} scope="rowgroup" style={{ background: '#f1f5f9', fontWeight: 600, fontSize: '0.7rem', color: PALETTE.dark, textAlign: 'left' }}>
+                    {item.factor}
+                  </th>
+                </tr>
+              )}
+              <tr>
+                <td style={{ textAlign: 'center' }}>
+                  {item.assessment ? (
+                    <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: ac?.bg, color: ac?.color }}>
+                      {item.assessment}
+                    </span>
+                  ) : '—'}
+                </td>
+                <td>
+                  {selectedRiskNames.length > 0
+                    ? selectedRiskNames.join(' · ')
+                    : '—'}
+                </td>
+                <td>{item.description || '—'}</td>
+              </tr>
+            </React.Fragment>
           );
         })}
       </tbody>
@@ -647,7 +650,12 @@ const AEPFunctionSection: React.FC<{
                 {func.requiresAET ? 'Requer AET' : 'Não requer AET'}
               </span>
             </div>
-            {aep.finalGuidance && <Field label="Orientação Final" value={aep.finalGuidance} />}
+            {aep.finalGuidance && (
+              <div className="field" style={{ marginTop: '12px' }}>
+                <div className="field-label">Orientação Final</div>
+                <div className="field-value" dangerouslySetInnerHTML={{ __html: aep.finalGuidance }} />
+              </div>
+            )}
             {aep.decisionJustification && <Field label="Justificativa da Decisão" value={aep.decisionJustification} />}
           </>
         )}
@@ -920,12 +928,16 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           <table className="w-full" style={{ border: 'none' }}>
             <thead>
               <tr>
-                <td style={{ border: 'none' }}>
-                  <div className="flex justify-end mb-4 px-12">
-                    {project.companyLogoDataUrl
-                      ? <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-12 object-contain" />
-                      : <span className="text-xs text-gray-400 font-medium tracking-wide">Logo Cliente</span>}
-                  </div>
+                <td style={{ border: 'none', padding: 0 }}>
+                  {project.companyLogoDataUrl && (
+                    <div className="pdf-repeat-logo hidden justify-end mb-4 px-12">
+                      <img
+                        src={project.companyLogoDataUrl}
+                        alt="Logo empresa"
+                        style={{ maxHeight: '48px', objectFit: 'contain', display: 'block' }}
+                      />
+                    </div>
+                  )}
                 </td>
               </tr>
             </thead>

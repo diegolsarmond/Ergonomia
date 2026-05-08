@@ -157,6 +157,9 @@ export const PDF_STYLES = `
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .pdf-page { page-break-inside: avoid; }
+    thead { display: table-header-group; }
+    .pdf-repeat-logo { display: flex !important; }
+    .pdf-repeat-logo img { max-height: 12mm; object-fit: contain; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
   .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; }
   .pdf-preview :not(.pdf-cover) > h2 { font-size: 1.25rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: .06em; }
@@ -232,7 +235,7 @@ export const CoverPage: React.FC<CoverPageProps> = ({
         <div style={{ position: 'absolute', left: '-3px', top: 0, width: '8px', height: '8px', background: PALETTE.coverLine }} />
         <div style={{ position: 'absolute', left: '-3px', bottom: 0, width: '8px', height: '8px', background: PALETTE.coverLine }} />
       </div>
-      <h2 style={{ fontSize: '3.5cqw', fontWeight: 700, letterSpacing: '0.2em', color: PALETTE.primary, margin: 0 }}>
+      <h2 style={{ fontSize: '3.5cqw', fontWeight: 700, letterSpacing: '0.2em', color: PALETTE.primary, margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
         {companyName || 'EMPRESA CLIENTE'}
       </h2>
     </div>
