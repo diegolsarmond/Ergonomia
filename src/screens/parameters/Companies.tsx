@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAET } from '../../context/AETContext';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -287,7 +287,7 @@ export const Companies = () => {
       <div className="page-header mb-8">
         <div className="flex justify-between items-center relative z-10">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Empresas</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
             <p className="text-teal-200 text-sm mt-1">Cadastro de empresas clientes</p>
           </div>
           <div className="flex items-center gap-4">
@@ -310,7 +310,7 @@ export const Companies = () => {
 
       <Card>
         <CardContent className="pt-6">
-          <h2 className="text-base font-semibold text-slate-800 mb-4">Empresas Cadastradas</h2>
+          <h2 className="text-base font-semibold text-slate-800 mb-4">Clientes Cadastrados</h2>
           {companies.length === 0 ? (
             <div className="empty-state !py-16">
               <Building2 className="w-12 h-12 mx-auto text-slate-300 mb-3" />

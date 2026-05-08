@@ -10,6 +10,8 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "server": "tsx server/index.ts",
     "server:dev": "tsx watch server/index.ts",
+    "start": "tsx server/index.ts",
+    "migrate": "tsx server/migrate.ts",
     "seed:admin": "tsx server/scripts/seed-admin.ts",
     "build": "vite build",
     "preview": "vite preview",

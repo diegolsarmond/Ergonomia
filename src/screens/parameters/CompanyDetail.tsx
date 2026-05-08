@@ -1057,7 +1057,7 @@ export const CompanyDetail = () => {
             <ChevronLeft className="w-4 h-4 text-white" />
           </button>
           <div className="flex-1">
-            <p className="text-teal-200 text-xs font-medium uppercase tracking-wide mb-1">Empresas / Detalhe</p>
+            <p className="text-teal-200 text-xs font-medium uppercase tracking-wide mb-1">Clientes / Detalhe</p>
             <h1 className="text-2xl font-bold tracking-tight">{company.razaoSocial}</h1>
             {company.nomeFantasia && <p className="text-teal-200 text-sm mt-0.5">{company.nomeFantasia}</p>}
           </div>

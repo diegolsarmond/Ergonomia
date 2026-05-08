@@ -11,7 +11,6 @@ const PARAM_GROUPS = [
   {
     label: 'Cadastros',
     items: [
-      { to: '/parameters/companies', icon: Building2, label: 'Empresas' },
       { to: '/parameters/shifts', icon: Clock, label: 'Turnos' },
     ],
   },
@@ -112,9 +111,12 @@ export const Layout = () => {
             <NavLink to="/aet" icon={BookOpen} label="Análise do Trabalho - AET" active={location.pathname === '/aet'} />
           </div>
 
-          {(hasPermission('USERS_VIEW') || hasPermission('SETTINGS_VIEW')) && (
+          {(hasPermission('USERS_VIEW') || hasPermission('SETTINGS_VIEW') || hasPermission('CATALOG_VIEW')) && (
             <div className="mt-4">
               <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Administração</p>
+              {hasPermission('CATALOG_VIEW') && (
+                <NavLink to="/parameters/companies" icon={Building2} label="Clientes" active={location.pathname === '/parameters/companies'} />
+              )}
               {hasPermission('USERS_VIEW') && (
                 <NavLink to="/users" icon={Users} label="Usuários" active={location.pathname === '/users'} />
               )}
