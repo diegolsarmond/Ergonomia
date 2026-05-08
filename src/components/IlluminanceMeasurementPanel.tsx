@@ -401,6 +401,25 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
               <Grid3X3 className="w-4 h-4 text-slate-500" />
               <h4 className="text-sm font-semibold text-slate-700">Malha de Medição</h4>
               {calculation && <span className="text-[10px] bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full font-medium">Vermelho = abaixo de 70% da média · "—" marca N/A</span>}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto text-teal-700 border border-teal-300 hover:bg-teal-50"
+                onClick={() => {
+                  onUpdate({
+                    measurementRows: m.measurementRows.map(row => {
+                      const flags: boolean[] = [...(row.naFlags ?? new Array<boolean>(MAX_COLS).fill(false))];
+                      const values = row.values.map((v: number | null, i: number) => {
+                        if (v === null && !flags[i]) { flags[i] = true; }
+                        return v;
+                      });
+                      return { ...row, values, naFlags: flags };
+                    }),
+                  });
+                }}
+              >
+                <Save className="w-3.5 h-3.5" /> Salvar Malha
+              </Button>
             </div>
 
             <div className="overflow-x-auto">

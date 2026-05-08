@@ -150,17 +150,32 @@ export const ReportToolbar = ({ projectId }: { projectId: string }) => {
   );
 };
 
-export const PDF_STYLES = `
+export const getPdfStyles = (footerLogoUrl?: string) => `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-  @page { size: A4; margin: 20mm 15mm 25mm 15mm; }
+  @page { size: A4; margin: 20mm 15mm 22mm 15mm; }
   @page :first { margin: 0; }
+  @page {
+    ${footerLogoUrl ? `@bottom-left { content: url("${footerLogoUrl}"); vertical-align: middle; }` : ''}
+    @bottom-right {
+      content: "Página " counter(page) " / " counter(pages);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      font-size: 8pt;
+      color: #6b7280;
+      vertical-align: middle;
+    }
+  }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .pdf-page { page-break-inside: avoid; }
     thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
     .pdf-repeat-logo { display: flex !important; }
-    .pdf-repeat-logo img { max-height: 12mm; object-fit: contain; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pdf-repeat-logo img { max-height: 18mm; max-width: 60mm; object-fit: contain; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
+`;
+
+/** @deprecated use getPdfStyles() */
+export const PDF_STYLES = getPdfStyles();
   .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; }
   .pdf-preview :not(.pdf-cover) > h2 { font-size: 1.25rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: .06em; }
   .pdf-preview :not(.pdf-cover) > h3 { font-size: 1.05rem; font-weight: 700; color: ${PALETTE.dark}; border-left: 3px solid ${PALETTE.primary}; padding-left: .55rem; margin-top: 1.5rem; margin-bottom: .5rem; }
