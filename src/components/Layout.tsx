@@ -47,7 +47,7 @@ export const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, hasPermission } = useAuth();
-  const isParametros = location.pathname.startsWith('/parameters');
+  const isParametros = location.pathname.startsWith('/parameters') && !location.pathname.startsWith('/parameters/companies');
   const isProjects = location.pathname === '/aep' || location.pathname === '/aet';
   const [parametrosOpen, setParametrosOpen] = useState(isParametros);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -115,7 +115,7 @@ export const Layout = () => {
             <div className="mt-4">
               <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Administração</p>
               {hasPermission('CATALOG_VIEW') && (
-                <NavLink to="/parameters/companies" icon={Building2} label="Clientes" active={location.pathname === '/parameters/companies'} />
+                <NavLink to="/parameters/companies" icon={Building2} label="Clientes" active={location.pathname.startsWith('/parameters/companies')} />
               )}
               {hasPermission('USERS_VIEW') && (
                 <NavLink to="/users" icon={Users} label="Usuários" active={location.pathname === '/users'} />
