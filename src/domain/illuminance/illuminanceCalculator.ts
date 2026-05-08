@@ -72,11 +72,11 @@ export function calculateIMByGeometry(
       return round2((Q * N + P) / (N + 1));
 
     case 'A6':
-      // =((R*(L-8)-(L-8)) + (8*Q*(L-8)) + (8*T*(W-8)) + 64*P) / (W*L)
+      // =((R*(L-8)*(W-8)) + (8*Q*(L-8)) + (8*T*(W-8)) + 64*P) / (W*L)
       // K21=W, K23=L — dimensões da malha do teto luminoso (> 8)
       if (W === 0 || L === 0) return null;
       return round2(
-        ((R * (L - 8) - (L - 8)) + (8 * Q * (L - 8)) + (8 * T * (W - 8)) + 64 * P) / (W * L)
+        ((R * (L - 8) * (W - 8)) + (8 * Q * (L - 8)) + (8 * T * (W - 8)) + 64 * P) / (W * L)
       );
 
     default:
@@ -132,12 +132,14 @@ export function calculateIlluminanceMetrics(
   const taskAreaValue = tValues.length > 0
     ? round2(tValues.reduce((a, b) => a + b, 0) / tValues.length)
     : 0;
+  const minTaskLux = tValues.length > 0 ? Math.min(...tValues) : null;
+  const maxTaskLux = tValues.length > 0 ? Math.max(...tValues) : null;
 
   return {
     measuredPointsCount: allValues.length,
     averageLux, minLux, maxLux,
     toleranceMinLux, seventyPercentAverage,
-    uniformityRatio, taskAreaValue, rowAverages,
+    uniformityRatio, taskAreaValue, minTaskLux, maxTaskLux, rowAverages,
   };
 }
 
@@ -161,13 +163,18 @@ export function evaluateIlluminanceResult(
   if (!toleranceCheck)
     issues.push(`Iluminância média (${calc.averageLux} lux) abaixo do limiar com tolerância de ${tolerancePct}% (${toleranceThreshold} lux).`);
 
-  const seventyPctCheck = calc.minLux >= calc.seventyPercentAverage;
+  // 70%: aplica somente aos pontos da área de tarefa (linha t)
+  const seventyPctCheck = calc.minTaskLux === null || calc.minTaskLux >= calc.seventyPercentAverage;
   if (!seventyPctCheck)
-    issues.push(`Valor mínimo medido (${calc.minLux} lux) abaixo de 70% da média (${calc.seventyPercentAverage} lux).`);
+    issues.push(`Valor mínimo da área de tarefa (${calc.minTaskLux} lux) abaixo de 70% da média (${calc.seventyPercentAverage} lux).`);
 
-  const uniformityCheck = calc.uniformityRatio <= maxRatio || calc.uniformityRatio === 0;
+  // 5:1: razão entre máximo da área de tarefa e IM (não max/min global)
+  const taskRatio = calc.maxTaskLux !== null && calc.averageLux > 0
+    ? round2(calc.maxTaskLux / calc.averageLux)
+    : 0;
+  const uniformityCheck = taskRatio === 0 || taskRatio <= maxRatio;
   if (!uniformityCheck)
-    issues.push(`Relação de uniformidade (${calc.uniformityRatio}:1) excede o limite de ${maxRatio}:1.`);
+    issues.push(`Razão máximo/IM na área de tarefa (${taskRatio}:1) excede o limite de ${maxRatio}:1.`);
 
   const taskAreaCheck = calc.taskAreaValue === 0 || calc.taskAreaValue >= 200;
   if (!taskAreaCheck)
@@ -223,6 +230,8 @@ export function calculateAndEvaluateFromGridPoints(
     measuredPointsCount: validValues.length,
     rowAverages: [],
     taskAreaValue: 0,
+    minTaskLux: null,
+    maxTaskLux: null,
   };
   const evaluation = evaluateIlluminanceResult(calculation, normParam, recommendedMinLux);
   return { calculation, evaluation };

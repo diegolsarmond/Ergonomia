@@ -91,6 +91,10 @@ export interface IlluminanceCalculationResult {
   seventyPercentAverage: number;
   uniformityRatio: number;
   taskAreaValue: number;
+  /** Menor valor válido somente na linha t (área de tarefa). Null se não houver pontos t. */
+  minTaskLux: number | null;
+  /** Maior valor válido somente na linha t. Null se não houver pontos t. */
+  maxTaskLux: number | null;
   rowAverages: { type: MeasurementRowType; index: number; avg: number }[];
 }
 

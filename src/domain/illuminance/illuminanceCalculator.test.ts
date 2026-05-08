@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateIlluminanceMetrics, evaluateIlluminanceResult, calculateAndEvaluate, rowAverage, extractValidValues } from './illuminanceCalculator';
+import { calculateIlluminanceMetrics, evaluateIlluminanceResult, calculateAndEvaluate, calculateIMByGeometry, rowAverage, extractValidValues } from './illuminanceCalculator';
 import { generateMeasurementRows, createEmptyIlluminanceMeasurement } from './illuminanceTypes';
 import type { MeasurementRow, IlluminanceNormativeParameter, GridParameters } from './illuminanceTypes';
 
@@ -77,8 +77,13 @@ describe('evaluateIlluminanceResult', () => {
     expect(e.status).toBe('Inadequado');
     expect(e.averageIsAdequate).toBe(false);
   });
-  it('Inadequado when uniformity exceeds limit', () => {
-    const rows = [mkRow('r', 0, [100, 600], 2)];
+  it('Inadequado when task area ratio exceeds limit', () => {
+    // 6 pontos ambiente em 100 lux, task area em 3000 lux
+    // IM = (6*100 + 3000)/7 ≈ 514; ratio = 3000/514 ≈ 5.83 > 5
+    const rows = [
+      mkRow('r', 0, [100, 100, 100, 100, 100, 100], 6),
+      mkRow('t', 0, [3000], 1),
+    ];
     const c = calculateIlluminanceMetrics(rows, 300, 10)!;
     const e = evaluateIlluminanceResult(c, mkNorm({ minimumLux: 300 }), 300);
     expect(e.uniformityCheck).toBe(false);
@@ -114,6 +119,80 @@ describe('calculateAndEvaluate', () => {
     const { calculation, evaluation } = calculateAndEvaluate(rows, 500, mkNorm());
     expect(calculation).not.toBeNull();
     expect(evaluation!.status).toBe('Adequado');
+  });
+});
+
+describe('calculateIMByGeometry — A6 formula', () => {
+  it('uses R*(L-8)*(W-8) not R*(L-8)-(L-8)', () => {
+    // R=800, Q=700, P=600, T=750, W=10, L=12
+    // A6 = (800*(12-8)*(10-8) + 8*700*(12-8) + 8*750*(10-8) + 64*600) / (10*12)
+    //     = (800*4*2 + 8*700*4 + 8*750*2 + 38400) / 120
+    //     = (6400 + 22400 + 12000 + 38400) / 120
+    //     = 79200 / 120 = 660
+    expect(calculateIMByGeometry('A6', 800, 700, 600, 750, 0, 0, 10, 12)).toBe(660);
+  });
+  it('returns null when W or L is zero', () => {
+    expect(calculateIMByGeometry('A6', 800, 700, 600, 750, 0, 0, 0, 12)).toBeNull();
+    expect(calculateIMByGeometry('A6', 800, 700, 600, 750, 0, 0, 10, 0)).toBeNull();
+  });
+});
+
+describe('70% check — somente área de tarefa', () => {
+  it('passa quando periférico está baixo mas task area atende 70%', () => {
+    // ambiente geral baixo (r=150), task area alta (t=700) — média ≈ 425
+    // 70% de 425 = 297,5 → minTaskLux=700 ≥ 297,5 → deve ser Adequado no critério de 70%
+    const rows = [
+      mkRow('r', 0, [150, 150], 2),
+      mkRow('q', 0, [400], 1),
+      mkRow('p', 0, [300, 300], 2),
+      mkRow('t', 0, [700, 720], 2),
+    ];
+    const c = calculateIlluminanceMetrics(rows, 300, 10)!;
+    const e = evaluateIlluminanceResult(c, mkNorm({ minimumLux: 300 }), 300);
+    expect(c.minTaskLux).toBe(700);
+    expect(e.seventyPercentCheck).toBe(true);
+  });
+  it('falha quando minTaskLux abaixo de 70% da média', () => {
+    const rows = [
+      mkRow('r', 0, [600, 600], 2),
+      mkRow('t', 0, [100, 110], 2), // minTaskLux muito baixo
+    ];
+    const c = calculateIlluminanceMetrics(rows, 300, 10)!;
+    const e = evaluateIlluminanceResult(c, mkNorm({ minimumLux: 300 }), 300);
+    expect(e.seventyPercentCheck).toBe(false);
+  });
+  it('passa (skip) quando não há linha t', () => {
+    const rows = [mkRow('r', 0, [500, 500], 2)];
+    const c = calculateIlluminanceMetrics(rows, 300, 10)!;
+    expect(c.minTaskLux).toBeNull();
+    const e = evaluateIlluminanceResult(c, mkNorm({ minimumLux: 300 }), 300);
+    expect(e.seventyPercentCheck).toBe(true);
+  });
+});
+
+describe('5:1 check — razão maxTaskLux/IM', () => {
+  it('passa quando maxTaskLux/IM ≤ 5 mesmo com max/min global > 5', () => {
+    // global max=900, global min=100 → ratio global=9 (quebraria antes)
+    // task area: t=[600] → maxTaskLux=600, IM≈(100+900+600)/3=533 → ratio=600/533≈1.13
+    const rows = [
+      mkRow('r', 0, [900], 1),
+      mkRow('p', 0, [100], 1),
+      mkRow('t', 0, [600], 1),
+    ];
+    const c = calculateIlluminanceMetrics(rows, 300, 10)!;
+    const e = evaluateIlluminanceResult(c, mkNorm({ minimumLux: 300, maxUniformityRatio: 5 }), 300);
+    expect(e.uniformityCheck).toBe(true);
+  });
+  it('falha quando maxTaskLux/IM > 5', () => {
+    // 6 pontos ambiente em 100 lux, task area em 3000 lux
+    // IM = (6*100 + 3000)/7 ≈ 514; ratio = 3000/514 ≈ 5.83 > 5
+    const rows = [
+      mkRow('r', 0, [100, 100, 100, 100, 100, 100], 6),
+      mkRow('t', 0, [3000], 1),
+    ];
+    const c = calculateIlluminanceMetrics(rows, 300, 10)!;
+    const e = evaluateIlluminanceResult(c, mkNorm({ minimumLux: 300, maxUniformityRatio: 5 }), 300);
+    expect(e.uniformityCheck).toBe(false);
   });
 });
 
