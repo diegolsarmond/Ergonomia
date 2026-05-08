@@ -1,4 +1,12 @@
+import 'dotenv/config';
 import swaggerJsdoc from 'swagger-jsdoc';
+
+const appUrl = process.env.APP_URL?.replace(/\/$/, '');
+
+const servers = [
+  ...(appUrl ? [{ url: appUrl, description: 'Produção' }] : []),
+  { url: 'http://localhost:3001', description: 'Desenvolvimento' },
+];
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -8,7 +16,7 @@ const options: swaggerJsdoc.Options = {
       version: '1.0.0',
       description: 'API REST do sistema de Análise Ergonômica do Trabalho (AET/AEP)',
     },
-    servers: [{ url: 'http://localhost:3001', description: 'Desenvolvimento' }],
+    servers,
     tags: [
       { name: 'Auth', description: 'Autenticação e sessão' },
       { name: 'Usuários', description: 'Gerenciamento de usuários e perfis de acesso' },
