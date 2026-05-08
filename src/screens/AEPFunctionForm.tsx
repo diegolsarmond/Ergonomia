@@ -747,20 +747,22 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
       )}
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 mb-6 overflow-x-auto pb-1">
-        {AEP_TABS.map((tab, i) => (
-          <button
-            key={i}
-            onClick={() => setActiveTab(i)}
-            className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-              activeTab === i
-                ? 'bg-teal-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm pt-4 pb-2 mb-6 border-b border-slate-200 -mx-6 px-6 lg:-mx-8 lg:px-8 xl:-mx-10 xl:px-10">
+        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+          {AEP_TABS.map((tab, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveTab(i)}
+              className={`shrink-0 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                activeTab === i
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Card>
@@ -1455,13 +1457,18 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         <Button variant="ghost" onClick={() => setActiveTab(t => Math.max(0, t - 1))} disabled={activeTab === 0}>
           ← Anterior
         </Button>
-        {activeTab < AEP_TABS.length - 1 ? (
-          <Button onClick={() => setActiveTab(t => t + 1)}>Próximo →</Button>
-        ) : (
-          <Button onClick={handleSaveAndBack} disabled={saving} className="!bg-teal-600 !text-white hover:!bg-teal-700">
-            <Save className="w-4 h-4" /> {saving ? 'Salvando...' : 'Salvar Função'}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSave} disabled={saving} className="border-teal-600 text-teal-600 hover:bg-teal-50">
+            <Save className="w-4 h-4 mr-2" /> {saving ? 'Salvando...' : 'Salvar'}
           </Button>
-        )}
+          {activeTab < AEP_TABS.length - 1 ? (
+            <Button onClick={() => setActiveTab(t => t + 1)}>Próximo →</Button>
+          ) : (
+            <Button onClick={handleSaveAndBack} disabled={saving} className="!bg-teal-600 !text-white hover:!bg-teal-700">
+              <Save className="w-4 h-4 mr-2" /> {saving ? 'Salvando...' : 'Salvar Função'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Modals for creating new parameters */}

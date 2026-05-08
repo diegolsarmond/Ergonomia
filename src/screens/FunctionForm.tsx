@@ -402,16 +402,18 @@ export const FunctionForm = () => {
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────── */}
-      <div className="flex gap-1.5 overflow-x-auto mb-6 pb-2 scrollbar-none">
-        {TABS.map((tab, idx) => (
-          <button
-            key={idx}
-            onClick={() => setActiveTab(idx)}
-            className={`tab-pill ${activeTab === idx ? 'active' : ''}`}
-          >
-            {idx + 1}. {tab}
-          </button>
-        ))}
+      <div className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm pt-4 pb-2 mb-6 border-b border-slate-200 -mx-6 px-6 lg:-mx-8 lg:px-8 xl:-mx-10 xl:px-10">
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1">
+          {TABS.map((tab, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveTab(idx)}
+              className={`tab-pill ${activeTab === idx ? 'active' : ''}`}
+            >
+              {idx + 1}. {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Card className="!rounded-2xl">
@@ -1843,6 +1845,25 @@ export const FunctionForm = () => {
 
         </CardContent>
       </Card>
+
+      {/* ── Footer navigation ── */}
+      <div className="flex justify-between mt-4">
+        <Button variant="ghost" onClick={() => setActiveTab(t => Math.max(0, t - 1))} disabled={activeTab === 0}>
+          ← Anterior
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSave} disabled={!canEdit} className="border-teal-600 text-teal-600 hover:bg-teal-50">
+            <Save className="w-4 h-4 mr-2" /> Salvar
+          </Button>
+          {activeTab < TABS.length - 1 ? (
+            <Button onClick={() => setActiveTab(t => t + 1)}>Próximo →</Button>
+          ) : (
+            <Button onClick={handleSave} disabled={!canEdit} className="!bg-teal-600 !text-white hover:!bg-teal-700">
+              <Save className="w-4 h-4 mr-2" /> Salvar Função
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
