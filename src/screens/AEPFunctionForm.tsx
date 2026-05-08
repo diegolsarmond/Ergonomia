@@ -293,11 +293,12 @@ interface Props {
   funcId: string;
   initialData: AETFunction;
   onSave: (data: AETFunction) => Promise<void>;
+  onSaveAndBack?: (data: AETFunction) => Promise<void>;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData, onSave }) => {
+export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData, onSave, onSaveAndBack }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [formData, setFormData] = useState<AETFunction>(initialData);

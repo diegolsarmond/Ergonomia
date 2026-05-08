@@ -110,7 +110,7 @@ export const FunctionForm = () => {
         navigate(`/project/${id}/function/${newId}`, { replace: true });
       } else {
         await updateFunction(id!, funcId!, data);
-        // Permanece no formulário — o AEPFunctionForm exibe a confirmação de sucesso
+        navigate(`/project/${id}`);
       }
     };
     return (
