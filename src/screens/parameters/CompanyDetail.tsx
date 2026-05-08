@@ -5,12 +5,101 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { FormGroup, Input, Textarea, Select } from '../../components/ui/Forms';
+import { OcupacaoAutocomplete } from '../../components/OcupacaoAutocomplete';
 import { Company, Unit, Sector, StandardJobRole } from '../../types';
 import {
   Building2, MapPin, Layers, Briefcase,
   Edit, Trash2, ChevronLeft, CheckCircle, XCircle, Save, X,
-  List, GitBranch,
+  List, GitBranch, Plus, Shield, Wrench,
 } from 'lucide-react';
+
+// ── CatalogMultiSelect (reutilizado em FuncoesTab) ────────────────────────────
+
+interface CatalogItem { id: string; name: string; active: boolean; }
+
+function CatalogMultiSelect({
+  label, icon, items, selectedIds, onChange,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  items: CatalogItem[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const active = items.filter(i => i.active);
+  const filtered = active.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+  const selectedItems = items.filter(i => selectedIds.includes(i.id));
+  const toggle = (id: string) =>
+    onChange(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]);
+
+  return (
+    <FormGroup label={label}>
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selectedItems.map(item => (
+            <span key={item.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium">
+              {item.name}
+              <button type="button" onClick={() => toggle(item.id)} className="hover:text-teal-900 leading-none">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => { setOpen(o => !o); setSearch(''); }}
+          className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-500 hover:border-teal-400 hover:text-teal-600 transition-colors bg-white"
+        >
+          <span className="flex items-center gap-2">{icon} Selecionar {label.toLowerCase()}...</span>
+          <Plus className="w-4 h-4" />
+        </button>
+        {open && (
+          <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+            <div className="p-2 border-b border-slate-100">
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar..."
+                className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+              />
+            </div>
+            <ul className="max-h-44 overflow-y-auto">
+              {filtered.length === 0 && <li className="px-3 py-2 text-xs text-slate-400">Nenhum item encontrado.</li>}
+              {filtered.map(item => {
+                const isSel = selectedIds.includes(item.id);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(item.id)}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${isSel ? 'bg-teal-50 text-teal-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${isSel ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300'}`}>
+                        {isSel && '✓'}
+                      </span>
+                      {item.name}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </FormGroup>
+  );
+}
 
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
@@ -21,9 +110,50 @@ type Tab = 'dados' | 'unidades' | 'setores' | 'funcoes';
 const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id'>) => void }> = ({ company, onSave }) => {
   const [form, setForm] = useState<Omit<Company, 'id'>>({ ...company });
   const [editing, setEditing] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
   const set = (field: keyof Omit<Company, 'id'>, value: any) => setForm(f => ({ ...f, [field]: value }));
 
-  const handleSave = () => { onSave(form); setEditing(false); };
+  const handleCepChange = async (raw: string) => {
+    const masked = raw.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2').slice(0, 9);
+    set('cep', masked);
+    setCepError('');
+
+    const digits = masked.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+
+    setCepLoading(true);
+    try {
+      const data = await fetchCep(digits);
+      if (!data) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      setForm(f => ({
+        ...f,
+        logradouro: data.logradouro || f.logradouro,
+        bairro: data.bairro || f.bairro,
+        municipio: data.localidade || f.municipio,
+        uf: data.uf || f.uf
+      }));
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const handleSave = () => { 
+    const missing: string[] = [];
+    if (!form.razaoSocial.trim()) missing.push('Razão Social');
+    if (!form.cnpj.trim()) missing.push('CNPJ');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
+    onSave(form); 
+    setEditing(false); 
+  };
   const handleCancel = () => { setForm({ ...company }); setEditing(false); };
 
   return (
@@ -45,6 +175,7 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
         {!editing ? (
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <DataItem label="Razão Social" value={company.razaoSocial} />
+            <DataItem label="Logo" value={company.logoDataUrl ? <img src={company.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 mt-1" /> : ''} />
             <DataItem label="Nome Fantasia" value={company.nomeFantasia} />
             <DataItem label="CNPJ" value={company.cnpj} />
             <DataItem label="Logradouro" value={[company.logradouro, company.numero].filter(Boolean).join(', ')} />
@@ -53,19 +184,67 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
             <DataItem label="Município / UF" value={[company.municipio, company.uf].filter(Boolean).join(' / ')} />
             <DataItem label="CEP" value={company.cep} />
             <DataItem label="Produto / Atividade" value={company.product} />
+            <DataItem label="Situação de Mercado" value={company.marketSituation} />
+            <DataItem label="Local de Produção" value={company.productionLocation} />
             <DataItem label="Grau de Risco" value={company.riskDegree ? `Grau ${company.riskDegree}` : ''} />
             <DataItem label="Status" value={company.active ? 'Ativo' : 'Inativo'} />
           </dl>
         ) : (
           <div className="space-y-1">
+            <FormGroup label="Logo da Empresa">
+              <div className="flex items-center gap-4">
+                {form.logoDataUrl && (
+                  <img src={form.logoDataUrl} alt="Logo" className="w-12 h-12 object-contain border border-slate-200 rounded-lg bg-slate-50 shrink-0" />
+                )}
+                <div className="flex-1">
+                  <Input 
+                    type="file" 
+                    accept="image/*"
+                    className="!p-1.5 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer text-xs"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          set('logoDataUrl', reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  {form.logoDataUrl && (
+                    <button 
+                      type="button" 
+                      onClick={() => set('logoDataUrl', '')}
+                      className="text-xs text-red-500 mt-1.5 hover:underline block"
+                    >
+                      Remover Logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </FormGroup>
             <FormGroup label="Razão Social" required>
               <Input value={form.razaoSocial} onChange={e => set('razaoSocial', e.target.value)} />
             </FormGroup>
             <FormGroup label="Nome Fantasia">
               <Input value={form.nomeFantasia} onChange={e => set('nomeFantasia', e.target.value)} />
             </FormGroup>
-            <FormGroup label="CNPJ">
+            <FormGroup label="CNPJ" required>
               <Input value={form.cnpj} onChange={e => set('cnpj', e.target.value)} placeholder="00.000.000/0000-00" />
+            </FormGroup>
+            <FormGroup label="CEP">
+              <div className="relative">
+                <Input 
+                  value={form.cep} 
+                  onChange={e => handleCepChange(e.target.value)} 
+                  placeholder="00000-000" 
+                  maxLength={9}
+                  className={cepError ? 'border-red-400 focus:ring-red-300' : ''}
+                />
+                {cepLoading && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 animate-pulse">buscando...</span>}
+              </div>
+              {cepError && <p className="text-xs text-red-500 mt-1">{cepError}</p>}
             </FormGroup>
             <FormGroup label="Logradouro">
               <Input value={form.logradouro} onChange={e => set('logradouro', e.target.value)} placeholder="Rua / Avenida" />
@@ -92,11 +271,15 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
                 </Select>
               </FormGroup>
             </div>
-            <FormGroup label="CEP">
-              <Input value={form.cep} onChange={e => set('cep', e.target.value)} placeholder="00000-000" />
-            </FormGroup>
+
             <FormGroup label="Produto / Atividade">
               <Input value={form.product} onChange={e => set('product', e.target.value)} />
+            </FormGroup>
+            <FormGroup label="Situação de Mercado">
+              <Input value={form.marketSituation} onChange={e => set('marketSituation', e.target.value)} placeholder="Ex: Empresa fornecedora com demanda crescente" />
+            </FormGroup>
+            <FormGroup label="Local de Produção">
+              <Input value={form.productionLocation} onChange={e => set('productionLocation', e.target.value)} placeholder="Ex: Galpão principal – Linha 1" />
             </FormGroup>
             <FormGroup label="Grau de Risco">
               <Select value={form.riskDegree} onChange={e => set('riskDegree', e.target.value)}>
@@ -120,7 +303,7 @@ const CompanyForm: React.FC<{ company: Company; onSave: (data: Omit<Company, 'id
   );
 };
 
-const DataItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const DataItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div>
     <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
     <dd className="mt-0.5 text-slate-700">{value || <span className="text-slate-300 italic">—</span>}</dd>
@@ -224,6 +407,7 @@ const UnitsTab: React.FC<{ companyId: string; company: Company }> = ({ companyId
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [cepError, setCepError] = useState('');
+  const [copyAddress, setCopyAddress] = useState(false);
   const set = (field: keyof Omit<Unit, 'id'>, value: string) => setForm(f => ({ ...f, [field]: value }));
 
   const loadCities = async (uf: string) => {
@@ -261,12 +445,19 @@ const UnitsTab: React.FC<{ companyId: string; company: Company }> = ({ companyId
     }
   };
 
-  const openNew = () => { setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); setModalOpen(true); };
-  const openEdit = async (u: Unit) => { setEditingId(u.id); setForm({ ...u }); setCepError(''); if (u.uf) await loadCities(u.uf); setModalOpen(true); };
-  const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); };
+  const openNew = () => { setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); setCopyAddress(false); setModalOpen(true); };
+  const openEdit = async (u: Unit) => { setEditingId(u.id); setForm({ ...u }); setCepError(''); setCopyAddress(false); if (u.uf) await loadCities(u.uf); setModalOpen(true); };
+  const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_UNIT, companyId }); setCities([]); setCepError(''); setCopyAddress(false); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome da Unidade');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateUnit(editingId, form);
     else await addUnit({ ...form, companyId });
     handleClose();
@@ -280,17 +471,33 @@ const UnitsTab: React.FC<{ companyId: string; company: Company }> = ({ companyId
             <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex: Unidade Sede, Filial Norte" />
           </FormGroup>
 
-          {(company.logradouro || company.municipio) && (
-            <div className="flex items-center gap-3 py-0.5">
-              <button type="button" onClick={handleCopyCompanyAddress} className="text-xs text-teal-600 hover:text-teal-700 hover:underline transition-colors">
-                Usar endereço da empresa
-              </button>
-              <span className="text-slate-200">|</span>
-              <button type="button" onClick={() => { setForm(f => ({ ...f, cep: '', logradouro: '', numero: '', complemento: '', bairro: '', city: '', uf: '' })); setCities([]); setCepError(''); }} className="text-xs text-slate-400 hover:text-slate-600 hover:underline transition-colors">
-                Limpar endereço
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mb-2">
+            <input
+              type="checkbox"
+              id="copyCompanyAddressModal"
+              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer w-4 h-4"
+              checked={copyAddress}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setCopyAddress(checked);
+                if (checked) {
+                  if (!company.logradouro && !company.municipio) {
+                    alert('A empresa não possui endereço cadastrado.');
+                    setCopyAddress(false);
+                    return;
+                  }
+                  handleCopyCompanyAddress();
+                } else {
+                  setForm(f => ({ ...f, cep: '', logradouro: '', numero: '', complemento: '', bairro: '', city: '', uf: '' }));
+                  setCities([]); 
+                  setCepError('');
+                }
+              }}
+            />
+            <label htmlFor="copyCompanyAddressModal" className="text-[13px] font-medium text-slate-600 cursor-pointer">
+              Repetir endereço da empresa
+            </label>
+          </div>
 
           <FormGroup label="CEP">
             <div className="relative">
@@ -408,7 +615,14 @@ const SetoresTab: React.FC<{ companyId: string }> = ({ companyId }) => {
   const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_SECTOR, companyId }); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome do Setor');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateSector(editingId, form);
     else await addSector({ ...form, companyId });
     handleClose();
@@ -591,10 +805,10 @@ const OrgChart: React.FC<{
 
 // ── Funções Padrão ───────────────────────────────────────────────────────────
 
-const EMPTY_ROLE: Omit<StandardJobRole, 'id'> = { companyId: '', sectorId: '', parentRoleId: '', name: '', cbo: '', description: '', active: true };
+const EMPTY_ROLE: Omit<StandardJobRole, 'id'> = { companyId: '', sectorId: '', parentRoleId: '', name: '', cbo: '', description: '', active: true, epiIds: [], equipmentIds: [] };
 
 const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
-  const { jobRoles, addJobRole, updateJobRole, deleteJobRole, sectors } = useAET();
+  const { jobRoles, addJobRole, updateJobRole, deleteJobRole, sectors, epis, equipment } = useAET();
   const companyRoles = jobRoles.filter(r => r.companyId === companyId);
   const companySectors = sectors.filter(s => s.companyId === companyId);
   const [modalOpen, setModalOpen] = useState(false);
@@ -604,11 +818,18 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
   const set = (field: keyof Omit<StandardJobRole, 'id'>, value: any) => setForm(f => ({ ...f, [field]: value }));
 
   const openNew = () => { setEditingId(null); setForm({ ...EMPTY_ROLE, companyId }); setModalOpen(true); };
-  const openEdit = (r: StandardJobRole) => { setEditingId(r.id); setForm({ ...r }); setModalOpen(true); };
+  const openEdit = (r: StandardJobRole) => { setEditingId(r.id); setForm({ ...r, epiIds: r.epiIds ?? [], equipmentIds: r.equipmentIds ?? [] }); setModalOpen(true); };
   const handleClose = () => { setModalOpen(false); setEditingId(null); setForm({ ...EMPTY_ROLE, companyId }); };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    const missing: string[] = [];
+    if (!form.name.trim()) missing.push('Nome da Função');
+
+    if (missing.length > 0) {
+      alert(`Por favor, preencha os campos obrigatórios:\n- ${missing.join('\n- ')}`);
+      return;
+    }
+
     if (editingId) await updateJobRole(editingId, form);
     else await addJobRole({ ...form, companyId });
     handleClose();
@@ -616,7 +837,11 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
 
   const sectorName = (id: string) => companySectors.find(s => s.id === id)?.name ?? '—';
   const roleName = (id: string) => companyRoles.find(r => r.id === id)?.name ?? '—';
-  const parentOptions = companyRoles.filter(r => r.id !== editingId);
+  const parentOptions = companyRoles.filter(r => {
+    if (r.id === editingId) return false;
+    if (form.sectorId) return r.sectorId === form.sectorId;
+    return true;
+  });
 
   const ancestorChain = (roleId: string): string[] => {
     const chain: string[] = [];
@@ -637,14 +862,35 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
       <Modal open={modalOpen} onClose={handleClose} title={editingId ? 'Editar Função' : 'Nova Função'}>
         <div className="space-y-2">
           <FormGroup label="Nome da Função" required>
-            <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex: Operador de Produção" />
+            <OcupacaoAutocomplete
+              value={form.name}
+              onChange={val => set('name', val)}
+              onSelectOcupacao={o => {
+                set('name', o.descricao);
+                set('cbo', o.codigo);
+              }}
+              className="flex w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-slate-300"
+              placeholder="Ex: Operador de Produção"
+            />
           </FormGroup>
           <FormGroup label="CBO">
             <Input value={form.cbo} onChange={e => set('cbo', e.target.value)} placeholder="Código CBO (opcional)" />
           </FormGroup>
           <div className="grid grid-cols-2 gap-3">
             <FormGroup label="Setor">
-              <Select value={form.sectorId} onChange={e => set('sectorId', e.target.value)}>
+              <Select value={form.sectorId} onChange={e => {
+                const newSectorId = e.target.value;
+                setForm(f => {
+                  const updated = { ...f, sectorId: newSectorId };
+                  if (f.parentRoleId) {
+                    const parentRole = companyRoles.find(r => r.id === f.parentRoleId);
+                    if (parentRole && newSectorId && parentRole.sectorId !== newSectorId) {
+                      updated.parentRoleId = '';
+                    }
+                  }
+                  return updated;
+                });
+              }}>
                 <option value="">Nenhum</option>
                 {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </Select>
@@ -659,6 +905,23 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
           <FormGroup label="Descrição Padrão">
             <Textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Descreva resumidamente as atribuições da função" />
           </FormGroup>
+
+          <CatalogMultiSelect
+            label="EPIs vinculados"
+            icon={<Shield className="w-3.5 h-3.5" />}
+            items={epis}
+            selectedIds={form.epiIds ?? []}
+            onChange={ids => set('epiIds', ids)}
+          />
+
+          <CatalogMultiSelect
+            label="Equipamentos vinculados"
+            icon={<Wrench className="w-3.5 h-3.5" />}
+            items={equipment}
+            selectedIds={form.equipmentIds ?? []}
+            onChange={ids => set('equipmentIds', ids)}
+          />
+
           <FormGroup label="Status">
             <Select value={form.active ? 'true' : 'false'} onChange={e => set('active', e.target.value === 'true')}>
               <option value="true">Ativo</option>
@@ -717,6 +980,20 @@ const FuncoesTab: React.FC<{ companyId: string }> = ({ companyId }) => {
                         {r.parentRoleId && (() => { const chain = ancestorChain(r.id); return chain.length > 0 && <span className="stat-badge !text-[11px] !px-2 !py-0.5 !bg-amber-50 !text-amber-600 !border-amber-200">↳ {chain.join(' › ')}</span>; })()}
                       </div>
                       {r.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{r.description}</p>}
+                      {((r.epiIds?.length ?? 0) > 0 || (r.equipmentIds?.length ?? 0) > 0) && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(r.epiIds ?? []).map(id => { const e = epis.find(x => x.id === id); return e ? (
+                            <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-700">
+                              <Shield className="w-2.5 h-2.5" />{e.name}
+                            </span>
+                          ) : null; })}
+                          {(r.equipmentIds ?? []).map(id => { const e = equipment.find(x => x.id === id); return e ? (
+                            <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-700">
+                              <Wrench className="w-2.5 h-2.5" />{e.name}
+                            </span>
+                          ) : null; })}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-1 ml-3 shrink-0">
                       <Button variant="ghost" size="sm" className="!rounded-lg" onClick={() => openEdit(r)}>
@@ -780,7 +1057,7 @@ export const CompanyDetail = () => {
             <ChevronLeft className="w-4 h-4 text-white" />
           </button>
           <div className="flex-1">
-            <p className="text-teal-200 text-xs font-medium uppercase tracking-wide mb-1">Empresas / Detalhe</p>
+            <p className="text-teal-200 text-xs font-medium uppercase tracking-wide mb-1">Clientes / Detalhe</p>
             <h1 className="text-2xl font-bold tracking-tight">{company.razaoSocial}</h1>
             {company.nomeFantasia && <p className="text-teal-200 text-sm mt-0.5">{company.nomeFantasia}</p>}
           </div>

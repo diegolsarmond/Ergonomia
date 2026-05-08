@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  FileText, Home, BookOpen, ChevronDown, ChevronRight, Settings,
-  List, FlaskConical, Building2,
-  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X
+  FileText, BookOpen, ChevronDown, ChevronRight, Settings,
+  List, FlaskConical, Building2, Lightbulb,
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/images/logo_3.png';
 
 const PARAM_GROUPS = [
   {
     label: 'Cadastros',
     items: [
-      { to: '/parameters/companies', icon: Building2, label: 'Empresas' },
+      { to: '/parameters/shifts', icon: Clock, label: 'Turnos' },
     ],
   },
   {
@@ -24,20 +26,37 @@ const PARAM_GROUPS = [
   {
     label: 'Análise Ergonômica',
     items: [
-      { to: '/parameters/survey-questions', icon: MessageSquare, label: 'Perguntas' },
+      { to: '/parameters/survey-questions', icon: MessageSquare, label: 'Questionário do Trabalhador' },
       { to: '/parameters/checklist', icon: List, label: 'Checklist NHO 11' },
       { to: '/parameters/scientific-methods', icon: FlaskConical, label: 'Métodos Científicos' },
       { to: '/parameters/risk-classifications', icon: AlertTriangle, label: 'Classificação de Risco' },
+      { to: '/parameters/biomechanical-risk-factors', icon: AlertTriangle, label: 'Fatores de Risco Biomecânicos' },
       { to: '/parameters/report-texts', icon: FileText, label: 'Textos Padrão' },
+      { to: '/parameters/illuminance-norms', icon: Lightbulb, label: 'Parâmetros de Iluminância' },
     ],
   },
 ];
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  TECHNICAL_RESPONSIBLE: 'Resp. Técnico',
+  CONSULTANT: 'Consultor',
+  CLIENT_VIEWER: 'Visualizador',
+};
+
 export const Layout = () => {
   const location = useLocation();
-  const isParametros = location.pathname.startsWith('/parameters');
+  const navigate = useNavigate();
+  const { currentUser, logout, hasPermission } = useAuth();
+  const isParametros = location.pathname.startsWith('/parameters') && !location.pathname.startsWith('/parameters/companies');
+  const isProjects = location.pathname === '/aep' || location.pathname === '/aet';
   const [parametrosOpen, setParametrosOpen] = useState(isParametros);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   // Close mobile menu on route change
   React.useEffect(() => {
@@ -46,16 +65,12 @@ export const Layout = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[var(--color-surface)] print:block print:h-auto print:bg-white overflow-hidden">
-      
+
       {/* ── Mobile Header ──────────────────────────────────────────────── */}
       <div className="md:hidden flex items-center justify-between px-5 py-4 bg-slate-900 text-white shadow-md z-40 print:hidden shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-            <FileText className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-[14px] font-bold text-white tracking-tight">AET System</h1>
-          </div>
+          <img src={logoImg} alt="Ergominas Logo" className="h-8 w-auto object-contain" />
+          <h1 className="text-[14px] font-bold text-white tracking-tight leading-tight">ERGOMINAS<br/>Process</h1>
         </div>
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1 rounded-md hover:bg-slate-800 transition-colors">
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -64,7 +79,7 @@ export const Layout = () => {
 
       {/* ── Mobile Overlay ─────────────────────────────────────────────── */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
@@ -75,25 +90,36 @@ export const Layout = () => {
         {/* Brand */}
         <div className="px-6 py-5 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-[15px] font-bold text-white tracking-tight">AET System</h1>
-              <p className="text-[11px] text-slate-400 font-medium">Análise Ergonômica</p>
-            </div>
+            <img src={logoImg} alt="Ergominas Logo" className="h-9 w-auto object-contain" />
+            <h1 className="text-[15px] font-bold text-white tracking-tight leading-tight">ERGOMINAS<br/>Process</h1>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Menu</p>
+          <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Projetos</p>
           <div className="space-y-0.5">
-            <NavLink to="/" icon={Home} label="Projetos" active={location.pathname === '/'} />
+            <NavLink to="/aep" icon={FileText} label="Análise Preliminar - AEP" active={location.pathname === '/aep'} accent="amber" />
+            <NavLink to="/aet" icon={BookOpen} label="Análise do Trabalho - AET" active={location.pathname === '/aet'} />
           </div>
 
-          {/* Parâmetros com submenu agrupado */}
-          <div className="mt-5">
+          {(hasPermission('USERS_VIEW') || hasPermission('SETTINGS_VIEW') || hasPermission('CATALOG_VIEW')) && (
+            <div className="mt-4">
+              <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Administração</p>
+              {hasPermission('CATALOG_VIEW') && (
+                <NavLink to="/parameters/companies" icon={Building2} label="Clientes" active={location.pathname.startsWith('/parameters/companies')} />
+              )}
+              {hasPermission('USERS_VIEW') && (
+                <NavLink to="/users" icon={Users} label="Usuários" active={location.pathname === '/users'} />
+              )}
+              {(hasPermission('SETTINGS_VIEW') || hasPermission('USERS_VIEW')) && (
+                <NavLink to="/profiles-permissions" icon={ShieldCheck} label="Perfis e Permissões" active={location.pathname === '/profiles-permissions'} />
+              )}
+            </div>
+          )}
+
+          {/* Parâmetros com submenu agrupado — visível apenas com CATALOG_VIEW */}
+          {hasPermission('CATALOG_VIEW') && <div className="mt-5">
             <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Configurações</p>
             <button
               onClick={() => setParametrosOpen((o: boolean) => !o)}
@@ -128,11 +154,26 @@ export const Layout = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </div>}
         </nav>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-white/5">
+        <div className="px-5 py-4 border-t border-white/5 space-y-3">
+          {currentUser && (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium text-slate-300 truncate">{currentUser.name}</p>
+                <p className="text-[10px] text-slate-500">{ROLE_LABELS[currentUser.role] ?? currentUser.role}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Sair"
+                className="shrink-0 p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-700 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] text-slate-500 font-medium">v2.0 — NR-17</span>
@@ -156,18 +197,17 @@ interface NavLinkProps {
   label: string;
   active: boolean;
   small?: boolean;
+  accent?: 'teal' | 'amber';
 }
 
-const NavLink: React.FC<NavLinkProps> = ({ to, icon: Icon, label, active, small }) => (
+const NavLink: React.FC<NavLinkProps> = ({ to, icon: Icon, label, active, small, accent = 'teal' }) => (
   <Link
     to={to}
-    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium ${
-      small ? 'text-[13px]' : 'text-sm'
-    } ${
-      active
-        ? 'active text-teal-300'
+    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium ${small ? 'text-[13px]' : 'text-sm'
+      } ${active
+        ? accent === 'amber' ? 'active text-amber-300' : 'active text-teal-300'
         : 'text-slate-400 hover:text-white'
-    }`}
+      }`}
   >
     <Icon className={small ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
     {label}

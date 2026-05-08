@@ -1,31 +1,30 @@
-# Build stage
+# Stage 1 — build frontend
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package.json package-lock.json* ./
-
-# Install dependencies
 RUN npm ci
 
-# Copy the rest of the application code
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Stage 2 — runtime (backend serves API + built frontend)
+FROM node:20-alpine
 
-# Copy the custom Nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Copy the build output from the builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-# Expose port 80
-EXPOSE 80
+COPY server/ ./server/
+COPY migrations/ ./migrations/
+COPY tsconfig.json ./
+COPY --from=builder /app/dist ./dist
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:3001/api/health || exit 1
+
+CMD ["npm", "run", "start"]

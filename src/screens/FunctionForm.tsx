@@ -2,12 +2,17 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
-import { FormGroup, Input, Textarea, Select } from '../components/ui/Forms';
+import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight } from 'lucide-react';
-import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage } from '../types';
+import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight, Lock, CheckCircle, XCircle, Shield, Wrench } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { AETFunction, AETEquipmentItem, AETEPIItem, AETImprovement, AETScientificMethod, AETImage, EMPTY_FUNCTION, ErgonomicRisk, NHO11MeasurementPoint, NHO11ModelType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ImageUpload } from '../components/ImageUpload';
+import { createEmptyErgonomicRisk } from '../domain/risks/riskFactory';
+import { calculateRiskScore, isValidationError } from '../domain/risks/riskMatrix';
+import { calculateNHO11Simple, isNHO11ValidationError } from '../domain/nho11/nho11Calculator';
+import { AEPFunctionForm } from './AEPFunctionForm';
 
 const TABS = [
   'Identificação',
@@ -19,8 +24,9 @@ const TABS = [
   'Métodos Ergonômicos',
   'Riscos e Melhorias',
   'Diagnóstico Final',
-  'Fotos / Registros',
 ];
+
+const DAYS_OF_WEEK = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -73,17 +79,72 @@ const RadioGroup = ({
 
 export const FunctionForm = () => {
   const { id, funcId } = useParams<{ id: string; funcId: string }>();
-  const { getProject, updateFunction, checklistQuestions, scientificMethodTemplates } = useAET();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('PROJECTS_EDIT');
+  const {
+    getProject, addFunction, updateFunction, checklistQuestions,
+    scientificMethodTemplates, equipment, epis, surveyQuestions,
+    shifts, addShift, pauses, companies, units, sectors, jobRoles
+  } = useAET();
   const navigate = useNavigate();
 
   const project = getProject(id!);
   const [activeTab, setActiveTab] = useState(0);
 
-  const initialData = project?.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+  const isNew = funcId === 'new';
+  const initialData = isNew 
+    ? { ...EMPTY_FUNCTION } 
+    : project?.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+  
   const [formData, setFormData] = useState<AETFunction>(initialData);
   const [error, setError] = useState<string | null>(null);
 
-  if (!project || !initialData.id) return <div className="p-8">Função não encontrada.</div>;
+  if (!project || (!isNew && !initialData.id)) return <div className="p-8">Função não encontrada.</div>;
+
+  // ── AEP: delegate to dedicated form ────────────────────────────────────────
+  if (project.reportType === 'AEP') {
+    const handleAEPSave = async (data: AETFunction) => {
+      if (!canEdit) return;
+      if (isNew) {
+        const newId = await addFunction(id!, data);
+        navigate(`/project/${id}/function/${newId}`, { replace: true });
+      } else {
+        await updateFunction(id!, funcId!, data);
+      }
+    };
+    const handleAEPSaveAndBack = async (data: AETFunction) => {
+      if (!canEdit) return;
+      if (isNew) {
+        const newId = await addFunction(id!, data);
+        navigate(`/project/${id}/function/${newId}`, { replace: true });
+      } else {
+        await updateFunction(id!, funcId!, data);
+        navigate(`/project/${id}`);
+      }
+    };
+    return (
+      <AEPFunctionForm
+        project={project}
+        funcId={funcId!}
+        initialData={initialData}
+        onSave={handleAEPSave}
+        onSaveAndBack={handleAEPSaveAndBack}
+      />
+    );
+  }
+
+  const nhoPoints    = formData.illumination.measurementPoints || [];
+  const nhoRefLux    = formData.illumination.referenceLux || 0;
+  const nhoModelType: NHO11ModelType = formData.illumination.modelType ?? 'SIMPLE_AVERAGE';
+  const nhoResult = (() => {
+    if (nhoModelType === 'OUTDOOR_NOT_APPLICABLE') {
+      const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: 0, points: [], modelType: nhoModelType });
+      return isNHO11ValidationError(r) ? null : r;
+    }
+    if (nhoPoints.length === 0 || nhoRefLux <= 0) return null;
+    const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: nhoRefLux, points: nhoPoints, modelType: nhoModelType });
+    return isNHO11ValidationError(r) ? null : r;
+  })();
 
   const set = (field: keyof AETFunction, value: any) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -95,19 +156,43 @@ export const FunctionForm = () => {
     }));
 
   const handleSave = async () => {
-    if (!formData.name?.trim()) {
-      setError('O Nome da Função é obrigatório.');
-      setActiveTab(0);
-      return;
+    if (!canEdit) return;
+    try {
+      if (!formData.name?.trim()) {
+        setError('O Nome da Função é obrigatório.');
+        setActiveTab(0);
+        return;
+      }
+      if (!formData.numEmployees?.trim()) {
+        setError('O Nº de colaboradores é obrigatório.');
+        setActiveTab(0);
+        return;
+      }
+      setError(null);
+      console.log('Salvando função...', { isNew, id, funcId, formData });
+      if (isNew) {
+        const newId = await addFunction(id!, formData);
+        console.log('Função adicionada com ID:', newId);
+      } else {
+        await updateFunction(id!, funcId!, formData);
+        console.log('Função atualizada');
+      }
+      navigate(`/project/${id}`);
+    } catch (err) {
+      console.error('Erro ao salvar função:', err);
+      setError('Não foi possível salvar a função. Verifique os campos obrigatórios e tente novamente.');
+      alert('Não conseguimos salvar a função agora. Se o problema persistir, atualize a página e tente novamente.');
     }
-    if (!formData.numEmployees?.trim()) {
-      setError('O Nº de colaboradores é obrigatório.');
-      setActiveTab(0);
-      return;
-    }
-    setError(null);
-    await updateFunction(id!, funcId!, formData);
-    navigate(`/project/${id}`);
+  };
+
+  const [newShiftName, setNewShiftName] = useState('');
+  const [showNewShiftInput, setShowNewShiftInput] = useState(false);
+
+  const handleAddQuickShift = async () => {
+    if (!newShiftName.trim()) return;
+    await addShift({ name: newShiftName, description: 'Cadastrado via formulário', active: true });
+    setNewShiftName('');
+    setShowNewShiftInput(false);
   };
 
   // ── Equipment helpers ────────────────────────────────────────────────────
@@ -162,6 +247,29 @@ export const FunctionForm = () => {
   const removeImprovement = (idx: number) =>
     set('improvements', (formData.improvements || []).filter((_, i) => i !== idx));
 
+  // ── ErgonomicRisk helpers ────────────────────────────────────────────────
+  const addRisk = () =>
+    set('risks', [...(formData.risks || []), createEmptyErgonomicRisk()]);
+
+  const updateRisk = (idx: number, field: keyof ErgonomicRisk, value: any) => {
+    const list = [...(formData.risks || [])];
+    const risk = { ...list[idx], [field]: value };
+    if (field === 'probability' || field === 'severity') {
+      const p = field === 'probability' ? Number(value) : Number(risk.probability);
+      const s = field === 'severity'    ? Number(value) : Number(risk.severity);
+      const result = calculateRiskScore(p, s);
+      if (!isValidationError(result)) {
+        risk.score     = result.score;
+        risk.riskLevel = result.level;
+      }
+    }
+    list[idx] = risk;
+    set('risks', list);
+  };
+
+  const removeRisk = (idx: number) =>
+    set('risks', (formData.risks || []).filter((_, i) => i !== idx));
+
   // ── Scientific method helpers ────────────────────────────────────────────
   const addMethod = () =>
     set('scientificMethods', [
@@ -194,6 +302,68 @@ export const FunctionForm = () => {
   const removeChecklistItem = (idx: number) =>
     setIllum('checklist', (formData.illumination.checklist || []).filter((_, i) => i !== idx));
 
+  // ── NHO 11 measurement-point helpers ─────────────────────────────────────
+
+  const recalcAndSetNHO11 = (points: NHO11MeasurementPoint[], refLux: number, modelType: NHO11ModelType = 'SIMPLE_AVERAGE') => {
+    const canCalc = modelType === 'OUTDOOR_NOT_APPLICABLE' || (points.length > 0 && refLux > 0);
+    if (canCalc) {
+      const r = calculateNHO11Simple({ location: '', date: '', environmentType: '', taskType: '', referenceLux: refLux, points, modelType });
+      if (!isNHO11ValidationError(r)) {
+        setFormData(prev => ({
+          ...prev,
+          illumination: {
+            ...prev.illumination,
+            modelType,
+            measurementPoints: points,
+            referenceLux: refLux,
+            resultLux: r.conclusion === 'não_aplicável' ? 'N/A' : String(r.averageLux),
+            interpretation: r.interpretationText,
+            conclusion: r.conclusion,
+            conclusionText: r.conclusion === 'adequada'
+              ? `Iluminância média de ${r.averageLux} lux está adequada conforme NHO 11 – Fundacentro.`
+              : r.conclusion === 'não_aplicável'
+              ? 'Ambiente externo – avaliação de iluminância por NHO 11 não se aplica neste tipo de ambiente.'
+              : `Iluminância média de ${r.averageLux} lux está abaixo do limiar mínimo de ${r.tolerance10Percent} lux. É necessária intervenção.`,
+          },
+        }));
+        return;
+      }
+    }
+    setFormData(prev => ({
+      ...prev,
+      illumination: { ...prev.illumination, modelType, measurementPoints: points, referenceLux: refLux },
+    }));
+  };
+
+  const handleModelTypeChange = (newModelType: NHO11ModelType) => {
+    if (newModelType === 'OUTDOOR_NOT_APPLICABLE') {
+      recalcAndSetNHO11([], 0, newModelType);
+    } else {
+      recalcAndSetNHO11(formData.illumination.measurementPoints || [], formData.illumination.referenceLux || 0, newModelType);
+    }
+  };
+
+  const addMeasurementPoint = () => {
+    const points = [...(formData.illumination.measurementPoints || [])];
+    points.push({ id: uuidv4(), label: `Ponto ${points.length + 1}`, lux: 0 });
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0, nhoModelType);
+  };
+
+  const updateMeasurementPoint = (idx: number, field: 'label' | 'lux', value: string | number) => {
+    const points = [...(formData.illumination.measurementPoints || [])];
+    (points[idx] as any)[field] = value;
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0, nhoModelType);
+  };
+
+  const removeMeasurementPoint = (idx: number) => {
+    const points = (formData.illumination.measurementPoints || []).filter((_, i) => i !== idx);
+    recalcAndSetNHO11(points, formData.illumination.referenceLux || 0, nhoModelType);
+  };
+
+  const setRefLux = (val: number) => {
+    recalcAndSetNHO11(formData.illumination.measurementPoints || [], val, nhoModelType);
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6 lg:p-8 xl:p-10 pb-24">
@@ -212,13 +382,19 @@ export const FunctionForm = () => {
           {formData.name || 'Nova Função'}
         </h1>
         <div className="flex items-center gap-3">
+          {!canEdit && (
+            <div className="text-amber-700 font-medium flex items-center text-sm bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+              <Lock className="w-4 h-4 mr-1.5" />
+              Você não possui permissão para editar este projeto.
+            </div>
+          )}
           {error && (
             <div className="text-red-500 font-medium flex items-center text-sm bg-red-50 px-3 py-1.5 rounded-lg">
               <AlertCircle className="w-4 h-4 mr-1.5" />
               {error}
             </div>
           )}
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} disabled={!canEdit}>
             <Save className="w-4 h-4" />
             Salvar Alterações
           </Button>
@@ -242,71 +418,240 @@ export const FunctionForm = () => {
         <CardContent className="pt-6">
 
           {/* ── Tab 0: Identificação ───────────────────────────────────────── */}
-          {activeTab === 0 && (
-            <div className="space-y-4">
-              <SectionTitle>Cadastro da Função</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Nome da Função" required>
-                  <Input value={formData.name} onChange={(e) => set('name', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Nº de Colaboradores" required>
-                  <Input value={formData.numEmployees} onChange={(e) => set('numEmployees', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Setor">
-                  <Input value={formData.sector} onChange={(e) => set('sector', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Unidade">
-                  <Input value={formData.unit} onChange={(e) => set('unit', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Data da Análise">
-                  <Input type="date" value={formData.analysisDate} onChange={(e) => set('analysisDate', e.target.value)} />
-                </FormGroup>
-                <FormGroup label="Status da Análise">
-                  <Select value={formData.demandFound} onChange={(e) => set('demandFound', e.target.value)}>
-                    <option value="">Selecione...</option>
-                    <option value="Posto passível de investigações ergonômicas">Passível de investigações</option>
-                    <option value="Posto passível de modificações ergonômicas">Passível de modificações</option>
-                    <option value="Posto sem necessidade de intervenção imediata">Sem intervenção imediata</option>
-                    <option value="Análise concluída">Análise concluída</option>
-                  </Select>
-                </FormGroup>
-              </div>
+          {activeTab === 0 && (() => {
+            const matchedCompany = companies.find(c => 
+              (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g, '') === project.cnpj.replace(/\D/g, '')) || 
+              c.razaoSocial === project.companyName || 
+              c.nomeFantasia === project.companyName
+            );
 
-              <SectionTitle>Origem e Objetivo</SectionTitle>
-              <FormGroup label="Origem da Demanda">
-                <Textarea value={formData.demandOrigin} onChange={(e) => set('demandOrigin', e.target.value)} rows={3} />
-              </FormGroup>
-              <FormGroup label="Objetivo da Análise">
-                <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
-              </FormGroup>
+            const companyUnits = matchedCompany ? units.filter(u => u.companyId === matchedCompany.id) : [];
+            const companySectors = matchedCompany ? sectors.filter(s => s.companyId === matchedCompany.id) : [];
+            const companyJobRoles = matchedCompany ? jobRoles.filter(r => r.companyId === matchedCompany.id) : [];
 
-              <SectionTitle>Análise Global da Empresa (nesta função)</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
-                <FormGroup label="Situação de Mercado">
-                  <Input value={formData.marketSituation} onChange={(e) => set('marketSituation', e.target.value)} />
+            const handleApplyJobRole = (roleId: string) => {
+              const role = companyJobRoles.find(r => r.id === roleId);
+              if (!role) return;
+
+              const sector = companySectors.find(s => s.id === role.sectorId);
+              const unit = sector ? companyUnits.find(u => u.id === sector.unitId) : null;
+
+              // Pre-fill EPIs and equipment from linked catalog items
+              const roleEpis = (role.epiIds ?? [])
+                .map(id => epis.find(e => e.id === id))
+                .filter(Boolean) as typeof epis;
+              const roleEquip = (role.equipmentIds ?? [])
+                .map(id => equipment.find(e => e.id === id))
+                .filter(Boolean) as typeof equipment;
+
+              setFormData(prev => ({
+                ...prev,
+                name: role.name,
+                sector: sector ? sector.name : prev.sector,
+                unit: unit ? unit.name : prev.unit,
+                usesEPI: roleEpis.length > 0 || prev.usesEPI,
+                epiList: roleEpis.length > 0
+                  ? roleEpis.map(e => ({ id: e.id, name: e.name, mandatory: false, occasional: false, location: '', observations: '' }))
+                  : prev.epiList,
+                usesEquipment: roleEquip.length > 0 || prev.usesEquipment,
+                equipmentList: roleEquip.length > 0
+                  ? roleEquip.map(e => ({ id: e.id, name: e.name, quantity: '', dimensions: '', principle: '', condition: '', observations: '' }))
+                  : prev.equipmentList,
+              }));
+            };
+
+            return (
+              <div className="space-y-4">
+                <SectionTitle>Cadastro da Função</SectionTitle>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Nome da Função" required>
+                    <Combobox
+                      listId="jobRolesList"
+                      options={companyJobRoles}
+                      value={formData.name}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        set('name', val);
+                        const role = companyJobRoles.find(r => r.name === val);
+                        if (role) handleApplyJobRole(role.id);
+                      }}
+                      placeholder="Digite ou selecione a função..."
+                    />
+                  </FormGroup>
+                  <FormGroup label="Nº de Colaboradores" required>
+                    <Input value={formData.numEmployees} onChange={(e) => set('numEmployees', e.target.value)} />
+                  </FormGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Unidade">
+                    <Combobox
+                      listId="unitsList"
+                      options={companyUnits}
+                      value={formData.unit}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const matched = companyUnits.find(u => u.name === val);
+                        set('unit', val);
+                        set('unidadeId', matched?.id ?? '');
+                      }}
+                      placeholder="Digite ou selecione a unidade..."
+                    />
+                  </FormGroup>
+                  <FormGroup label="Setor">
+                    <Combobox
+                      listId="sectorsList"
+                      options={companySectors}
+                      value={formData.sector}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const matched = companySectors.find(s => s.name === val);
+                        set('sector', val);
+                        set('setorId', matched?.id ?? '');
+                      }}
+                      placeholder="Digite ou selecione o setor..."
+                    />
+                  </FormGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Data da Análise">
+                    <Input type="date" value={formData.analysisDate} onChange={(e) => set('analysisDate', e.target.value)} />
+                  </FormGroup>
+                  <FormGroup label="Status da Análise">
+                    <Select value={formData.demandFound} onChange={(e) => set('demandFound', e.target.value)}>
+                      <option value="">Selecione...</option>
+                      <option value="Posto passível de investigações ergonômicas">Passível de investigações</option>
+                      <option value="Posto passível de modificações ergonômicas">Passível de modificações</option>
+                      <option value="Posto sem necessidade de intervenção imediata">Sem intervenção imediata</option>
+                      <option value="Análise concluída">Análise concluída</option>
+                    </Select>
+                  </FormGroup>
+                </div>
+
+                <SectionTitle>Origem e Objetivo</SectionTitle>
+                <FormGroup label="Origem da Demanda">
+                  <Textarea value={formData.demandOrigin} onChange={(e) => set('demandOrigin', e.target.value)} rows={3} />
                 </FormGroup>
-                <FormGroup label="Produto / Serviço">
-                  <Input value={formData.product} onChange={(e) => set('product', e.target.value)} />
+                <FormGroup label="Objetivo da Análise">
+                  <Textarea value={formData.objective} onChange={(e) => set('objective', e.target.value)} rows={3} />
                 </FormGroup>
+
+                {companyJobRoles.length > 0 && (
+                  <>
+                    <SectionTitle>Funções Disponíveis na Empresa</SectionTitle>
+                    <div className="space-y-3">
+                      {companyJobRoles.map(r => {
+                        const sector = companySectors.find(s => s.id === r.sectorId);
+                        const isSelected = formData.name === r.name;
+                        return (
+                          <div
+                            key={r.id}
+                            className={`border rounded-xl p-4 flex justify-between items-start transition-colors ${isSelected ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-slate-800 text-sm">{r.name}</p>
+                                {r.active
+                                  ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                  : <XCircle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                {r.cbo && <span className="stat-badge !text-[11px] !px-2 !py-0.5">CBO {r.cbo}</span>}
+                                {sector && <span className="stat-badge !text-[11px] !px-2 !py-0.5 !bg-violet-50 !text-violet-600 !border-violet-200">{sector.name}</span>}
+                              </div>
+                              {r.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{r.description}</p>}
+                              {((r.epiIds?.length ?? 0) > 0 || (r.equipmentIds?.length ?? 0) > 0) && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {(r.epiIds ?? []).map(eid => { const e = epis.find(x => x.id === eid); return e ? (
+                                    <span key={eid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-700">
+                                      <Shield className="w-2.5 h-2.5" />{e.name}
+                                    </span>
+                                  ) : null; })}
+                                  {(r.equipmentIds ?? []).map(eid => { const e = equipment.find(x => x.id === eid); return e ? (
+                                    <span key={eid} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-700">
+                                      <Wrench className="w-2.5 h-2.5" />{e.name}
+                                    </span>
+                                  ) : null; })}
+                                </div>
+                              )}
+                            </div>
+                            <div className="ml-3 shrink-0">
+                              <Button
+                                variant={isSelected ? 'default' : 'ghost'}
+                                size="sm"
+                                className="!rounded-lg"
+                                onClick={() => handleApplyJobRole(r.id)}
+                              >
+                                {isSelected ? 'Selecionado' : 'Selecionar'}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
               </div>
-              <FormGroup label="Local de Produção">
-                <Input value={formData.productionLocation} onChange={(e) => set('productionLocation', e.target.value)} />
-              </FormGroup>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Tab 1: Organização do Trabalho ────────────────────────────── */}
           {activeTab === 1 && (
             <div className="space-y-4">
               <SectionTitle>Turnos e Jornada</SectionTitle>
               <div className="grid grid-cols-3 gap-4">
-                <FormGroup label="Descrição dos Turnos">
-                  <Input value={formData.shifts} onChange={(e) => set('shifts', e.target.value)} placeholder="Ex: 2 turnos" />
-                </FormGroup>
+                <div className="col-span-3">
+                  <FormGroup label="Turnos de Trabalho">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {shifts.filter(s => s.active).map(s => {
+                        const selected = (formData.shifts || '').split(', ').includes(s.name);
+                        return (
+                          <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                            <Checkbox 
+                              checked={selected}
+                              onChange={() => {
+                                const current = (formData.shifts || '').split(', ').filter(Boolean);
+                                const next = selected ? current.filter(v => v !== s.name) : [...current, s.name];
+                                set('shifts', next.join(', '));
+                              }}
+                            />
+                            {s.name}
+                          </label>
+                        );
+                      })}
+                      <button 
+                        type="button"
+                        onClick={() => setShowNewShiftInput(!showNewShiftInput)}
+                        className={`flex items-center gap-2 px-3 py-1.5 border border-dashed rounded-xl text-sm transition-all ${showNewShiftInput ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 text-slate-400 hover:border-teal-400 hover:text-teal-600'}`}
+                      >
+                        <Plus className="w-4 h-4" />
+                        {showNewShiftInput ? 'Cancelar' : 'Novo Turno'}
+                      </button>
+                    </div>
+                    {showNewShiftInput && (
+                      <div className="flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Input 
+                          placeholder="Nome do novo turno..." 
+                          value={newShiftName} 
+                          onChange={e => setNewShiftName(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddQuickShift())}
+                        />
+                        <Button type="button" onClick={handleAddQuickShift}>Adicionar</Button>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <p className="text-[11px] text-slate-400 uppercase font-semibold mb-1">Resumo / Customizado</p>
+                      <Input 
+                        value={formData.shifts} 
+                        onChange={(e) => set('shifts', e.target.value)} 
+                        placeholder="Ex: Turno Diurno, Turno Noturno" 
+                      />
+                    </div>
+                  </FormGroup>
+                </div>
                 <FormGroup label="Horário Inicial">
                   <Input type="time" value={formData.shiftStart} onChange={(e) => set('shiftStart', e.target.value)} />
                 </FormGroup>
@@ -316,7 +661,50 @@ export const FunctionForm = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Dias da Semana">
-                  <Input value={formData.workDays} onChange={(e) => set('workDays', e.target.value)} placeholder="Ex: Segunda a Sexta" />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(() => {
+                      const allSelected = DAYS_OF_WEEK.every(day => (formData.workDays || '').includes(day));
+                      return (
+                        <label className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${allSelected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox 
+                            checked={allSelected}
+                            onChange={() => {
+                              if (allSelected) set('workDays', '');
+                              else set('workDays', DAYS_OF_WEEK.join(', '));
+                            }}
+                          />
+                          Todos
+                        </label>
+                      );
+                    })()}
+                    {DAYS_OF_WEEK.map(day => {
+                      const selected = (formData.workDays || '').includes(day);
+                      return (
+                        <label key={day} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox 
+                            checked={selected}
+                            onChange={() => {
+                              const current = (formData.workDays || '').split(', ').filter(Boolean);
+                              let next;
+                              if (selected) {
+                                next = current.filter(v => v !== day);
+                              } else {
+                                // Keep order if possible
+                                next = [...current, day].sort((a, b) => DAYS_OF_WEEK.indexOf(a) - DAYS_OF_WEEK.indexOf(b));
+                              }
+                              set('workDays', next.join(', '));
+                            }}
+                          />
+                          {day}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <Input 
+                    value={formData.workDays} 
+                    onChange={(e) => set('workDays', e.target.value)} 
+                    placeholder="Ex: Seg, Ter, Qua, Qui, Sex" 
+                  />
                 </FormGroup>
                 <RadioGroup
                   label="Horas Extras"
@@ -333,6 +721,27 @@ export const FunctionForm = () => {
 
               <SectionTitle>Pausas e Organização</SectionTitle>
               <FormGroup label="Pausas Eletivas">
+                {pauses.filter(p => p.active).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {pauses.filter(p => p.active).map(p => {
+                      const label = p.duration ? `${p.name} (${p.duration} ${p.durationUnit})` : p.name;
+                      const selected = (formData.pauses || '').includes(p.name);
+                      return (
+                        <label key={p.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                          <Checkbox
+                            checked={selected}
+                            onChange={() => {
+                              const cur = (formData.pauses || '').split(', ').filter(Boolean);
+                              const nxt = selected ? cur.filter(v => v !== p.name) : [...cur, label];
+                              set('pauses', nxt.join(', '));
+                            }}
+                          />
+                          {label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
                 <Textarea value={formData.pauses} onChange={(e) => set('pauses', e.target.value)} rows={2} placeholder="Descreva as pausas disponíveis" />
               </FormGroup>
               <RadioGroup
@@ -367,6 +776,13 @@ export const FunctionForm = () => {
                   onChange={(v) => set('bathroomCondition', v)}
                 />
               </div>
+
+              <SectionTitle>Fotos – Banheiros / Refeitórios</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="bathroom"
+              />
             </div>
           )}
 
@@ -379,7 +795,15 @@ export const FunctionForm = () => {
                   <Input value={formData.collabFormation} onChange={(e) => set('collabFormation', e.target.value)} />
                 </FormGroup>
                 <FormGroup label="Turno Entrevistado">
-                  <Input value={formData.collabTurn} onChange={(e) => set('collabTurn', e.target.value)} />
+                  <Select value={formData.collabTurn} onChange={(e) => set('collabTurn', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {shifts.filter(s => s.active).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                    {formData.collabTurn && !shifts.some(s => s.name === formData.collabTurn) && (
+                      <option value={formData.collabTurn}>{formData.collabTurn}</option>
+                    )}
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Gênero predominante">
                   <Select value={formData.opinionGender} onChange={(e) => set('opinionGender', e.target.value)}>
@@ -390,7 +814,15 @@ export const FunctionForm = () => {
                   </Select>
                 </FormGroup>
                 <FormGroup label="Faixa Etária">
-                  <Input value={formData.opinionAge} onChange={(e) => set('opinionAge', e.target.value)} placeholder="Ex: 25 a 45 anos" />
+                  <Select value={formData.opinionAge} onChange={(e) => set('opinionAge', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    <option value="Menor de 18 anos">Menor de 18 anos</option>
+                    <option value="18 a 30 anos">18 a 30 anos</option>
+                    <option value="31 a 45 anos">31 a 45 anos</option>
+                    <option value="46 a 60 anos">46 a 60 anos</option>
+                    <option value="Maior de 60 anos">Maior de 60 anos</option>
+                    <option value="Variada (múltiplas faixas)">Variada (múltiplas faixas)</option>
+                  </Select>
                 </FormGroup>
                 <FormGroup label="Tempo Médio na Empresa">
                   <Input value={formData.opinionTime} onChange={(e) => set('opinionTime', e.target.value)} placeholder="Ex: 3 anos" />
@@ -398,126 +830,112 @@ export const FunctionForm = () => {
               </div>
 
               <SectionTitle>Questionário do Trabalhador</SectionTitle>
-              <div className="grid grid-cols-1 gap-4">
-                <FormGroup label="Objetivo do trabalho (segundo o trabalhador)">
-                  <Input value={formData.opinionObjective} onChange={(e) => set('opinionObjective', e.target.value)} />
-                </FormGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <RadioGroup
-                  label="Sensação Térmica"
-                  name="opinionThermal"
-                  value={formData.opinionThermal}
-                  options={[
-                    { value: 'Confortável', label: 'Confortável' },
-                    { value: 'Quente', label: 'Quente' },
-                    { value: 'Frio', label: 'Frio' },
-                    { value: 'Variável', label: 'Variável' },
-                  ]}
-                  onChange={(v) => set('opinionThermal', v)}
-                />
-                <RadioGroup
-                  label="Sensação de Iluminância"
-                  name="opinionLightingSens"
-                  value={formData.opinionLightingSens}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Insuficiente', label: 'Insuficiente' },
-                    { value: 'Excessiva', label: 'Excessiva' },
-                  ]}
-                  onChange={(v) => set('opinionLightingSens', v)}
-                />
-                <FormGroup label="Descrição da Iluminação">
-                  <Input value={formData.opinionLightingDesc} onChange={(e) => set('opinionLightingDesc', e.target.value)} />
-                </FormGroup>
-                <RadioGroup
-                  label="Sensação Acústica"
-                  name="opinionAcoustics"
-                  value={formData.opinionAcoustics}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Ruidoso', label: 'Ruidoso' },
-                    { value: 'Muito ruidoso', label: 'Muito ruidoso' },
-                    { value: 'N/A', label: 'N/A' },
-                  ]}
-                  onChange={(v) => set('opinionAcoustics', v)}
-                />
-                <RadioGroup
-                  label="Ventilação"
-                  name="opinionVentilation"
-                  value={formData.opinionVentilation}
-                  options={[
-                    { value: 'Adequada', label: 'Adequada' },
-                    { value: 'Insuficiente', label: 'Insuficiente' },
-                    { value: 'Excessiva', label: 'Excessiva' },
-                  ]}
-                  onChange={(v) => set('opinionVentilation', v)}
-                />
-                <FormGroup label="Descrição da Ventilação">
-                  <Input value={formData.opinionVentilationDesc} onChange={(e) => set('opinionVentilationDesc', e.target.value)} />
-                </FormGroup>
-                <RadioGroup
-                  label="Opinião sobre Equipamentos"
-                  name="opinionEquip"
-                  value={formData.opinionEquip}
-                  options={[
-                    { value: 'Adequados', label: 'Adequados' },
-                    { value: 'Parcialmente adequados', label: 'Parcialmente adequados' },
-                    { value: 'Inadequados', label: 'Inadequados' },
-                  ]}
-                  onChange={(v) => set('opinionEquip', v)}
-                />
-                <RadioGroup
-                  label="Pressão Temporal"
-                  name="opinionPressure"
-                  value={formData.opinionPressure}
-                  options={[
-                    { value: 'Sem pressão', label: 'Sem pressão' },
-                    { value: 'Pressão moderada', label: 'Moderada' },
-                    { value: 'Alta pressão', label: 'Alta' },
-                  ]}
-                  onChange={(v) => set('opinionPressure', v)}
-                />
-                <RadioGroup
-                  label="Relacionamento com Colegas"
-                  name="opinionRelationship"
-                  value={formData.opinionRelationship}
-                  options={[
-                    { value: 'Bom', label: 'Bom' },
-                    { value: 'Regular', label: 'Regular' },
-                    { value: 'Ruim', label: 'Ruim' },
-                  ]}
-                  onChange={(v) => set('opinionRelationship', v)}
-                />
-                <RadioGroup
-                  label="Abertura da Liderança a Sugestões"
-                  name="opinionLeadership"
-                  value={formData.opinionLeadership}
-                  options={[
-                    { value: 'Aberta', label: 'Aberta' },
-                    { value: 'Parcialmente', label: 'Parcialmente' },
-                    { value: 'Fechada', label: 'Fechada' },
-                  ]}
-                  onChange={(v) => set('opinionLeadership', v)}
-                />
-                <RadioGroup
-                  label="Influência da Manutenção"
-                  name="opinionMaintenanceInfluence"
-                  value={formData.opinionMaintenanceInfluence}
-                  options={[
-                    { value: 'Não interfere', label: 'Não interfere' },
-                    { value: 'Interfere raramente', label: 'Raramente' },
-                    { value: 'Interfere frequentemente', label: 'Frequentemente' },
-                  ]}
-                  onChange={(v) => set('opinionMaintenanceInfluence', v)}
-                />
-              </div>
-              <FormGroup label="Dificuldades na Tarefa">
-                <Textarea value={formData.opinionDifficulties} onChange={(e) => set('opinionDifficulties', e.target.value)} rows={2} />
-              </FormGroup>
-              <FormGroup label="Intercorrências que atrasam a produção">
-                <Textarea value={formData.opinionIntercurrences} onChange={(e) => set('opinionIntercurrences', e.target.value)} rows={2} />
-              </FormGroup>
+
+              {/* Perguntas já adicionadas */}
+              {(formData.checklistAnswers || []).length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {(formData.checklistAnswers || []).map((ans) => {
+                    const q = surveyQuestions.find(sq => sq.id === ans.questionId);
+                    if (!q) return null;
+                    const currentAnswer = (ans as any).answer ?? '';
+                    const setAnswer = (value: string) => {
+                      const next = (formData.checklistAnswers || []).map(a =>
+                        a.questionId === q.id ? { ...a, answer: value as any } : a
+                      );
+                      set('checklistAnswers', next);
+                    };
+                    const removeAnswer = () => {
+                      set('checklistAnswers', (formData.checklistAnswers || []).filter(a => a.questionId !== q.id));
+                    };
+
+                    return (
+                      <div key={q.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 relative hover:border-teal-200 transition-colors">
+                        <button
+                          type="button"
+                          onClick={removeAnswer}
+                          className="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                          title="Remover pergunta"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        {(q.responseType === 'sim_nao' || q.responseType === 'sim/nao') ? (
+                          <RadioGroup
+                            label={q.question}
+                            name={`sq_${q.id}`}
+                            value={currentAnswer}
+                            options={[
+                              { value: 'sim', label: 'Sim' },
+                              { value: 'nao', label: 'Não' },
+                              { value: 'nao_se_aplica', label: 'N/A' },
+                            ]}
+                            onChange={setAnswer}
+                          />
+                        ) : (q.responseType === 'multipla_escolha' || q.responseType === 'multipla escolha') ? (
+                          (() => {
+                            const opts = (q as any).options as string[] | undefined;
+                            return opts && opts.length > 0 ? (
+                              <RadioGroup
+                                label={q.question}
+                                name={`sq_${q.id}`}
+                                value={currentAnswer}
+                                options={opts.map(o => ({ value: o, label: o }))}
+                                onChange={setAnswer}
+                              />
+                            ) : (
+                              <FormGroup label={q.question}>
+                                <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                              </FormGroup>
+                            );
+                          })()
+                        ) : (q.responseType === 'texto_longo' || q.responseType === 'texto longo') ? (
+                          <FormGroup label={q.question}>
+                            <Textarea value={currentAnswer} onChange={e => setAnswer(e.target.value)} rows={3} />
+                          </FormGroup>
+                        ) : (
+                          <FormGroup label={q.question}>
+                            <Input value={currentAnswer} onChange={e => setAnswer(e.target.value)} />
+                          </FormGroup>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Adicionar pergunta */}
+              {(() => {
+                const usedIds = new Set((formData.checklistAnswers || []).map(a => a.questionId));
+                const available = surveyQuestions.filter(q => q.active && !usedIds.has(q.id)).sort((a, b) => a.order - b.order);
+                if (available.length === 0 && (formData.checklistAnswers || []).length === 0) {
+                  return (
+                    <div className="empty-state !py-10">
+                      <p className="text-slate-400 text-sm">Nenhuma pergunta cadastrada. Acesse <strong>Parâmetros › Questionário</strong> para adicionar perguntas.</p>
+                    </div>
+                  );
+                }
+                if (available.length === 0) return null;
+                return (
+                  <div className="flex items-center gap-3 border border-dashed border-slate-300 rounded-xl p-3 bg-white hover:border-teal-400 transition-colors">
+                    <Plus className="w-4 h-4 text-teal-500 shrink-0" />
+                    <select
+                      className="flex-1 text-sm text-slate-600 bg-transparent border-none outline-none cursor-pointer"
+                      value=""
+                      onChange={e => {
+                        const qId = e.target.value;
+                        if (!qId) return;
+                        const prev = formData.checklistAnswers || [];
+                        if (prev.find(a => a.questionId === qId)) return;
+                        set('checklistAnswers', [...prev, { questionId: qId, answer: '' as any }]);
+                      }}
+                    >
+                      <option value="">+ Adicionar pergunta ao questionário...</option>
+                      {available.map(q => (
+                        <option key={q.id} value={q.id}>{q.question}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -639,6 +1057,13 @@ export const FunctionForm = () => {
               <FormGroup label="Referência">
                 <Input value={formData.meioAmbiente} onChange={(e) => set('meioAmbiente', e.target.value)} placeholder="Vide LTCAT / Vide PGR" />
               </FormGroup>
+
+              <SectionTitle>Fotos – Posto de Trabalho</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="workplace"
+              />
             </div>
           )}
 
@@ -646,7 +1071,20 @@ export const FunctionForm = () => {
           {activeTab === 4 && (
             <div className="space-y-4">
               <SectionTitle>Lista de Equipamentos e Materiais</SectionTitle>
-              {(formData.equipmentList || []).map((eq, idx) => (
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-sm text-slate-700 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                    checked={!!formData.usesEquipment}
+                    onChange={(e) => set('usesEquipment', e.target.checked)}
+                  />
+                  A função utiliza equipamentos?
+                </label>
+              </div>
+              {formData.usesEquipment && (
+                <div className="space-y-4 mb-8">
+                  {(formData.equipmentList || []).map((eq, idx) => (
                 <div key={eq.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
                   <button
                     type="button"
@@ -658,7 +1096,15 @@ export const FunctionForm = () => {
                   <p className="text-sm font-medium text-slate-500">Equipamento {idx + 1}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <FormGroup label="Nome">
-                      <Input value={eq.name} onChange={(e) => updateEquipment(idx, 'name', e.target.value)} />
+                      <Select value={eq.name} onChange={(e) => updateEquipment(idx, 'name', e.target.value)}>
+                        <option value="">Selecione...</option>
+                        {equipment.filter(e => e.active).map(e => (
+                          <option key={e.id} value={e.name}>{e.name}</option>
+                        ))}
+                        {eq.name && !equipment.some(e => e.name === eq.name) && (
+                          <option value={eq.name}>{eq.name} (Não cadastrado)</option>
+                        )}
+                      </Select>
                     </FormGroup>
                     <FormGroup label="Quantidade">
                       <Input value={eq.quantity} onChange={(e) => updateEquipment(idx, 'quantity', e.target.value)} />
@@ -698,9 +1144,24 @@ export const FunctionForm = () => {
               <FormGroup label="Problemas Aparentes Gerais">
                 <Textarea value={formData.equipProblems} onChange={(e) => set('equipProblems', e.target.value)} rows={2} />
               </FormGroup>
+              </div>
+              )}
 
               <SectionTitle>Lista de EPIs</SectionTitle>
-              {(formData.epiList || []).map((epi, idx) => (
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-sm text-slate-700 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                    checked={!!formData.usesEPI}
+                    onChange={(e) => set('usesEPI', e.target.checked)}
+                  />
+                  A função utiliza EPIs?
+                </label>
+              </div>
+              {formData.usesEPI && (
+                <div className="space-y-4 mb-8">
+                  {(formData.epiList || []).map((epi, idx) => (
                 <div key={epi.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
                   <button
                     type="button"
@@ -712,7 +1173,15 @@ export const FunctionForm = () => {
                   <p className="text-sm font-medium text-slate-500">EPI {idx + 1}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <FormGroup label="Nome do EPI">
-                      <Input value={epi.name} onChange={(e) => updateEPI(idx, 'name', e.target.value)} />
+                      <Select value={epi.name} onChange={(e) => updateEPI(idx, 'name', e.target.value)}>
+                        <option value="">Selecione...</option>
+                        {epis.filter(e => e.active).map(e => (
+                          <option key={e.id} value={e.name}>{e.name}</option>
+                        ))}
+                        {epi.name && !epis.some(e => e.name === epi.name) && (
+                          <option value={epi.name}>{epi.name} (Não cadastrado)</option>
+                        )}
+                      </Select>
                     </FormGroup>
                     <FormGroup label="Local de Uso">
                       <Input value={epi.location} onChange={(e) => updateEPI(idx, 'location', e.target.value)} />
@@ -744,6 +1213,8 @@ export const FunctionForm = () => {
               <Button type="button" variant="secondary" onClick={addEPI}>
                 <Plus className="w-4 h-4 mr-1" /> Adicionar EPI
               </Button>
+              </div>
+              )}
 
               <SectionTitle>Predominância Postural</SectionTitle>
               <div className="grid grid-cols-3 gap-4">
@@ -772,6 +1243,20 @@ export const FunctionForm = () => {
                   <p className="text-amber-600 text-sm font-medium">Atenção: o total postural é {total}% (deve somar 100%).</p>
                 ) : null;
               })()}
+
+              <SectionTitle>Fotos – Equipamentos</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="equipment"
+              />
+
+              <SectionTitle>Fotos – Posturas</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="posture"
+              />
             </div>
           )}
 
@@ -796,18 +1281,147 @@ export const FunctionForm = () => {
                 </FormGroup>
               </div>
 
-              <SectionTitle>Medição</SectionTitle>
-              <div className="grid grid-cols-3 gap-4">
-                <FormGroup label="Valor Medido (lux)">
-                  <Input value={formData.illumination.resultLux} onChange={(e) => setIllum('resultLux', e.target.value)} placeholder="Ex: 450" />
-                </FormGroup>
-                <FormGroup label="Valor de Referência (lux)">
-                  <Input value={formData.illumination.referenceValue} onChange={(e) => setIllum('referenceValue', e.target.value)} placeholder="Ex: 500 lux (NBR ISO/CIE 8995-1)" />
-                </FormGroup>
-                <FormGroup label="Fórmula utilizada">
-                  <Input value={formData.illumination.formula} onChange={(e) => setIllum('formula', e.target.value)} />
-                </FormGroup>
-              </div>
+              <SectionTitle>Pontos de Medição NHO 11</SectionTitle>
+              <FormGroup label="Modelo de Medição">
+                <Select
+                  value={nhoModelType}
+                  onChange={(e) => handleModelTypeChange(e.target.value as NHO11ModelType)}
+                >
+                  <option value="SIMPLE_AVERAGE">Média Simples (E_med = Σ(Ei) / n)</option>
+                  <option value="RECTANGULAR_REGULAR_GRID">Grade Retangular Regular</option>
+                  <option value="RECTANGULAR_SINGLE_LINE">Linha Única Retangular</option>
+                  <option value="CENTRAL_LUMINAIRE">Luminária Central</option>
+                  <option value="OUTDOOR_NOT_APPLICABLE">Ambiente Externo (não aplicável)</option>
+                </Select>
+              </FormGroup>
+
+              {nhoModelType === 'OUTDOOR_NOT_APPLICABLE' ? (
+                <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                  <p className="text-sm text-slate-500">
+                    Ambiente externo selecionado — a metodologia NHO 11 não se aplica. Medições em ambientes externos são variáveis e dependentes de condições climáticas e sazonais.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <FormGroup label="Valor de Referência (lux)">
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={formData.illumination.referenceLux || ''}
+                        onChange={(e) => setRefLux(Number(e.target.value))}
+                        placeholder="Ex: 500"
+                        className="w-36"
+                      />
+                      <span className="text-xs text-slate-500">Conforme NBR ISO/CIE 8995-1 para o tipo de atividade</span>
+                    </div>
+                  </FormGroup>
+
+                  {(formData.illumination.measurementPoints || []).length === 0 && (
+                    <div className="empty-state !py-6">
+                      <p className="text-slate-400 text-sm">Nenhum ponto adicionado. Clique em "Adicionar Ponto" para registrar as medições.</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {(formData.illumination.measurementPoints || []).map((pt, idx) => (
+                      <div key={pt.id} className="flex items-end gap-3 border border-slate-200 rounded-xl p-3 bg-slate-50/50 hover:border-slate-300 transition-colors">
+                        <span className="text-xs font-bold text-slate-400 mb-2 w-5 shrink-0">{idx + 1}</span>
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Identificação do ponto</p>
+                          <Input
+                            value={pt.label}
+                            onChange={(e) => updateMeasurementPoint(idx, 'label', e.target.value)}
+                            placeholder="Ex: Centro do posto, Bancada lateral..."
+                          />
+                        </div>
+                        <div className="w-32 shrink-0">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Lux</p>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={pt.lux === 0 ? '' : pt.lux}
+                            onChange={(e) => updateMeasurementPoint(idx, 'lux', Number(e.target.value))}
+                            placeholder="0"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeMeasurementPoint(idx)}
+                          className="text-red-400 hover:text-red-600 cursor-pointer transition-colors mb-1 shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button type="button" variant="secondary" onClick={addMeasurementPoint}>
+                    <Plus className="w-4 h-4 mr-1" /> Adicionar Ponto de Medição
+                  </Button>
+                </>
+              )}
+
+              {nhoResult && (
+                <>
+                  <SectionTitle>Resultado Calculado (NHO 11)</SectionTitle>
+                  <div className="border border-teal-200 rounded-xl p-5 bg-teal-50/30">
+                    {nhoResult.conclusion === 'não_aplicável' ? (
+                      <div className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                        <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-600 mb-1">Não Aplicável — Ambiente Externo</p>
+                          <p className="text-sm text-slate-500">{nhoResult.interpretationText}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">E_med (média)</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.averageLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Mín / Máx</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.minMeasuredLux} / {nhoResult.maxMeasuredLux} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Relação max/min</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.ratioMaxMin}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Limiar mínimo (90%)</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.tolerance10Percent} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">70% da média</p>
+                            <p className="text-xl font-bold text-slate-800">{nhoResult.seventyPercentAverage} <span className="text-sm font-normal text-slate-500">lux</span></p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Conclusão</p>
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                              nhoResult.conclusion === 'adequada'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {nhoResult.conclusion === 'adequada' ? 'ADEQUADA' : 'INADEQUADA'}
+                            </span>
+                          </div>
+                        </div>
+                        {nhoResult.conclusion === 'inadequada' && (
+                          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <p className="text-sm text-amber-800">
+                              Iluminância abaixo do limiar mínimo. Adicione um item ao checklist abaixo com a ação corretiva e o responsável.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
 
               <SectionTitle>Resultado e Conclusão</SectionTitle>
               <RadioGroup
@@ -815,8 +1429,9 @@ export const FunctionForm = () => {
                 name="illuminationConclusion"
                 value={formData.illumination.conclusion}
                 options={[
-                  { value: 'adequada', label: 'Iluminação Adequada' },
-                  { value: 'inadequada', label: 'Iluminação Inadequada' },
+                  { value: 'adequada',      label: 'Iluminação Adequada' },
+                  { value: 'inadequada',    label: 'Iluminação Inadequada' },
+                  { value: 'não_aplicável', label: 'Não Aplicável' },
                 ]}
                 onChange={(v) => setIllum('conclusion', v)}
               />
@@ -826,6 +1441,19 @@ export const FunctionForm = () => {
               <FormGroup label="Texto da conclusão">
                 <Textarea value={formData.illumination.conclusionText} onChange={(e) => setIllum('conclusionText', e.target.value)} rows={2} />
               </FormGroup>
+
+              <SectionTitle>Dados Complementares</SectionTitle>
+              <div className="grid grid-cols-3 gap-4">
+                <FormGroup label="Valor Medido (lux)">
+                  <Input value={formData.illumination.resultLux} onChange={(e) => setIllum('resultLux', e.target.value)} placeholder="Preenchido automaticamente" />
+                </FormGroup>
+                <FormGroup label="Referência Normativa (texto)">
+                  <Input value={formData.illumination.referenceValue} onChange={(e) => setIllum('referenceValue', e.target.value)} placeholder="Ex: 500 lux (NBR ISO/CIE 8995-1)" />
+                </FormGroup>
+                <FormGroup label="Fórmula utilizada">
+                  <Input value={formData.illumination.formula} onChange={(e) => setIllum('formula', e.target.value)} />
+                </FormGroup>
+              </div>
 
               <SectionTitle>Contexto da Avaliação</SectionTitle>
               <FormGroup label="Descrição do Ambiente">
@@ -963,6 +1591,13 @@ export const FunctionForm = () => {
                 <Plus className="w-4 h-4 mr-1" /> Adicionar Método
               </Button>
 
+              <SectionTitle>Fotos – Métodos Científicos</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="method"
+              />
+
               <SectionTitle>Checklist de Verificação</SectionTitle>
               {checklistQuestions.filter((q) => q.functionIds?.includes(funcId!)).length === 0 ? (
                 <p className="text-gray-500 text-sm">Nenhuma pergunta de checklist vinculada a esta função. Configure em Parâmetros → Checklist.</p>
@@ -1004,85 +1639,158 @@ export const FunctionForm = () => {
           {/* ── Tab 7: Riscos e Melhorias ──────────────────────────────────── */}
           {activeTab === 7 && (
             <div className="space-y-4">
+
+              {/* ── Inventário novo (ErgonomicRisk) ── */}
               <SectionTitle>Inventário de Risco Ergonômico</SectionTitle>
-              {(formData.improvements || []).map((imp, idx) => (
-                <div key={imp.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
-                  <button
-                    type="button"
-                    onClick={() => removeImprovement(idx)}
-                    className="absolute top-2 right-2 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <p className="text-sm font-semibold text-slate-600">Item {String(idx + 1).padStart(2, '0')}</p>
 
-                  <FormGroup label="Identificação do Perigo">
-                    <Textarea value={imp.hazard} onChange={(e) => updateImprovement(idx, 'hazard', e.target.value)} rows={2} />
-                  </FormGroup>
-
-                  <SectionTitle>Avaliação do Risco Bruto</SectionTitle>
-                  <div className="grid grid-cols-3 gap-3">
-                    <FormGroup label="Probabilidade">
-                      <Select value={imp.probability} onChange={(e) => updateImprovement(idx, 'probability', e.target.value)}>
-                        <option value="">Selecione...</option>
-                        <option value="1 – Improvável">1 – Improvável</option>
-                        <option value="2 – Possível">2 – Possível</option>
-                        <option value="3 – Provável">3 – Provável</option>
-                        <option value="4 – Frequente">4 – Frequente</option>
-                      </Select>
-                    </FormGroup>
-                    <FormGroup label="Severidade / Gravidade">
-                      <Select value={imp.severity} onChange={(e) => updateImprovement(idx, 'severity', e.target.value)}>
-                        <option value="">Selecione...</option>
-                        <option value="1 – Leve">1 – Leve</option>
-                        <option value="2 – Moderada">2 – Moderada</option>
-                        <option value="4 – Grave">4 – Grave</option>
-                        <option value="8 – Gravíssima">8 – Gravíssima</option>
-                      </Select>
-                    </FormGroup>
-                    <FormGroup label="Pontuação / Nível de Risco Bruto">
-                      <Input value={imp.grossRiskLevel} onChange={(e) => updateImprovement(idx, 'grossRiskLevel', e.target.value)} placeholder="Ex: 8" />
-                    </FormGroup>
-                  </div>
-                  <FormGroup label="Classificação do Risco">
-                    <Select value={imp.riskClassification} onChange={(e) => updateImprovement(idx, 'riskClassification', e.target.value)}>
-                      <option value="">Selecione...</option>
-                      <option value="Trivial / Tolerável">Trivial / Tolerável</option>
-                      <option value="Baixo">Baixo</option>
-                      <option value="Moderado">Moderado</option>
-                      <option value="Substancial">Substancial</option>
-                      <option value="Alto / Intolerável">Alto / Intolerável</option>
-                    </Select>
-                  </FormGroup>
-
-                  <SectionTitle>Medidas de Melhoria</SectionTitle>
-                  <FormGroup label="Ação Recomendada">
-                    <Textarea value={imp.actions} onChange={(e) => updateImprovement(idx, 'actions', e.target.value)} rows={2} />
-                  </FormGroup>
-                  <div className="grid grid-cols-3 gap-3">
-                    <FormGroup label="Responsável">
-                      <Input value={imp.responsible} onChange={(e) => updateImprovement(idx, 'responsible', e.target.value)} />
-                    </FormGroup>
-                    <FormGroup label="Prazo">
-                      <Input type="date" value={imp.deadline} onChange={(e) => updateImprovement(idx, 'deadline', e.target.value)} />
-                    </FormGroup>
-                    <FormGroup label="Probabilidade de Atenuação">
-                      <Select value={imp.attenuationProbability} onChange={(e) => updateImprovement(idx, 'attenuationProbability', e.target.value)}>
-                        <option value="">Selecione...</option>
-                        <option value="Alta">Alta</option>
-                        <option value="Média">Média</option>
-                        <option value="Baixa">Baixa</option>
-                      </Select>
-                    </FormGroup>
-                  </div>
-                  <FormGroup label="Observações">
-                    <Input value={imp.observations} onChange={(e) => updateImprovement(idx, 'observations', e.target.value)} />
-                  </FormGroup>
+              {(formData.risks || []).length === 0 && (
+                <div className="empty-state !py-8">
+                  <p className="text-slate-400 text-sm">Nenhum risco cadastrado. Clique em "Adicionar risco" para começar.</p>
                 </div>
-              ))}
-              <Button type="button" variant="secondary" onClick={addImprovement}>
-                <Plus className="w-4 h-4 mr-1" /> Adicionar Item ao Inventário
+              )}
+
+              {(formData.risks || []).map((risk, idx) => {
+                const levelColors: Record<string, string> = {
+                  'BAIXO':      'bg-green-100 text-green-700 border-green-300',
+                  'MODERADO':   'bg-yellow-100 text-yellow-700 border-yellow-300',
+                  'ALTO RISCO': 'bg-orange-100 text-orange-700 border-orange-300',
+                  'CRÍTICO':    'bg-red-100 text-red-700 border-red-300',
+                };
+                const levelCls = levelColors[risk.riskLevel] ?? 'bg-slate-100 text-slate-600 border-slate-300';
+
+                return (
+                  <div key={risk.id} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 space-y-3 relative hover:border-slate-300 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => removeRisk(idx)}
+                      className="absolute top-2 right-2 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm font-semibold text-slate-600">Risco {String(idx + 1).padStart(2, '0')}</p>
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${levelCls}`}>
+                        {risk.riskLevel} — Score {risk.score}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormGroup label="Agente de Risco">
+                        <Input value={risk.agent} onChange={e => updateRisk(idx, 'agent', e.target.value)} placeholder="Ex: Postura inadequada" />
+                      </FormGroup>
+                      <FormGroup label="Fator de Risco">
+                        <Input value={risk.riskFactor} onChange={e => updateRisk(idx, 'riskFactor', e.target.value)} placeholder="Ex: Flexão de tronco frequente" />
+                      </FormGroup>
+                    </div>
+
+                    <FormGroup label="Possível Agravo à Saúde">
+                      <Input value={risk.possibleHealthEffect} onChange={e => updateRisk(idx, 'possibleHealthEffect', e.target.value)} placeholder="Ex: LER/DORT, lombalgia" />
+                    </FormGroup>
+
+                    <FormGroup label="Situação Encontrada">
+                      <Textarea value={risk.foundSituation} onChange={e => updateRisk(idx, 'foundSituation', e.target.value)} rows={2} placeholder="Descreva o que foi observado no posto de trabalho..." />
+                    </FormGroup>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormGroup label="Controle Existente">
+                        <Textarea value={risk.existingControl} onChange={e => updateRisk(idx, 'existingControl', e.target.value)} rows={2} placeholder="Medidas já adotadas pela empresa..." />
+                      </FormGroup>
+                      <FormGroup label="Proposta de Melhoria">
+                        <Textarea value={risk.improvementProposal} onChange={e => updateRisk(idx, 'improvementProposal', e.target.value)} rows={2} placeholder="Ações recomendadas..." />
+                      </FormGroup>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 items-end">
+                      <FormGroup label="Probabilidade (1–5)">
+                        <Select
+                          value={String(risk.probability)}
+                          onChange={e => updateRisk(idx, 'probability', Number(e.target.value))}
+                        >
+                          <option value="1">1 – Improvável</option>
+                          <option value="2">2 – Possível</option>
+                          <option value="3">3 – Provável</option>
+                          <option value="4">4 – Frequente</option>
+                          <option value="5">5 – Muito Frequente</option>
+                        </Select>
+                      </FormGroup>
+                      <FormGroup label="Gravidade (1–5)">
+                        <Select
+                          value={String(risk.severity)}
+                          onChange={e => updateRisk(idx, 'severity', Number(e.target.value))}
+                        >
+                          <option value="1">1 – Leve</option>
+                          <option value="2">2 – Moderada</option>
+                          <option value="3">3 – Grave</option>
+                          <option value="4">4 – Muito Grave</option>
+                          <option value="5">5 – Catastrófica</option>
+                        </Select>
+                      </FormGroup>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase mb-1.5">Score (P × G)</p>
+                        <div className={`flex items-center justify-center h-10 rounded-xl border font-bold text-sm ${levelCls}`}>
+                          {risk.score} — {risk.riskLevel}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <FormGroup label="Referência Normativa">
+                        <Input value={risk.normativeReference} onChange={e => updateRisk(idx, 'normativeReference', e.target.value)} placeholder="Ex: NR-17, ISO 11228" />
+                      </FormGroup>
+                      <FormGroup label="Responsável">
+                        <Input value={risk.responsible ?? ''} onChange={e => updateRisk(idx, 'responsible', e.target.value)} />
+                      </FormGroup>
+                      <FormGroup label="Prazo">
+                        <Input type="date" value={risk.deadline ?? ''} onChange={e => updateRisk(idx, 'deadline', e.target.value)} />
+                      </FormGroup>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <Button type="button" variant="secondary" onClick={addRisk}>
+                <Plus className="w-4 h-4 mr-1" /> Adicionar Risco Ergonômico
               </Button>
+
+              <SectionTitle>Fotos – Evidências de Risco</SectionTitle>
+              <ImageUpload
+                images={formData.images}
+                onChange={(imgs: AETImage[]) => set('images', imgs)}
+                category="risk_evidence"
+              />
+
+              {/* ── Seção legada (AETImprovement) ── */}
+              {(formData.improvements || []).length > 0 && (
+                <>
+                  <div className="mt-8 pt-6 border-t-2 border-dashed border-slate-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 bg-slate-200 text-slate-500 rounded-full">Legado</span>
+                      <p className="text-sm text-slate-400">Registros do formato anterior — migre para o novo inventário acima e depois remova.</p>
+                    </div>
+                    {(formData.improvements || []).map((imp, idx) => (
+                      <div key={imp.id} className="border border-dashed border-slate-300 rounded-xl p-4 bg-white/60 space-y-3 relative mb-3 opacity-70">
+                        <button type="button" onClick={() => removeImprovement(idx)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 cursor-pointer transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <p className="text-xs font-semibold text-slate-500">Item legado {String(idx + 1).padStart(2, '0')} — {imp.hazard || '(sem perigo)'}</p>
+                        <FormGroup label="Identificação do Perigo">
+                          <Textarea value={imp.hazard} onChange={e => updateImprovement(idx, 'hazard', e.target.value)} rows={2} />
+                        </FormGroup>
+                        <div className="grid grid-cols-2 gap-3">
+                          <FormGroup label="Responsável">
+                            <Input value={imp.responsible} onChange={e => updateImprovement(idx, 'responsible', e.target.value)} />
+                          </FormGroup>
+                          <FormGroup label="Prazo">
+                            <Input type="date" value={imp.deadline} onChange={e => updateImprovement(idx, 'deadline', e.target.value)} />
+                          </FormGroup>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
             </div>
           )}
 
@@ -1123,55 +1831,8 @@ export const FunctionForm = () => {
                   </Select>
                 </FormGroup>
               </div>
-            </div>
-          )}
 
-          {/* ── Tab 9: Fotos / Registros ──────────────────────────────────── */}
-          {activeTab === 9 && (
-            <div className="space-y-6">
-              <SectionTitle>Posto de Trabalho</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="workplace"
-              />
-
-              <SectionTitle>Equipamentos</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="equipment"
-              />
-
-              <SectionTitle>Posturas</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="posture"
-              />
-
-              <SectionTitle>Evidências de Risco</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="risk_evidence"
-              />
-
-              <SectionTitle>Banheiros / Refeitórios</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="bathroom"
-              />
-
-              <SectionTitle>Métodos Científicos</SectionTitle>
-              <ImageUpload
-                images={formData.images}
-                onChange={(imgs: AETImage[]) => set('images', imgs)}
-                category="method"
-              />
-
-              <SectionTitle>Outras</SectionTitle>
+              <SectionTitle>Outras Fotos</SectionTitle>
               <ImageUpload
                 images={formData.images}
                 onChange={(imgs: AETImage[]) => set('images', imgs)}

@@ -1,3 +1,9 @@
+import type { RiskLevel } from './domain/risks/riskTypes';
+import type { NHO11MeasurementPoint, NHO11ModelType } from './domain/nho11/nho11Types';
+import type { IlluminanceMeasurement } from './domain/illuminance/illuminanceTypes';
+export type { RiskLevel, NHO11MeasurementPoint, NHO11ModelType };
+export type { IlluminanceMeasurement };
+
 // ── Parameter / System entities ─────────────────────────────────────────────
 
 export interface Company {
@@ -13,6 +19,8 @@ export interface Company {
   uf: string;
   cep: string;
   product: string;
+  marketSituation: string;
+  productionLocation: string;
   riskDegree: string;
   logoDataUrl: string;
   active: boolean;
@@ -52,6 +60,8 @@ export interface StandardJobRole {
   cbo: string;
   description: string;
   active: boolean;
+  epiIds?: string[];
+  equipmentIds?: string[];
 }
 
 export interface EPI {
@@ -78,6 +88,7 @@ export interface SurveyQuestion {
   question: string;
   category: string;
   responseType: string;
+  options?: string[];
   required: boolean;
   order: number;
   active: boolean;
@@ -109,6 +120,13 @@ export interface ReportTextTemplate {
   active: boolean;
 }
 
+export interface Shift {
+  id: string;
+  name: string;
+  description: string;
+  active: boolean;
+}
+
 export interface ScientificMethodTemplate {
   id: string;
   name: string;
@@ -120,6 +138,13 @@ export interface ChecklistQuestion {
   id: string;
   text: string;
   functionIds: string[];
+}
+
+export interface BiomechanicalRiskFactor {
+  id: string;
+  biomechanicalFactors: string[]; // List of categories it belongs to
+  name: string;
+  active: boolean;
 }
 
 export interface AETImage {
@@ -156,9 +181,12 @@ export interface AETIllumination {
   resultLux: string;
   interpretation: string;
   normativeReference: string;
-  conclusion: 'adequada' | 'inadequada' | '';
+  modelType: NHO11ModelType;
+  conclusion: 'adequada' | 'inadequada' | 'não_aplicável' | '';
   conclusionText: string;
   checklist: IlluminationChecklistItem[];
+  measurementPoints: NHO11MeasurementPoint[];
+  referenceLux: number;
 }
 
 export interface AETScientificMethod {
@@ -207,8 +235,30 @@ export interface AETEPIItem {
   observations: string;
 }
 
+export interface ErgonomicRisk {
+  id: string;
+  agent: string;
+  riskFactor: string;
+  possibleHealthEffect: string;
+  foundSituation: string;
+  existingControl: string;
+  improvementProposal: string;
+  probability: number;
+  severity: number;
+  score: number;
+  riskLevel: RiskLevel;
+  normativeReference: string;
+  evidenceImageDataUrl?: string;
+  responsible?: string;
+  deadline?: string;
+  status?: string;
+}
+
 export interface AETFunction {
   id: string;
+  // FK relationships
+  unidadeId?: string;
+  setorId?: string;
   // 4.1 Cabeçalho
   name: string;
   unit: string;
@@ -287,6 +337,8 @@ export interface AETFunction {
   reworkWeek: string;
   reworkNotApplicable: boolean;
   // 4.17 Equipamentos (CRUD)
+  usesEquipment: boolean;
+  usesEPI: boolean;
   equipmentList: AETEquipmentItem[];
   epiList: AETEPIItem[];
   equipProblems: string;
@@ -311,10 +363,299 @@ export interface AETFunction {
   improvements: AETImprovement[];
   checklistAnswers: { questionId: string; answer: 'sim' | 'nao' | 'nao_se_aplica' | '' }[];
   rulaScore?: string;
+  risks?: ErgonomicRisk[];
+  // AEP-specific fields (optional for backward compatibility)
+  ghe?: string;
+  generalConditions?: string;
+  accessConditions?: string;
+  workstationOrganization?: string;
+  environmentalConditions?: string;
+  biomechanicalFactors?: string;
+  cognitiveFactors?: string;
+  organizationalFactors?: string;
+  prescribedTask?: string;
+  realTask?: string;
+  conclusion?: string;
+  requiresAET?: boolean;
+  requiresAETJustification?: string;
+  // Structured AEP assessment (planilha AEP 2026)
+  aep?: AEPFunctionAssessment;
 }
+
+export interface AEPFunctionFields {
+  ghe: string;
+  generalConditions: string;
+  accessConditions: string;
+  workstationOrganization: string;
+  environmentalConditions: string;
+  biomechanicalFactors: string;
+  cognitiveFactors: string;
+  organizationalFactors: string;
+  prescribedTask: string;
+  realTask: string;
+  conclusion: string;
+  requiresAET: boolean;
+  requiresAETJustification: string;
+}
+
+// ── AEP — Structured Assessment (planilha "AEP 2026 modelo") ─────────────────
+
+export type BiomechanicalAssessment = 'OK' | 'Atenção' | 'Crítico' | 'N.A.' | '';
+
+export interface BiomechanicalItem {
+  riskFactorId: string;
+  assessment: BiomechanicalAssessment;
+  description: string;
+}
+
+export interface EnvironmentalComfortItem {
+  lightingComplaint: 'Sim' | 'Não' | '';
+  lightingValue: string;
+  lightingDescription: string;
+  noiseComplaint: 'Sim' | 'Não' | '';
+  noiseValue: string;
+  noiseDescription: string;
+  temperatureComplaint: 'Sim' | 'Não' | '';
+  temperatureValue: string;
+  temperatureDescription: string;
+}
+
+export interface PsychosocialQuestion {
+  id: string;
+  group: string;
+  question: string;
+  score: number | '';
+  scaleLabel: string;
+  inverted: boolean;
+  comments: string;
+}
+
+export interface AETTrigger {
+  id: string;
+  answer: 'Sim' | 'Não' | '';
+  description: string;
+}
+
+export interface RACIAction {
+  id: string;
+  riskFactor: string;
+  action: string;
+  responsible: string;
+  accountable: string;
+  consulted: string;
+  informed: string;
+  deadline: string;
+  priority: 'Baixa' | 'Média' | 'Alta' | 'Crítica' | '';
+  status: 'Pendente' | 'Em andamento' | 'Concluído' | 'Cancelado' | '';
+}
+
+export interface ScientificToolItem {
+  id: string;
+  toolName: string;
+  result: string;
+  interpretation: string;
+  recommendation: string;
+  imageDataUrl?: string;
+}
+
+export interface PhotoRecord {
+  id: string;
+  imageDataUrl: string;
+  description: string;
+}
+
+export interface AEPFunctionAssessment {
+  // 1. Identificação
+  identification: {
+    unitBranch: string;
+    sectorArea: string;
+    contemplatedFunctions: string;
+    evaluatedActivity: string;
+    code: string;
+    unitId?: string;
+    sectorId?: string;
+  };
+
+  // 2. Caracterização do Trabalho
+  workCharacterization: {
+    processDescription: string;
+    workCycleDescription: string;
+    workOrganization: {
+      workday: string;
+      scale: string;
+      overtime: string;
+      lunchBreak: string;
+      otherBreaks: string;
+      taskRotation: string;
+      safetyDialogues: string;
+    };
+    toolsAndMaterials: {
+      description: string;
+      epis: string;
+      others: string;
+    };
+  };
+
+  // 3. Registro Fotográfico
+  photographicRecords: PhotoRecord[];
+  lgpdNote: string;
+
+  // 4. Biomecânica
+  biomechanics: {
+    postureAndReach: BiomechanicalItem[];
+    repetitivenessAndRhythm: BiomechanicalItem[];
+    forceAndPhysicalDemand: BiomechanicalItem[];
+    manualMaterialHandling: BiomechanicalItem[];
+    furnitureAndWorkstation: BiomechanicalItem[];
+    environmentalComfort: EnvironmentalComfortItem;
+  };
+
+  // 5. Ferramentas Científicas
+  scientificTools: ScientificToolItem[];
+
+  // 5b. Medições de Iluminância (malha de medição)
+  illuminanceMeasurements: IlluminanceMeasurement[];
+
+  // 6. Psicossocial
+  psychosocialAnswers: PsychosocialQuestion[];
+  psychosocialAverages: {
+    demandRhythm: number;
+    autonomyControl: number;
+    roleClarityConflict: number;
+    socialSupportLeadership: number;
+    recognitionJusticePsychSafety: number;
+    overall: number;
+  };
+  psychosocialClassification: 'VERDE' | 'AMARELO' | 'VERMELHO' | '';
+  psychosocialInterpretation: string;
+
+  // 7. Classificação de Risco / Gatilhos AET
+  aetTriggers: AETTrigger[];
+  finalGuidance: string;
+  decisionJustification: string;
+
+  // 8. Plano de Ação RACI
+  raciActionPlan: RACIAction[];
+
+  // 9. Responsável Técnico
+  technicalResponsible: {
+    name: string;
+    registration: string;
+    formation: string;
+    company: string;
+    signatureDataUrl: string;
+  };
+}
+
+const LGPD_NOTE =
+  'Nota LGPD: As fotografias priorizam o posto de trabalho e a biomecânica da tarefa. Em caso de identificação de indivíduos, os rostos devem ser desfocados para preservar a privacidade e atender à Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018).';
+
+export function createEmptyAEPFunctionAssessment(): AEPFunctionAssessment {
+  return {
+    identification: {
+      unitBranch: '',
+      sectorArea: '',
+      contemplatedFunctions: '',
+      evaluatedActivity: '',
+      code: '',
+      unitId: '',
+      sectorId: '',
+    },
+    workCharacterization: {
+      processDescription: '',
+      workCycleDescription: '',
+      workOrganization: {
+        workday: '',
+        scale: '',
+        overtime: '',
+        lunchBreak: '',
+        otherBreaks: '',
+        taskRotation: '',
+        safetyDialogues: '',
+      },
+      toolsAndMaterials: {
+        description: '',
+        epis: '',
+        others: '',
+      },
+    },
+    photographicRecords: [],
+    lgpdNote: LGPD_NOTE,
+    biomechanics: {
+      postureAndReach: [],
+      repetitivenessAndRhythm: [],
+      forceAndPhysicalDemand: [],
+      manualMaterialHandling: [],
+      furnitureAndWorkstation: [],
+      environmentalComfort: {
+        lightingComplaint: 'Não',
+        lightingValue: '',
+        lightingDescription: '',
+        noiseComplaint: 'Não',
+        noiseValue: '',
+        noiseDescription: '',
+        temperatureComplaint: 'Não',
+        temperatureValue: '',
+        temperatureDescription: '',
+      },
+    },
+    scientificTools: [],
+    illuminanceMeasurements: [],
+    psychosocialAnswers: [
+      { id: 'psy-1', group: 'Demandas / Ritmo', question: 'Preciso trabalhar muito rápido para dar conta das minhas tarefas.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-2', group: 'Demandas / Ritmo', question: 'Tenho um volume de trabalho acima do que consigo fazer no tempo disponível.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-3', group: 'Demandas / Ritmo', question: 'Meu trabalho exige esforço emocional frequente (lidar com conflitos, reclamações, pressão).', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-4', group: 'Autonomia / Controle', question: 'Tenho liberdade para escolher como executar minhas tarefas.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-5', group: 'Autonomia / Controle', question: 'Consigo influenciar a ordem/prioridade das minhas atividades.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-6', group: 'Clareza / Conflito de Papéis', question: 'Sei exatamente o que é esperado de mim no trabalho.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-7', group: 'Clareza / Conflito de Papéis', question: 'Recebo demandas conflitantes (ex: qualidade vs. velocidade; segurança vs. produção).', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-8', group: 'Apoio Social e Liderança', question: 'Posso contar com apoio dos colegas quando preciso.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-9', group: 'Apoio Social e Liderança', question: 'Minha liderança ajuda a resolver obstáculos do trabalho.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-10', group: 'Apoio Social e Liderança', question: 'Sou tratado com respeito no ambiente de trabalho.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-11', group: 'Reconhecimento, Justiça e Segurança Psicológica', question: 'Sinto que meu trabalho é reconhecido de forma justa.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: true, comments: '' },
+      { id: 'psy-12', group: 'Reconhecimento, Justiça e Segurança Psicológica', question: 'Tenho receio de falar sobre problemas/erros/riscos sem sofrer punição.', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+      { id: 'psy-13', group: 'Reconhecimento, Justiça e Segurança Psicológica', question: 'Já sofri algum tipo de assédio?', score: '', scaleLabel: '1=Nunca · 2=Raramente · 3=Às vezes · 4=Frequentemente · 5=Sempre', inverted: false, comments: '' },
+    ],
+    psychosocialAverages: {
+      demandRhythm: 0,
+      autonomyControl: 0,
+      roleClarityConflict: 0,
+      socialSupportLeadership: 0,
+      recognitionJusticePsychSafety: 0,
+      overall: 0,
+    },
+    psychosocialClassification: '',
+    psychosocialInterpretation: '',
+    aetTriggers: [
+      { id: 'trig-1', answer: 'Não', description: 'Suspeita de adoecimento ou queixas osteomusculares recorrentes relacionadas diretamente ao posto de trabalho.' },
+      { id: 'trig-2', answer: 'Não', description: 'Movimentação Manual de Cargas (MMC) relevante e frequente, sem a disponibilidade ou uso adequado de auxílios mecânicos ou engenharia.' },
+      { id: 'trig-3', answer: 'Não', description: 'Repetitividade de movimentos de alta frequência combinada com restrição de pausas ou ausência de rodízio de tarefas.' },
+      { id: 'trig-4', answer: 'Não', description: 'Posturas forçadas ou estáticas sustentadas por tempo prolongado, sem possibilidade de ajustes ou alternância postural.' },
+      { id: 'trig-5', answer: 'Não', description: 'Resultado do Bloco Psicossocial classificado como VERMELHO (Alto Risco) persistente, com impacto percebido na saúde ou segurança.' },
+      { id: 'trig-6', answer: 'Não', description: 'Mudança significativa no processo de trabalho, layout, equipamentos ou ferramentas que possa ter introduzido novos riscos ergonômicos ou agravado os existentes.' },
+      { id: 'trig-7', answer: 'Não', description: 'Existência de não conformidades graves identificadas em auditorias internas ou externas (MPT/MTE) relacionadas à ergonomia do posto.' },
+    ],
+    finalGuidance: '',
+    decisionJustification: '',
+    raciActionPlan: [],
+    technicalResponsible: {
+      name: '',
+      registration: '',
+      formation: '',
+      company: '',
+      signatureDataUrl: '',
+    },
+  };
+}
+
+export type ReportType = 'AEP' | 'AET';
 
 export interface AETProject {
   id: string;
+  reportType: ReportType;
+  // FK relationships
+  empresaId?: string;
+  unidadeId?: string;
   // Logos
   consultoriaLogoDataUrl: string;
   companyLogoDataUrl: string;
@@ -344,14 +685,31 @@ export interface AETProject {
 
 // ── Default values ──────────────────────────────────────────────────────────
 
-export const DEFAULT_INTRO_ERGONOMIA =
+const ERGONOMIA_CONCEPT =
   'A Ergonomia é o conjunto de conhecimentos científicos relativos ao homem e necessários para a concepção de ferramentas, máquinas e dispositivos que possam ser utilizados com o máximo de conforto, segurança e eficiência. Conforme a Associação Brasileira de Ergonomia (ABERGO), trata-se de uma disciplina científica que estuda as interações entre os seres humanos e outros elementos de um sistema.';
 
-export const DEFAULT_INTRO_OBJETIVO =
+// AEP — Análise Ergonômica Preliminar
+export const DEFAULT_AEP_INTRO_ERGONOMIA = ERGONOMIA_CONCEPT;
+
+export const DEFAULT_AEP_INTRO_OBJETIVO =
+  'Esta AEP tem como objetivo realizar uma avaliação ergonômica preliminar das condições de trabalho nos postos avaliados, identificando os principais fatores de risco ergonômico, priorizando-os por meio de matriz de risco e propondo ações corretivas e preventivas, em conformidade com a NR-17 (Ergonomia) e demais normas aplicáveis.';
+
+export const DEFAULT_AEP_INTRO_METODOLOGIA =
+  'A metodologia adotada para esta AEP compreende: visitas técnicas ao ambiente de trabalho; observação direta e registro fotográfico dos postos de trabalho; entrevistas com trabalhadores e gestores; identificação e classificação dos fatores de risco ergonômico; e avaliação por meio da Matriz de Risco (Probabilidade × Gravidade), com elaboração de plano de ação prioritário.';
+
+// AET — Análise Ergonômica do Trabalho
+export const DEFAULT_AET_INTRO_ERGONOMIA = ERGONOMIA_CONCEPT;
+
+export const DEFAULT_AET_INTRO_OBJETIVO =
   'Esta AET tem como objetivo atender ao disposto na NR-17 (Ergonomia), identificar e avaliar os fatores ergonômicos presentes nos postos de trabalho, propondo melhorias que visem à promoção da saúde, ao conforto, à segurança e ao desempenho dos trabalhadores.';
 
-export const DEFAULT_INTRO_METODOLOGIA =
+export const DEFAULT_AET_INTRO_METODOLOGIA =
   'A metodologia adotada compreende: visitas técnicas ao ambiente de trabalho; entrevistas com trabalhadores e gestores; registros fotográficos e filmagens; observação sistemática das atividades; medições de iluminância conforme NHO 11 (Fundacentro); e aplicação de métodos científicos validados (RULA, REBA, NIOSH, entre outros) com auxílio de softwares especializados.';
+
+// Aliases para compatibilidade — apontam para AET (tipo padrão)
+export const DEFAULT_INTRO_ERGONOMIA  = DEFAULT_AET_INTRO_ERGONOMIA;
+export const DEFAULT_INTRO_OBJETIVO   = DEFAULT_AET_INTRO_OBJETIVO;
+export const DEFAULT_INTRO_METODOLOGIA = DEFAULT_AET_INTRO_METODOLOGIA;
 
 export const EMPTY_ILLUMINATION: AETIllumination = {
   location: '',
@@ -370,13 +728,18 @@ export const EMPTY_ILLUMINATION: AETIllumination = {
   resultLux: '',
   interpretation: '',
   normativeReference: 'NHO 11 – Fundacentro; ABNT NBR ISO/CIE 8995-1:2013',
+  modelType: 'SIMPLE_AVERAGE',
   conclusion: '',
   conclusionText: '',
   checklist: [],
+  measurementPoints: [],
+  referenceLux: 0,
 };
 
 export const EMPTY_FUNCTION: AETFunction = {
   id: '',
+  unidadeId: '',
+  setorId: '',
   name: '',
   unit: '',
   sector: '',
@@ -438,6 +801,8 @@ export const EMPTY_FUNCTION: AETFunction = {
   reworkDesc: '',
   reworkWeek: '',
   reworkNotApplicable: false,
+  usesEquipment: false,
+  usesEPI: false,
   equipmentList: [],
   epiList: [],
   equipProblems: '',
@@ -458,4 +823,20 @@ export const EMPTY_FUNCTION: AETFunction = {
   improvements: [],
   checklistAnswers: [],
   rulaScore: '',
+  risks: [],
+  // AEP fields
+  ghe: '',
+  generalConditions: '',
+  accessConditions: '',
+  workstationOrganization: '',
+  environmentalConditions: '',
+  biomechanicalFactors: '',
+  cognitiveFactors: '',
+  organizationalFactors: '',
+  prescribedTask: '',
+  realTask: '',
+  conclusion: '',
+  requiresAET: false,
+  requiresAETJustification: '',
+  aep: createEmptyAEPFunctionAssessment(),
 };
