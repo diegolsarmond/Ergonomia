@@ -535,6 +535,28 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
 
   // ── Save ─────────────────────────────────────────────────────────────────
 
+  const buildSynced = (): AETFunction => {
+    // Base: registro já armazenado (preserva campos AET em funções convertidas).
+    // Para funções novas (id ausente no projeto), usa formData como base.
+    const existingFunc = project.functions.find((f: AETFunction) => f.id === formData.id);
+    return {
+      ...(existingFunc ?? formData),
+      id:                       formData.id,
+      name:                     formData.name,
+      unit:                     formData.unit,
+      sector:                   formData.sector,
+      numEmployees:             formData.numEmployees,
+      analysisDate:             formData.analysisDate,
+      requiresAET:              formData.requiresAET,
+      requiresAETJustification: formData.requiresAETJustification,
+      aep: formData.aep,
+      prescribedTask: formData.aep?.workCharacterization.processDescription || formData.prescribedTask,
+      realTask:       formData.aep?.workCharacterization.workCycleDescription || formData.realTask,
+      conclusion:     formData.aep?.decisionJustification || formData.conclusion,
+      demandFound:    formData.aep?.identification.evaluatedActivity || formData.demandFound,
+    };
+  };
+
   const handleSave = async () => {
     if (!formData.name?.trim()) {
       setError('O Nome da Função é obrigatório.');
@@ -545,31 +567,31 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     setSaved(false);
     try {
       setError(null);
-      // Base: registro já armazenado (preserva campos AET em funções convertidas).
-      // Para funções novas (id ausente no projeto), usa formData como base.
-      const existingFunc = project.functions.find(f => f.id === formData.id);
-      const synced: AETFunction = {
-        ...(existingFunc ?? formData),
-        // Campos core gerenciados pelo formulário AEP
-        id:                       formData.id,
-        name:                     formData.name,
-        unit:                     formData.unit,
-        sector:                   formData.sector,
-        numEmployees:             formData.numEmployees,
-        analysisDate:             formData.analysisDate,
-        requiresAET:              formData.requiresAET,
-        requiresAETJustification: formData.requiresAETJustification,
-        // Objeto AEP estruturado — fonte da verdade para funções AEP
-        aep: formData.aep,
-        // Campos ponte legados (AEPPreview usa como fallback)
-        prescribedTask: formData.aep?.workCharacterization.processDescription || formData.prescribedTask,
-        realTask:       formData.aep?.workCharacterization.workCycleDescription || formData.realTask,
-        conclusion:     formData.aep?.decisionJustification || formData.conclusion,
-        demandFound:    formData.aep?.identification.evaluatedActivity || formData.demandFound,
-      };
-      await onSave(synced);
+      await onSave(buildSynced());
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setError('Não foi possível salvar a função.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAndBack = async () => {
+    if (!formData.name?.trim()) {
+      setError('O Nome da Função é obrigatório.');
+      setActiveTab(0);
+      return;
+    }
+    setSaving(true);
+    try {
+      setError(null);
+      if (onSaveAndBack) {
+        await onSaveAndBack(buildSynced());
+      } else {
+        await onSave(buildSynced());
+        navigate(`/project/${project.id}`);
+      }
     } catch {
       setError('Não foi possível salvar a função.');
     } finally {
@@ -1436,7 +1458,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         {activeTab < AEP_TABS.length - 1 ? (
           <Button onClick={() => setActiveTab(t => t + 1)}>Próximo →</Button>
         ) : (
-          <Button onClick={handleSave} disabled={saving} className="!bg-teal-600 !text-white hover:!bg-teal-700">
+          <Button onClick={handleSaveAndBack} disabled={saving} className="!bg-teal-600 !text-white hover:!bg-teal-700">
             <Save className="w-4 h-4" /> {saving ? 'Salvando...' : 'Salvar Função'}
           </Button>
         )}

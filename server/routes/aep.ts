@@ -341,7 +341,8 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
       COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
       COALESCE(NULLIF(p.grau_risco,''), e.grau_risco)      AS grau_risco,
-      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade
+      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade,
+      COALESCE(NULLIF(p.logo_empresa,''), e.logo_url)      AS logo_empresa_resolved
     FROM aep_projetos p
     LEFT JOIN empresas e ON e.id = p.empresa_id
     LEFT JOIN unidades u ON u.id = p.unidade_id
@@ -631,7 +632,7 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       empresaId: p.empresa_id ?? null,
       unidadeId: p.unidade_id ?? null,
       consultoriaLogoDataUrl: p.logo_consultoria ?? '',
-      companyLogoDataUrl:     p.logo_empresa ?? '',
+      companyLogoDataUrl:     p.logo_empresa_resolved ?? '',
       responsibleLogoDataUrl: p.logo_responsavel ?? '',
       companyName:  p.nome_empresa ?? '',
       fantasyName:  p.nome_fantasia ?? '',

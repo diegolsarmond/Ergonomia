@@ -110,6 +110,15 @@ export const FunctionForm = () => {
         navigate(`/project/${id}/function/${newId}`, { replace: true });
       } else {
         await updateFunction(id!, funcId!, data);
+      }
+    };
+    const handleAEPSaveAndBack = async (data: AETFunction) => {
+      if (!canEdit) return;
+      if (isNew) {
+        const newId = await addFunction(id!, data);
+        navigate(`/project/${id}/function/${newId}`, { replace: true });
+      } else {
+        await updateFunction(id!, funcId!, data);
         navigate(`/project/${id}`);
       }
     };
@@ -119,6 +128,7 @@ export const FunctionForm = () => {
         funcId={funcId!}
         initialData={initialData}
         onSave={handleAEPSave}
+        onSaveAndBack={handleAEPSaveAndBack}
       />
     );
   }
