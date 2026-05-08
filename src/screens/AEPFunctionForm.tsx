@@ -199,6 +199,95 @@ const CatalogMultiSelect: React.FC<CatalogMultiSelectProps> = ({ label, items, v
   );
 };
 
+const MultiSelectAutocomplete: React.FC<{
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}> = ({ label, options, value, onChange, placeholder }) => {
+  const selected = value.split(', ').filter(Boolean);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  const toggle = (opt: string) => {
+    const cur = value.split(', ').filter(Boolean);
+    const nxt = cur.includes(opt) ? cur.filter(v => v !== opt) : [...cur, opt];
+    onChange(nxt.join(', '));
+  };
+
+  return (
+    <div className="space-y-2">
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.filter(s => options.includes(s) || s === 'Outros').map(opt => (
+            <span key={opt} className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium">
+              {opt}
+              <button type="button" onClick={() => toggle(opt)} className="hover:text-teal-900 leading-none">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => { setOpen(o => !o); setSearch(''); }}
+          className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-500 hover:border-teal-400 hover:text-teal-600 transition-colors bg-white"
+        >
+          <span>{placeholder ?? `Selecionar ${label.toLowerCase()}...`}</span>
+          <Plus className="w-4 h-4" />
+        </button>
+        {open && (
+          <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+            <div className="p-2 border-b border-slate-100">
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar..."
+                className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+              />
+            </div>
+            <ul className="max-h-48 overflow-y-auto">
+              {filtered.length === 0 && (
+                <li className="px-3 py-2 text-xs text-slate-400">Nenhum item encontrado.</li>
+              )}
+              {filtered.map(opt => {
+                const isSelected = selected.includes(opt);
+                return (
+                  <li key={opt}>
+                    <button
+                      type="button"
+                      onClick={() => { toggle(opt); setOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${isSelected ? 'bg-teal-50 text-teal-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${isSelected ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300'}`}>
+                        {isSelected && '✓'}
+                      </span>
+                      {opt}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
@@ -877,95 +966,179 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               <SectionTitle>2.2 Organização do Trabalho</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Jornada de Trabalho">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {['6h/Dia', '8h/Dia', '12h/Dia'].map(opt => {
-                      const selected = aep.workCharacterization.workOrganization.workday.split(', ').includes(opt);
-                      return (
-                        <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.workOrganization.workday.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== opt) : [...cur, opt];
-                            setWorkOrg('workday', nxt.join(', '));
-                          }} />
-                          {opt}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <Input
-                    value={(() => {
-                      const options = ['6h/Dia', '8h/Dia', '12h/Dia'];
-                      return aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && !options.includes(v)).join(', ');
-                    })()}
-                    onChange={e => {
-                      const options = ['6h/Dia', '8h/Dia', '12h/Dia'];
-                      const fromOptions = aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && options.includes(v));
-                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                      setWorkOrg('workday', [...fromOptions, ...extra].join(', '));
-                    }}
-                    placeholder="Outra jornada..."
+                  <MultiSelectAutocomplete
+                    label="Jornada de Trabalho"
+                    options={['6h/Dia', '8h/Dia', '12h/Dia', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.workday}
+                    onChange={v => setWorkOrg('workday', v)}
                   />
+                  {aep.workCharacterization.workOrganization.workday.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['6h/Dia', '8h/Dia', '12h/Dia', 'Outros'];
+                        return aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['6h/Dia', '8h/Dia', '12h/Dia', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        setWorkOrg('workday', [...fromOptions, ...extra].join(', '));
+                      }}
+                      placeholder="Outra jornada..."
+                    />
+                  )}
                 </FormGroup>
+
                 <FormGroup label="Escala / Turno">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {shiftCatalog.filter(s => s.active).map(s => {
-                      const selected = aep.workCharacterization.workOrganization.scale.split(', ').includes(s.name);
-                      return (
-                        <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.workOrganization.scale.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== s.name) : [...cur, s.name];
-                            setWorkOrg('scale', nxt.join(', '));
-                          }} />
-                          {s.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <Input value={aep.workCharacterization.workOrganization.scale} onChange={e => setWorkOrg('scale', e.target.value)} placeholder="Ex: 6x1, 5x2, 12x36..." />
-                </FormGroup>
-                <FormGroup label="Horas Extras">
-                  <Input value={aep.workCharacterization.workOrganization.overtime} onChange={e => setWorkOrg('overtime', e.target.value)} placeholder="Ex: Eventualmente" />
-                </FormGroup>
-                <FormGroup label="Pausa para o almoço">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {['60min.', '15min.', 'N/A'].map(opt => {
-                      const selected = aep.workCharacterization.workOrganization.lunchBreak.split(', ').includes(opt);
-                      return (
-                        <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== opt) : [...cur, opt];
-                            setWorkOrg('lunchBreak', nxt.join(', '));
-                          }} />
-                          {opt}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <Input
-                    value={(() => {
-                      const options = ['60min.', '15min.', 'N/A'];
-                      return aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && !options.includes(v)).join(', ');
-                    })()}
-                    onChange={e => {
-                      const options = ['60min.', '15min.', 'N/A'];
-                      const fromOptions = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && options.includes(v));
-                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                      setWorkOrg('lunchBreak', [...fromOptions, ...extra].join(', '));
-                    }}
-                    placeholder="Outra pausa..."
+                  <MultiSelectAutocomplete
+                    label="Escala / Turno"
+                    options={[...shiftCatalog.filter(s => s.active).map(s => s.name), 'Outros']}
+                    value={aep.workCharacterization.workOrganization.scale}
+                    onChange={v => setWorkOrg('scale', v)}
                   />
+                  {aep.workCharacterization.workOrganization.scale.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = [...shiftCatalog.filter(s => s.active).map(s => s.name), 'Outros'];
+                        return aep.workCharacterization.workOrganization.scale.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = [...shiftCatalog.filter(s => s.active).map(s => s.name), 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.scale.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        setWorkOrg('scale', [...fromOptions, ...extra].join(', '));
+                      }}
+                      placeholder="Ex: 6x1, 5x2, 12x36..."
+                    />
+                  )}
                 </FormGroup>
+
+                <FormGroup label="Horas Extras">
+                  <MultiSelectAutocomplete
+                    label="Horas Extras"
+                    options={['Não há', 'Eventualmente', 'Frequentemente', 'Raramente', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.overtime}
+                    onChange={v => setWorkOrg('overtime', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.overtime.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['Não há', 'Eventualmente', 'Frequentemente', 'Raramente', 'Outros'];
+                        return aep.workCharacterization.workOrganization.overtime.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['Não há', 'Eventualmente', 'Frequentemente', 'Raramente', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.overtime.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        setWorkOrg('overtime', [...fromOptions, ...extra].join(', '));
+                      }}
+                      placeholder="Ex: Todo sábado, etc."
+                    />
+                  )}
+                </FormGroup>
+
+                <FormGroup label="Pausa para o almoço">
+                  <MultiSelectAutocomplete
+                    label="Pausa para o almoço"
+                    options={['60min.', '15min.', 'N/A', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.lunchBreak}
+                    onChange={v => setWorkOrg('lunchBreak', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.lunchBreak.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['60min.', '15min.', 'N/A', 'Outros'];
+                        return aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['60min.', '15min.', 'N/A', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        setWorkOrg('lunchBreak', [...fromOptions, ...extra].join(', '));
+                      }}
+                      placeholder="Outra pausa..."
+                    />
+                  )}
+                </FormGroup>
+
                 <FormGroup label="Outras Pausas">
-                  <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Descreva outras pausas existentes..." />
+                  <MultiSelectAutocomplete
+                    label="Outras Pausas"
+                    options={['Não há', '10min.', '15min.', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.otherBreaks}
+                    onChange={v => setWorkOrg('otherBreaks', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.otherBreaks.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['Não há', '10min.', '15min.', 'Outros'];
+                        return aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['Não há', '10min.', '15min.', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        setWorkOrg('otherBreaks', [...fromOptions, ...extra].join(', '));
+                      }}
+                      placeholder="Descreva outras pausas existentes..."
+                    />
+                  )}
                 </FormGroup>
+
                 <FormGroup label="Rodízio de Tarefas">
-                  <Input value={aep.workCharacterization.workOrganization.taskRotation} onChange={e => setWorkOrg('taskRotation', e.target.value)} placeholder="Ex: Não há rodízio formalizado" />
+                  <MultiSelectAutocomplete
+                    label="Rodízio de Tarefas"
+                    options={['Não há rodízio formalizado', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.taskRotation}
+                    onChange={v => setWorkOrg('taskRotation', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.taskRotation.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['Não há rodízio formalizado', 'Outros'];
+                        return aep.workCharacterization.workOrganization.taskRotation.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['Não há rodízio formalizado', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.taskRotation.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                        setWorkOrg('taskRotation', [...fromOptions, ...extra].join(', '));
+                      }}
+                      placeholder="Descreva o rodízio..."
+                    />
+                  )}
                 </FormGroup>
+
               </div>
               <FormGroup label="Diálogos de Segurança / DDS">
-                <Input value={aep.workCharacterization.workOrganization.safetyDialogues} onChange={e => setWorkOrg('safetyDialogues', e.target.value)} placeholder="Ex: Semanal" />
+                <MultiSelectAutocomplete
+                  label="Diálogos de Segurança / DDS"
+                  options={['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Não há', 'Outros']}
+                  value={aep.workCharacterization.workOrganization.safetyDialogues}
+                  onChange={v => setWorkOrg('safetyDialogues', v)}
+                />
+                {aep.workCharacterization.workOrganization.safetyDialogues.split(', ').includes('Outros') && (
+                  <Input
+                    className="mt-2"
+                    value={(() => {
+                      const options = ['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Não há', 'Outros'];
+                      return aep.workCharacterization.workOrganization.safetyDialogues.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const options = ['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Não há', 'Outros'];
+                      const fromOptions = aep.workCharacterization.workOrganization.safetyDialogues.split(', ').filter(v => v && options.includes(v));
+                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                      setWorkOrg('safetyDialogues', [...fromOptions, ...extra].join(', '));
+                    }}
+                    placeholder="Ex: Trimestral..."
+                  />
+                )}
               </FormGroup>
 
               <SectionTitle>2.3 Equipamentos e EPIs</SectionTitle>
