@@ -400,7 +400,7 @@ export interface AEPFunctionFields {
 
 // ── AEP — Structured Assessment (planilha "AEP 2026 modelo") ─────────────────
 
-export type BiomechanicalAssessment = 'OK' | 'Atenção' | 'Crítico' | 'N.A.' | '';
+export type BiomechanicalAssessment = 'Regular' | 'OK' | 'Atenção' | 'Crítico' | 'N.A.' | '';
 
 export interface BiomechanicalItem {
   riskFactorId: string;
@@ -582,11 +582,11 @@ export function createEmptyAEPFunctionAssessment(): AEPFunctionAssessment {
     photographicRecords: [],
     lgpdNote: LGPD_NOTE,
     biomechanics: {
-      postureAndReach: [],
-      repetitivenessAndRhythm: [],
-      forceAndPhysicalDemand: [],
-      manualMaterialHandling: [],
-      furnitureAndWorkstation: [],
+      postureAndReach: [{ riskFactorId: '__na__', assessment: 'N.A.' as const, description: '' }],
+      repetitivenessAndRhythm: [{ riskFactorId: '__na__', assessment: 'N.A.' as const, description: '' }],
+      forceAndPhysicalDemand: [{ riskFactorId: '__na__', assessment: 'N.A.' as const, description: '' }],
+      manualMaterialHandling: [{ riskFactorId: '__na__', assessment: 'N.A.' as const, description: '' }],
+      furnitureAndWorkstation: [{ riskFactorId: '__na__', assessment: 'N.A.' as const, description: '' }],
       environmentalComfort: {
         lightingComplaint: 'Não',
         lightingValue: '',

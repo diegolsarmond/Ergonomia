@@ -37,10 +37,9 @@ const AEP_TABS = [
 ];
 
 const ASSESSMENT_OPTIONS: { value: BiomechanicalAssessment; label: string; color: string }[] = [
-  { value: 'OK',       label: 'OK',      color: 'bg-green-100 text-green-800 border-green-300' },
+  { value: 'Regular', label: 'Regular', color: 'bg-green-100 text-green-800 border-green-300' },
   { value: 'Atenção',  label: 'Atenção', color: 'bg-amber-100 text-amber-800 border-amber-300' },
   { value: 'Crítico',  label: 'Crítico', color: 'bg-red-100 text-red-800 border-red-300' },
-  { value: 'N.A.',     label: 'N.A.',    color: 'bg-slate-100 text-slate-600 border-slate-300' },
 ];
 
 
@@ -703,6 +702,20 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     Crítica: 'text-red-700',
   };
 
+  const setGroupNA = (
+    group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
+    na: boolean,
+  ) =>
+    setAep(a => ({
+      ...a,
+      biomechanics: {
+        ...a.biomechanics,
+        [group]: na
+          ? [{ riskFactorId: '__na__', assessment: 'N.A.' as BiomechanicalAssessment, description: '' }]
+          : (a.biomechanics[group] as BiomechanicalItem[]).filter(i => i.riskFactorId !== '__na__'),
+      },
+    }));
+
   const renderBiomecGroup = (
     title: string,
     group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
@@ -711,14 +724,42 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
       rf.active &&
       rf.biomechanicalFactors?.some(bf => bf.trim().toLowerCase() === title.trim().toLowerCase())
     );
-    const savedItems = aep.biomechanics[group] as BiomechanicalItem[];
+    const allItems = aep.biomechanics[group] as BiomechanicalItem[];
+    const isGroupNA = allItems.some(i => i.riskFactorId === '__na__');
+    const savedItems = allItems.filter(i => i.riskFactorId !== '__na__');
     const availableToAdd = catalogRisks.filter(rf => !savedItems.find(i => i.riskFactorId === rf.id));
 
     return (
       <div className="mb-6">
-        <h4 className="text-sm font-semibold text-slate-700 mb-2">{title}</h4>
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="text-sm font-semibold text-slate-700">{title}</h4>
+          <button
+            type="button"
+            onClick={() => setGroupNA(group, !isGroupNA)}
+            className="flex items-center gap-2 ml-auto group"
+            title={isGroupNA ? 'Marcar como aplicável' : 'Marcar como não aplicável'}
+          >
+            <span className={`text-[10px] font-medium transition-colors ${isGroupNA ? 'text-slate-700 font-bold' : 'text-slate-400'}`}>
+              N.A.
+            </span>
+            <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors duration-200 ${
+              isGroupNA ? 'bg-slate-300 border-slate-400' : 'bg-teal-500 border-teal-500'
+            }`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                isGroupNA ? 'translate-x-0' : 'translate-x-4'
+              }`} />
+            </span>
+            <span className={`text-[10px] font-medium transition-colors ${isGroupNA ? 'text-slate-500' : 'text-teal-700'}`}>
+              Aplica
+            </span>
+          </button>
+        </div>
 
-        {catalogRisks.length === 0 ? (
+        {isGroupNA ? (
+          <div className="px-4 py-2 bg-slate-100 border border-slate-300 rounded-xl">
+            <span className="text-xs text-slate-500 italic">Esta categoria não se aplica à função avaliada.</span>
+          </div>
+        ) : catalogRisks.length === 0 ? (
           <div className="px-4 py-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
             <span className="text-xs text-slate-400 italic">
               Nenhum fator de risco cadastrado para esta categoria em Parâmetros → Fatores de Risco Biomecânicos.
@@ -741,23 +782,29 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     {savedItems.map(item => {
                       const rf = catalogRisks.find(r => r.id === item.riskFactorId);
                       if (!rf) return null;
-                      const assessmentColor = item.assessment
-                        ? ASSESSMENT_OPTIONS.find(o => o.value === item.assessment)?.color ?? 'border-slate-200'
-                        : 'border-slate-200 text-slate-400';
                       return (
                         <tr key={item.riskFactorId} className="hover:bg-slate-50/50">
                           <td className="p-2 border border-slate-200 text-slate-700 text-xs font-medium">{rf.name}</td>
                           <td className="p-2 border border-slate-200">
-                            <select
-                              value={item.assessment}
-                              onChange={e => updateBiomecItem(group, item.riskFactorId, 'assessment', e.target.value)}
-                              className={`w-full rounded-lg border px-2 py-1 text-[10px] font-medium ${assessmentColor}`}
-                            >
-                              <option value="">—</option>
-                              {ASSESSMENT_OPTIONS.map(o => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                              ))}
-                            </select>
+                            <div className="flex flex-wrap items-center gap-1">
+                              {ASSESSMENT_OPTIONS.map(o => {
+                                const isSelected = item.assessment === o.value;
+                                return (
+                                  <button
+                                    key={o.value}
+                                    type="button"
+                                    onClick={() => updateBiomecItem(group, item.riskFactorId, 'assessment', isSelected ? '' : o.value)}
+                                    className={`px-2 py-1 text-[10px] font-medium rounded-md border transition-all ${
+                                      isSelected
+                                        ? `${o.color} shadow-sm`
+                                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                    }`}
+                                  >
+                                    {o.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </td>
                           <td className="p-2 border border-slate-200">
                             <input
@@ -1145,7 +1192,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
               <FormGroup label="Equipamentos Utilizados">
                 <CatalogMultiSelect
                   label="Equipamentos"
-                  items={equipmentCatalog}
+                  items={[...equipmentCatalog, { id: 'outros', name: 'Outros', active: true } as any]}
                   value={aep.workCharacterization.toolsAndMaterials.description}
                   onChange={v => setTools('description', v)}
                   onAddNew={async name => {
@@ -1153,27 +1200,29 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   }}
                   placeholder="Selecionar equipamentos do catálogo..."
                 />
-                <Input
-                  className="mt-2"
-                  value={(() => {
-                    const catalogNames = equipmentCatalog.map(e => e.name);
-                    return aep.workCharacterization.toolsAndMaterials.description
-                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
-                  })()}
-                  onChange={e => {
-                    const catalogNames = equipmentCatalog.map(eq => eq.name);
-                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.description
-                      .split(', ').filter(n => n && catalogNames.includes(n));
-                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                    setTools('description', [...fromCatalog, ...extra].join(', '));
-                  }}
-                  placeholder="Outros equipamentos (não cadastrados), separados por vírgula..."
-                />
+                {aep.workCharacterization.toolsAndMaterials.description.split(', ').includes('Outros') && (
+                  <Input
+                    className="mt-2"
+                    value={(() => {
+                      const catalogNames = [...equipmentCatalog.map(e => e.name), 'Outros'];
+                      return aep.workCharacterization.toolsAndMaterials.description
+                        .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const catalogNames = [...equipmentCatalog.map(eq => eq.name), 'Outros'];
+                      const fromCatalog = aep.workCharacterization.toolsAndMaterials.description
+                        .split(', ').filter(n => n && catalogNames.includes(n));
+                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                      setTools('description', [...fromCatalog, ...extra].join(', '));
+                    }}
+                    placeholder="Especifique outros equipamentos (separados por vírgula)..."
+                  />
+                )}
               </FormGroup>
               <FormGroup label="EPIs Utilizados">
                 <CatalogMultiSelect
                   label="EPIs"
-                  items={epiCatalog}
+                  items={[...epiCatalog, { id: 'outros', name: 'Outros', active: true } as any]}
                   value={aep.workCharacterization.toolsAndMaterials.epis}
                   onChange={v => setTools('epis', v)}
                   onAddNew={async name => {
@@ -1181,22 +1230,24 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   }}
                   placeholder="Selecionar EPIs do catálogo..."
                 />
-                <Input
-                  className="mt-2"
-                  value={(() => {
-                    const catalogNames = epiCatalog.map(e => e.name);
-                    return aep.workCharacterization.toolsAndMaterials.epis
-                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
-                  })()}
-                  onChange={e => {
-                    const catalogNames = epiCatalog.map(ep => ep.name);
-                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.epis
-                      .split(', ').filter(n => n && catalogNames.includes(n));
-                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                    setTools('epis', [...fromCatalog, ...extra].join(', '));
-                  }}
-                  placeholder="Outros EPIs (não cadastrados), separados por vírgula..."
-                />
+                {aep.workCharacterization.toolsAndMaterials.epis.split(', ').includes('Outros') && (
+                  <Input
+                    className="mt-2"
+                    value={(() => {
+                      const catalogNames = [...epiCatalog.map(e => e.name), 'Outros'];
+                      return aep.workCharacterization.toolsAndMaterials.epis
+                        .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const catalogNames = [...epiCatalog.map(ep => ep.name), 'Outros'];
+                      const fromCatalog = aep.workCharacterization.toolsAndMaterials.epis
+                        .split(', ').filter(n => n && catalogNames.includes(n));
+                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                      setTools('epis', [...fromCatalog, ...extra].join(', '));
+                    }}
+                    placeholder="Especifique outros EPIs (separados por vírgula)..."
+                  />
+                )}
               </FormGroup>
               <FormGroup label="Outros Recursos">
                 <Input value={aep.workCharacterization.toolsAndMaterials.others} onChange={e => setTools('others', e.target.value)} />

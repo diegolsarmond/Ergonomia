@@ -108,7 +108,7 @@ const assessColor: Record<string, { bg: string; color: string }> = {
   'OK':      { bg: '#dcfce7', color: '#14532d' },
   'Atenção': { bg: '#fef9c3', color: '#713f12' },
   'Crítico': { bg: '#fee2e2', color: '#7f1d1d' },
-  'N.A.':    { bg: '#f1f5f9', color: '#64748b' },
+  'N.A.':    { bg: '#cbd5e1', color: '#1e293b' },
 };
 
 const psyClassifColor: Record<string, { bg: string; color: string }> = {
@@ -121,34 +121,39 @@ const BiomecTable: React.FC<{
   title: string;
   items: BiomechanicalItem[];
   riskFactorsCatalog: any[];
-}> = ({ title, items, riskFactorsCatalog }) => (
-  <>
-    <h4>{title}</h4>
-    <table style={{ fontSize: '0.72rem' }}>
-      <thead>
-        <tr>
-          <th style={{ width: '12%' }}>Avaliação</th>
-          <th style={{ width: '30%' }}>Fatores de Risco</th>
-          <th>Descrição / Observação</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item, i) => {
-          const ac = item.assessment ? assessColor[item.assessment] : null;
-          const selectedRiskNames = (item.selectedRiskFactors || [])
-            .map(id => riskFactorsCatalog.find(rf => rf.id === id)?.name)
-            .filter(Boolean);
+}> = ({ title, items, riskFactorsCatalog }) => {
+  if (items.length === 0) return null;
 
-          return (
-            <React.Fragment key={i}>
-              {item.factor && (
-                <tr>
-                  <th colSpan={3} scope="rowgroup" style={{ background: '#f1f5f9', fontWeight: 600, fontSize: '0.7rem', color: PALETTE.dark, textAlign: 'left' }}>
-                    {item.factor}
-                  </th>
-                </tr>
-              )}
-              <tr>
+  const isGroupNA = items.length === 1 && items[0].riskFactorId === '__na__';
+  const visibleItems = items.filter(i => i.riskFactorId !== '__na__');
+
+  return (
+  <>
+    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {title}
+      {isGroupNA && (
+        <span style={{ display: 'inline-block', padding: '1px 10px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: assessColor['N.A.'].bg, color: assessColor['N.A.'].color }}>
+          N.A.
+        </span>
+      )}
+    </h4>
+    {!isGroupNA && visibleItems.length > 0 && (
+      <table style={{ fontSize: '0.72rem' }}>
+        <thead>
+          <tr>
+            <th style={{ width: '12%' }}>Avaliação</th>
+            <th style={{ width: '30%' }}>Fatores de Risco</th>
+            <th>Descrição / Observação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleItems.map((item, i) => {
+            const ac = item.assessment ? assessColor[item.assessment] : null;
+            const rf = riskFactorsCatalog.find(r => r.id === item.riskFactorId);
+            const name = rf?.name ?? item.riskFactorId;
+
+            return (
+              <tr key={i}>
                 <td style={{ textAlign: 'center' }}>
                   {item.assessment ? (
                     <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: ac?.bg, color: ac?.color }}>
@@ -156,20 +161,17 @@ const BiomecTable: React.FC<{
                     </span>
                   ) : '—'}
                 </td>
-                <td>
-                  {selectedRiskNames.length > 0
-                    ? selectedRiskNames.join(' · ')
-                    : '—'}
-                </td>
+                <td>{name}</td>
                 <td>{item.description || '—'}</td>
               </tr>
-            </React.Fragment>
-          );
-        })}
-      </tbody>
-    </table>
+            );
+          })}
+        </tbody>
+      </table>
+    )}
   </>
-);
+  );
+};
 
 // ── Illuminance Measurement Section ─────────────────────────────────────────
 
@@ -222,14 +224,9 @@ const IlluminanceSection: React.FC<{ measurements: IlluminanceMeasurement[] }> =
           <div key={m.id} style={{ marginBottom: '28px', borderTop: idx > 0 ? `2px solid ${PALETTE.border}` : undefined, paddingTop: idx > 0 ? '20px' : undefined }}>
 
             {/* Title */}
-            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: PALETTE.dark, marginBottom: '2px' }}>
-              {idx + 1}. {m.posto || `Medição ${idx + 1}`}
+            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: PALETTE.dark, marginBottom: '6px' }}>
+              Posto {idx + 1} - {m.posto || m.environment || `Medição ${idx + 1}`}
             </p>
-            {(m.environment || m.environmentType) && (
-              <p style={{ fontSize: '0.78rem', color: PALETTE.muted, marginBottom: '6px' }}>
-                {[m.environment, m.environmentType].filter(Boolean).join(' · ')}
-              </p>
-            )}
 
             {/* ── Tabela 1: parâmetros (= header do modelo) ── */}
             <table style={{ fontSize: '0.75rem', marginBottom: '6px' }}>
@@ -930,7 +927,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
               <tr>
                 <td style={{ border: 'none', padding: 0 }}>
                   {project.companyLogoDataUrl && (
-                    <div className="pdf-repeat-logo hidden justify-end mb-4 px-12">
+                    <div className="pdf-repeat-logo hidden justify-end mb-2 px-12" style={{ marginTop: '-5mm' }}>
                       <img
                         src={project.companyLogoDataUrl}
                         alt="Logo empresa"

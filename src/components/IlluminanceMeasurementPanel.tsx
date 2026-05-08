@@ -347,19 +347,9 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
           </div>
 
           {/* ── Dados gerais ── */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormGroup label="Ambiente" required>
-              <Input value={m.environment} onChange={e => onUpdate({ environment: e.target.value })} placeholder="Ex: Escritório Administrativo" />
-            </FormGroup>
-            <FormGroup label="Tipo de Ambiente / Atividade">
-              <Select value={m.normativeParameterId} onChange={e => handleNormativeSelect(e.target.value)}>
-                <option value="">Selecione ou digite manualmente...</option>
-                {normativeParams.filter(n => n.active).map(n => (
-                  <option key={n.id} value={n.id}>{n.activityDescription} ({n.minimumLux} lux)</option>
-                ))}
-              </Select>
-            </FormGroup>
-          </div>
+          <FormGroup label="Ambiente" required>
+            <Input value={m.environment} onChange={e => onUpdate({ environment: e.target.value })} placeholder="Ex: Escritório Administrativo" />
+          </FormGroup>
 
           {/* ── Geometria do ambiente ── */}
           <FormGroup label="Configuração do ambiente (define fórmula do IM)" required>
@@ -369,6 +359,15 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
             >
               {(Object.entries(GEOMETRY_LABELS) as [string, string][]).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
+              ))}
+            </Select>
+          </FormGroup>
+
+          <FormGroup label="Tipo de Ambiente / Atividade">
+            <Select value={m.normativeParameterId} onChange={e => handleNormativeSelect(e.target.value)}>
+              <option value="">Selecione ou digite manualmente...</option>
+              {normativeParams.filter(n => n.active).map(n => (
+                <option key={n.id} value={n.id}>{n.activityDescription} ({n.minimumLux} lux)</option>
               ))}
             </Select>
           </FormGroup>

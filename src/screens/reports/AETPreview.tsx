@@ -513,10 +513,10 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           <table className="w-full" style={{ border: 'none' }}>
             <thead>
               <tr>
-                <td style={{ border: 'none' }}>
-                  <div className="flex justify-end mb-4 px-12">
+                <td style={{ border: 'none', padding: 0 }}>
+                  <div className="pdf-repeat-logo hidden justify-end mb-2 px-12" style={{ marginTop: '-5mm' }}>
                     {project.companyLogoDataUrl
-                      ? <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-12 object-contain" />
+                      ? <img src={project.companyLogoDataUrl} alt="Logo empresa" style={{ maxHeight: '48px', objectFit: 'contain', display: 'block' }} />
                       : <span className="text-xs text-gray-400 font-medium tracking-wide">Logo Cliente</span>}
                   </div>
                 </td>

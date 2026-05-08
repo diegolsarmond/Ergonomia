@@ -213,7 +213,7 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     <div style={{ position: 'absolute', top: '8%', left: 0, right: '50%', height: '1px', background: PALETTE.coverLine }} />
 
     {/* Client logo */}
-    <div style={{ position: 'absolute', top: '3%', left: '7.5%', width: '15cqw' }}>
+    <div style={{ position: 'absolute', top: '3%', left: '7.5%', width: '19cqw' }}>
       {companyLogoDataUrl
         ? <img src={companyLogoDataUrl} alt="Logomarca do Cliente" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
         : <div style={{ width: '100%', aspectRatio: '2 / 1', background: PALETTE.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: PALETTE.muted }}>Logo Empresa</div>
@@ -230,18 +230,18 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     </div>
 
     {/* Company name */}
-    <div style={{ position: 'absolute', top: '45%', bottom: '33%', left: '17%', display: 'flex', alignItems: 'center' }}>
+    <div style={{ position: 'absolute', top: '45%', bottom: '33%', left: '17%', right: '11%', display: 'flex', alignItems: 'center' }}>
       <div style={{ position: 'relative', height: '100%', width: '2px', background: PALETTE.coverLine, marginRight: '4cqw' }}>
         <div style={{ position: 'absolute', left: '-3px', top: 0, width: '8px', height: '8px', background: PALETTE.coverLine }} />
         <div style={{ position: 'absolute', left: '-3px', bottom: 0, width: '8px', height: '8px', background: PALETTE.coverLine }} />
       </div>
-      <h2 style={{ fontSize: '3.5cqw', fontWeight: 700, letterSpacing: '0.2em', color: PALETTE.primary, margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+      <h2 style={{ fontSize: '3.5cqw', fontWeight: 700, letterSpacing: '0.2em', color: PALETTE.primary, margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
         {companyName || 'EMPRESA CLIENTE'}
       </h2>
     </div>
 
     {/* Month / Year */}
-    <div style={{ position: 'absolute', bottom: '18%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center', fontWeight: 700, fontSize: '1.4cqw', letterSpacing: '0.2em', color: PALETTE.primary, textTransform: 'uppercase' }}>
+    <div style={{ position: 'absolute', bottom: '18%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center', fontWeight: 700, fontSize: '2.4cqw', letterSpacing: '0.2em', color: PALETTE.primary, textTransform: 'uppercase' }}>
       {monthYear || 'MÊS E ANO'}
     </div>
 
