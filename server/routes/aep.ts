@@ -38,23 +38,20 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
   // 1. Upsert project header
   await client.query(
     `INSERT INTO aep_projetos
-       (id, nome_empresa, nome_fantasia, cnpj, endereco, unidade, produto, grau_risco, localizacao,
-        intro_ergonomia, intro_objetivo, intro_metodologia,
+       (id, intro_ergonomia, intro_objetivo, intro_metodologia,
         nome_avaliador, formacao_avaliador, crefito_avaliador, empresa_avaliador, assinatura_avaliador,
         data, logo_consultoria, logo_empresa, logo_responsavel,
         empresa_id, unidade_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::date,$19,$20,$21,$22,$23)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,$12,$13,$14,$15)
      ON CONFLICT (id) DO UPDATE SET
-       nome_empresa=$2, nome_fantasia=$3, cnpj=$4, endereco=$5, unidade=$6, produto=$7,
-       grau_risco=$8, localizacao=$9, intro_ergonomia=$10, intro_objetivo=$11, intro_metodologia=$12,
-       nome_avaliador=$13, formacao_avaliador=$14, crefito_avaliador=$15, empresa_avaliador=$16,
-       assinatura_avaliador=$17, data=$18::date, logo_consultoria=$19, logo_empresa=$20,
-       logo_responsavel=$21, empresa_id=$22, unidade_id=$23, atualizado_em=NOW()`,
+       intro_ergonomia=$2, intro_objetivo=$3, intro_metodologia=$4,
+       nome_avaliador=$5, formacao_avaliador=$6, crefito_avaliador=$7, empresa_avaliador=$8,
+       assinatura_avaliador=$9, data=$10::date, logo_consultoria=$11, logo_empresa=$12,
+       logo_responsavel=$13, empresa_id=$14, unidade_id=$15, atualizado_em=NOW()`,
     [
-      project.id, str(project.companyName), str(project.fantasyName), str(project.cnpj),
-      str(project.address), str(project.unit), str(project.product), str(project.riskDegree),
-      str(project.location), str(project.introErgonomia), str(project.introObjetivo),
-      str(project.introMetodologia), str(project.evaluatorName), str(project.evaluatorFormation),
+      project.id,
+      str(project.introErgonomia), str(project.introObjetivo), str(project.introMetodologia),
+      str(project.evaluatorName), str(project.evaluatorFormation),
       str(project.evaluatorCrefito), str(project.evaluatorCompany), str(project.evaluatorSignatureDataUrl),
       dt(project.date), str(project.consultoriaLogoDataUrl), str(project.companyLogoDataUrl),
       str(project.responsibleLogoDataUrl),
@@ -90,7 +87,7 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
     await client.query(
       `INSERT INTO aep_funcoes
          (id, projeto_id, ordem,
-          nome_funcao, codigo_posto, unidade_filial, setor_area, funcoes_contempladas,
+          nome_funcao, codigo_posto, funcoes_contempladas,
           atividade_avaliada, num_funcionarios, data_analise,
           descricao_processo, descricao_ciclo_trabalho,
           jornada_trabalho, escala, horas_extras, intervalo_almoco,
@@ -106,31 +103,29 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
           resp_nome, resp_registro, resp_formacao, resp_empresa, resp_assinatura,
           unidade_id, setor_id)
        VALUES
-         ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::date,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-          $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,
-          $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51)
+         ($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+          $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,
+          $38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49)
        ON CONFLICT (id) DO UPDATE SET
-         projeto_id=$2, ordem=$3, nome_funcao=$4, codigo_posto=$5, unidade_filial=$6,
-         setor_area=$7, funcoes_contempladas=$8, atividade_avaliada=$9, num_funcionarios=$10,
-         data_analise=$11::date, descricao_processo=$12, descricao_ciclo_trabalho=$13,
-         jornada_trabalho=$14, escala=$15, horas_extras=$16, intervalo_almoco=$17,
-         outras_pausas=$18, rodizio_tarefas=$19, dialogos_seguranca=$20,
-         descricao_equipamentos=$21, epis_utilizados=$22, outros_materiais=$23, nota_lgpd=$24,
-         reclamacao_iluminacao=$25, valor_iluminacao=$26, descricao_iluminacao=$27,
-         reclamacao_ruido=$28, valor_ruido=$29, descricao_ruido=$30,
-         reclamacao_temperatura=$31, valor_temperatura=$32, descricao_temperatura=$33,
-         psi_media_demanda_ritmo=$34, psi_media_autonomia_controle=$35, psi_media_clareza_papel=$36,
-         psi_media_apoio_social=$37, psi_media_reconhecimento=$38, psi_media_geral=$39,
-         psi_classificacao=$40, psi_interpretacao=$41,
-         requer_aet=$42, orientacao_final=$43, justificativa_decisao=$44,
-         resp_nome=$45, resp_registro=$46, resp_formacao=$47, resp_empresa=$48,
-         resp_assinatura=$49, unidade_id=$50, setor_id=$51, atualizado_em=NOW()`,
+         projeto_id=$2, ordem=$3, nome_funcao=$4, codigo_posto=$5,
+         funcoes_contempladas=$6, atividade_avaliada=$7, num_funcionarios=$8,
+         data_analise=$9::date, descricao_processo=$10, descricao_ciclo_trabalho=$11,
+         jornada_trabalho=$12, escala=$13, horas_extras=$14, intervalo_almoco=$15,
+         outras_pausas=$16, rodizio_tarefas=$17, dialogos_seguranca=$18,
+         descricao_equipamentos=$19, epis_utilizados=$20, outros_materiais=$21, nota_lgpd=$22,
+         reclamacao_iluminacao=$23, valor_iluminacao=$24, descricao_iluminacao=$25,
+         reclamacao_ruido=$26, valor_ruido=$27, descricao_ruido=$28,
+         reclamacao_temperatura=$29, valor_temperatura=$30, descricao_temperatura=$31,
+         psi_media_demanda_ritmo=$32, psi_media_autonomia_controle=$33, psi_media_clareza_papel=$34,
+         psi_media_apoio_social=$35, psi_media_reconhecimento=$36, psi_media_geral=$37,
+         psi_classificacao=$38, psi_interpretacao=$39,
+         requer_aet=$40, orientacao_final=$41, justificativa_decisao=$42,
+         resp_nome=$43, resp_registro=$44, resp_formacao=$45, resp_empresa=$46,
+         resp_assinatura=$47, unidade_id=$48, setor_id=$49, atualizado_em=NOW()`,
       [
         f.id, project.id, i,
         str(f.name) || str(ident.unitBranch),
         str(ident.code),
-        str(ident.unitBranch) || str(f.unit),
-        str(ident.sectorArea) || str(f.sector),
         str(ident.contemplatedFunctions),
         str(ident.evaluatedActivity),
         str(f.numEmployees),

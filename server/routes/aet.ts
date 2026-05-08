@@ -38,23 +38,20 @@ async function saveAET(client: PoolClient, project: any): Promise<void> {
   // 1. Upsert project header
   await client.query(
     `INSERT INTO aet_projetos
-       (id, nome_empresa, nome_fantasia, cnpj, endereco, unidade, produto, grau_risco, localizacao,
-        intro_ergonomia, intro_objetivo, intro_metodologia,
+       (id, intro_ergonomia, intro_objetivo, intro_metodologia,
         nome_avaliador, formacao_avaliador, crefito_avaliador, empresa_avaliador, assinatura_avaliador,
         data, logo_consultoria, logo_empresa, logo_responsavel,
         empresa_id, unidade_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::date,$19,$20,$21,$22,$23)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,$12,$13,$14,$15)
      ON CONFLICT (id) DO UPDATE SET
-       nome_empresa=$2, nome_fantasia=$3, cnpj=$4, endereco=$5, unidade=$6, produto=$7,
-       grau_risco=$8, localizacao=$9, intro_ergonomia=$10, intro_objetivo=$11, intro_metodologia=$12,
-       nome_avaliador=$13, formacao_avaliador=$14, crefito_avaliador=$15, empresa_avaliador=$16,
-       assinatura_avaliador=$17, data=$18::date, logo_consultoria=$19, logo_empresa=$20,
-       logo_responsavel=$21, empresa_id=$22, unidade_id=$23, atualizado_em=NOW()`,
+       intro_ergonomia=$2, intro_objetivo=$3, intro_metodologia=$4,
+       nome_avaliador=$5, formacao_avaliador=$6, crefito_avaliador=$7, empresa_avaliador=$8,
+       assinatura_avaliador=$9, data=$10::date, logo_consultoria=$11, logo_empresa=$12,
+       logo_responsavel=$13, empresa_id=$14, unidade_id=$15, atualizado_em=NOW()`,
     [
-      project.id, str(project.companyName), str(project.fantasyName), str(project.cnpj),
-      str(project.address), str(project.unit), str(project.product), str(project.riskDegree),
-      str(project.location), str(project.introErgonomia), str(project.introObjetivo),
-      str(project.introMetodologia), str(project.evaluatorName), str(project.evaluatorFormation),
+      project.id,
+      str(project.introErgonomia), str(project.introObjetivo), str(project.introMetodologia),
+      str(project.evaluatorName), str(project.evaluatorFormation),
       str(project.evaluatorCrefito), str(project.evaluatorCompany), str(project.evaluatorSignatureDataUrl),
       dt(project.date), str(project.consultoriaLogoDataUrl), str(project.companyLogoDataUrl),
       str(project.responsibleLogoDataUrl),

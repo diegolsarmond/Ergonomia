@@ -6,7 +6,7 @@ import { useAET } from '../context/AETContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X, AlignLeft } from 'lucide-react';
-import { FormGroup, Textarea } from '../components/ui/Forms';
+import { FormGroup, Input, Select, Textarea } from '../components/ui/Forms';
 import { validateReport } from '../domain/reports/reportValidation';
 import type { ReportValidationResult } from '../domain/reports/reportValidationTypes';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +15,7 @@ import { PermissionGuard } from '../components/auth/PermissionGuard';
 export const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProject, updateProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON } = useAET();
+  const { getProject, updateProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON, companies, units } = useAET();
   const { hasPermission } = useAuth();
   const project = getProject(id!);
 
@@ -30,6 +30,29 @@ export const ProjectView = () => {
     introErgonomia: project?.introErgonomia || '',
     introObjetivo: project?.introObjetivo || '',
     introMetodologia: project?.introMetodologia || '',
+  });
+
+  const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
+  const [companyData, setCompanyData] = useState({
+    empresaId: project?.empresaId || '',
+    unidadeId: project?.unidadeId || '',
+    companyName: project?.companyName || '',
+    fantasyName: project?.fantasyName || '',
+    cnpj: project?.cnpj || '',
+    address: project?.address || '',
+    unit: project?.unit || '',
+    product: project?.product || '',
+    riskDegree: project?.riskDegree || '',
+    location: project?.location || '',
+  });
+
+  const [isEditEvaluatorModalOpen, setIsEditEvaluatorModalOpen] = useState(false);
+  const [evaluatorData, setEvaluatorData] = useState({
+    evaluatorName: project?.evaluatorName || '',
+    evaluatorFormation: project?.evaluatorFormation || '',
+    evaluatorCrefito: project?.evaluatorCrefito || '',
+    evaluatorCompany: project?.evaluatorCompany || '',
+    date: project?.date || '',
   });
 
   const quillModules = {
@@ -50,6 +73,25 @@ export const ProjectView = () => {
         introObjetivo: project.introObjetivo || '',
         introMetodologia: project.introMetodologia || '',
       });
+      setCompanyData({
+        empresaId: project.empresaId || '',
+        unidadeId: project.unidadeId || '',
+        companyName: project.companyName || '',
+        fantasyName: project.fantasyName || '',
+        cnpj: project.cnpj || '',
+        address: project.address || '',
+        unit: project.unit || '',
+        product: project.product || '',
+        riskDegree: project.riskDegree || '',
+        location: project.location || '',
+      });
+      setEvaluatorData({
+        evaluatorName: project.evaluatorName || '',
+        evaluatorFormation: project.evaluatorFormation || '',
+        evaluatorCrefito: project.evaluatorCrefito || '',
+        evaluatorCompany: project.evaluatorCompany || '',
+        date: project.date || '',
+      });
     }
   }, [project]);
 
@@ -57,6 +99,18 @@ export const ProjectView = () => {
     e.preventDefault();
     await updateProject(project!.id, introData);
     setIsEditIntroModalOpen(false);
+  };
+
+  const handleSaveCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateProject(project!.id, companyData);
+    setIsEditCompanyModalOpen(false);
+  };
+
+  const handleSaveEvaluator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateProject(project!.id, evaluatorData);
+    setIsEditEvaluatorModalOpen(false);
   };
 
   if (!project) return (
@@ -154,9 +208,16 @@ export const ProjectView = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-teal-600" />
-              Dados da Empresa
+            <CardTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-teal-600" />
+                Dados da Empresa
+              </span>
+              <PermissionGuard permission="PROJECTS_EDIT">
+                <Button variant="ghost" size="sm" onClick={() => setIsEditCompanyModalOpen(true)} className="!rounded-lg -mr-1">
+                  <Edit2 className="w-3.5 h-3.5 text-slate-400 hover:text-teal-600" />
+                </Button>
+              </PermissionGuard>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
@@ -173,9 +234,16 @@ export const ProjectView = () => {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-4 h-4 text-teal-600" />
-              Responsável Técnico
+            <CardTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <User className="w-4 h-4 text-teal-600" />
+                Responsável Técnico
+              </span>
+              <PermissionGuard permission="PROJECTS_EDIT">
+                <Button variant="ghost" size="sm" onClick={() => setIsEditEvaluatorModalOpen(true)} className="!rounded-lg -mr-1">
+                  <Edit2 className="w-3.5 h-3.5 text-slate-400 hover:text-teal-600" />
+                </Button>
+              </PermissionGuard>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
@@ -319,6 +387,154 @@ export const ProjectView = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {isEditCompanyModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsEditCompanyModalOpen(false)}>
+          <Card className="modal-content w-full max-w-lg max-h-[90vh] overflow-y-auto !rounded-2xl" onClick={e => e.stopPropagation()}>
+            <CardHeader className="!bg-gradient-to-r !from-slate-50 !to-slate-100/50">
+              <CardTitle className="!text-lg">Editar Dados da Empresa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveCompany} className="space-y-4">
+                <FormGroup label="Empresa cadastrada">
+                  <Select
+                    value={companyData.empresaId}
+                    onChange={e => {
+                      const co = companies.find(c => c.id === e.target.value);
+                      if (co) {
+                        const addr = [co.logradouro, co.numero, co.bairro, co.municipio, co.uf].filter(Boolean).join(', ');
+                        setCompanyData(p => ({
+                          ...p,
+                          empresaId: co.id,
+                          unidadeId: '',
+                          companyName: co.razaoSocial,
+                          fantasyName: co.nomeFantasia,
+                          cnpj: co.cnpj,
+                          address: addr,
+                          product: co.product || p.product,
+                          riskDegree: co.riskDegree || p.riskDegree,
+                          location: co.productionLocation || p.location,
+                        }));
+                      } else {
+                        setCompanyData(p => ({ ...p, empresaId: '', unidadeId: '' }));
+                      }
+                    }}
+                  >
+                    <option value="">— digitar manualmente —</option>
+                    {companies.filter(c => c.active).map(c => (
+                      <option key={c.id} value={c.id}>{c.razaoSocial}{c.nomeFantasia ? ` (${c.nomeFantasia})` : ''}</option>
+                    ))}
+                  </Select>
+                </FormGroup>
+
+                {companyData.empresaId && (
+                  <FormGroup label="Unidade">
+                    <Select
+                      value={companyData.unidadeId}
+                      onChange={e => {
+                        const un = units.find(u => u.id === e.target.value);
+                        setCompanyData(p => ({
+                          ...p,
+                          unidadeId: e.target.value,
+                          unit: un?.name || p.unit,
+                          address: un?.address || p.address,
+                          location: un?.productionLocation || p.location,
+                        }));
+                      }}
+                    >
+                      <option value="">— sem unidade específica —</option>
+                      {units.filter(u => u.companyId === companyData.empresaId).map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </Select>
+                  </FormGroup>
+                )}
+
+                <div className="border-t border-slate-100 pt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormGroup label="Razão Social" required>
+                      <Input value={companyData.companyName} onChange={e => setCompanyData(p => ({ ...p, companyName: e.target.value }))} />
+                    </FormGroup>
+                    <FormGroup label="Nome Fantasia">
+                      <Input value={companyData.fantasyName} onChange={e => setCompanyData(p => ({ ...p, fantasyName: e.target.value }))} />
+                    </FormGroup>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormGroup label="CNPJ">
+                      <Input value={companyData.cnpj} onChange={e => setCompanyData(p => ({ ...p, cnpj: e.target.value }))} />
+                    </FormGroup>
+                    <FormGroup label="Grau de Risco">
+                      <Select value={companyData.riskDegree} onChange={e => setCompanyData(p => ({ ...p, riskDegree: e.target.value }))}>
+                        <option value="">Selecione</option>
+                        <option value="1">Grau 1</option>
+                        <option value="2">Grau 2</option>
+                        <option value="3">Grau 3</option>
+                        <option value="4">Grau 4</option>
+                      </Select>
+                    </FormGroup>
+                  </div>
+                  <FormGroup label="Endereço">
+                    <Input value={companyData.address} onChange={e => setCompanyData(p => ({ ...p, address: e.target.value }))} />
+                  </FormGroup>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormGroup label="Unidade / Filial">
+                      <Input value={companyData.unit} onChange={e => setCompanyData(p => ({ ...p, unit: e.target.value }))} />
+                    </FormGroup>
+                    <FormGroup label="Localização">
+                      <Input value={companyData.location} onChange={e => setCompanyData(p => ({ ...p, location: e.target.value }))} />
+                    </FormGroup>
+                  </div>
+                  <FormGroup label="Produto / Atividade">
+                    <Input value={companyData.product} onChange={e => setCompanyData(p => ({ ...p, product: e.target.value }))} />
+                  </FormGroup>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-slate-100">
+                  <Button variant="ghost" type="button" onClick={() => setIsEditCompanyModalOpen(false)}>Cancelar</Button>
+                  <Button type="submit">Salvar Alterações</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {isEditEvaluatorModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsEditEvaluatorModalOpen(false)}>
+          <Card className="modal-content w-full max-w-lg max-h-[90vh] overflow-y-auto !rounded-2xl" onClick={e => e.stopPropagation()}>
+            <CardHeader className="!bg-gradient-to-r !from-slate-50 !to-slate-100/50">
+              <CardTitle className="!text-lg">Editar Responsável Técnico</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveEvaluator} className="space-y-4">
+                <FormGroup label="Nome">
+                  <Input value={evaluatorData.evaluatorName} onChange={e => setEvaluatorData(p => ({ ...p, evaluatorName: e.target.value }))} />
+                </FormGroup>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Formação">
+                    <Input value={evaluatorData.evaluatorFormation} onChange={e => setEvaluatorData(p => ({ ...p, evaluatorFormation: e.target.value }))} />
+                  </FormGroup>
+                  <FormGroup label="Registro (CREFITO)">
+                    <Input value={evaluatorData.evaluatorCrefito} onChange={e => setEvaluatorData(p => ({ ...p, evaluatorCrefito: e.target.value }))} />
+                  </FormGroup>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormGroup label="Empresa / Consultoria">
+                    <Input value={evaluatorData.evaluatorCompany} onChange={e => setEvaluatorData(p => ({ ...p, evaluatorCompany: e.target.value }))} />
+                  </FormGroup>
+                  <FormGroup label="Data do Relatório">
+                    <Input type="date" value={evaluatorData.date} onChange={e => setEvaluatorData(p => ({ ...p, date: e.target.value }))} />
+                  </FormGroup>
+                </div>
+                <div className="flex justify-end gap-3 mt-2 pt-4 border-t border-slate-100">
+                  <Button variant="ghost" type="button" onClick={() => setIsEditEvaluatorModalOpen(false)}>Cancelar</Button>
+                  <Button type="submit">Salvar Alterações</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
