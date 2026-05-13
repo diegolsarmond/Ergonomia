@@ -1029,8 +1029,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       onChange={e => {
                         const options = ['6h/Dia', '8h/Dia', '12h/Dia', 'Outros'];
                         const fromOptions = aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && options.includes(v));
-                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                        setWorkOrg('workday', [...fromOptions, ...extra].join(', '));
+                        const extra = e.target.value;
+                        setWorkOrg('workday', [...fromOptions, extra].filter(Boolean).join(', '));
                       }}
                       placeholder="Outra jornada..."
                     />
@@ -1054,8 +1054,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       onChange={e => {
                         const options = [...shiftCatalog.filter(s => s.active).map(s => s.name), 'Outros'];
                         const fromOptions = aep.workCharacterization.workOrganization.scale.split(', ').filter(v => v && options.includes(v));
-                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                        setWorkOrg('scale', [...fromOptions, ...extra].join(', '));
+                        const extra = e.target.value;
+                        setWorkOrg('scale', [...fromOptions, extra].filter(Boolean).join(', '));
                       }}
                       placeholder="Ex: 6x1, 5x2, 12x36..."
                     />
@@ -1079,8 +1079,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       onChange={e => {
                         const options = ['Não há', 'Eventualmente', 'Frequentemente', 'Raramente', 'Outros'];
                         const fromOptions = aep.workCharacterization.workOrganization.overtime.split(', ').filter(v => v && options.includes(v));
-                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                        setWorkOrg('overtime', [...fromOptions, ...extra].join(', '));
+                        const extra = e.target.value;
+                        setWorkOrg('overtime', [...fromOptions, extra].filter(Boolean).join(', '));
                       }}
                       placeholder="Ex: Todo sábado, etc."
                     />
@@ -1104,8 +1104,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       onChange={e => {
                         const options = ['60min.', '15min.', 'N/A', 'Outros'];
                         const fromOptions = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && options.includes(v));
-                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                        setWorkOrg('lunchBreak', [...fromOptions, ...extra].join(', '));
+                        const extra = e.target.value;
+                        setWorkOrg('lunchBreak', [...fromOptions, extra].filter(Boolean).join(', '));
                       }}
                       placeholder="Outra pausa..."
                     />
@@ -1129,8 +1129,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       onChange={e => {
                         const options = ['Não há', '10min.', '15min.', 'Outros'];
                         const fromOptions = aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(v => v && options.includes(v));
-                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                        setWorkOrg('otherBreaks', [...fromOptions, ...extra].join(', '));
+                        const extra = e.target.value;
+                        setWorkOrg('otherBreaks', [...fromOptions, extra].filter(Boolean).join(', '));
                       }}
                       placeholder="Descreva outras pausas existentes..."
                     />
@@ -1154,8 +1154,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       onChange={e => {
                         const options = ['Não há rodízio formalizado', 'Outros'];
                         const fromOptions = aep.workCharacterization.workOrganization.taskRotation.split(', ').filter(v => v && options.includes(v));
-                        const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                        setWorkOrg('taskRotation', [...fromOptions, ...extra].join(', '));
+                        const extra = e.target.value;
+                        setWorkOrg('taskRotation', [...fromOptions, extra].filter(Boolean).join(', '));
                       }}
                       placeholder="Descreva o rodízio..."
                     />
@@ -1180,8 +1180,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     onChange={e => {
                       const options = ['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Não há', 'Outros'];
                       const fromOptions = aep.workCharacterization.workOrganization.safetyDialogues.split(', ').filter(v => v && options.includes(v));
-                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                      setWorkOrg('safetyDialogues', [...fromOptions, ...extra].join(', '));
+                      const extra = e.target.value;
+                      setWorkOrg('safetyDialogues', [...fromOptions, extra].filter(Boolean).join(', '));
                     }}
                     placeholder="Ex: Trimestral..."
                   />
@@ -1212,8 +1212,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       const catalogNames = [...equipmentCatalog.map(eq => eq.name), 'Outros'];
                       const fromCatalog = aep.workCharacterization.toolsAndMaterials.description
                         .split(', ').filter(n => n && catalogNames.includes(n));
-                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                      setTools('description', [...fromCatalog, ...extra].join(', '));
+                      const extra = e.target.value;
+                      setTools('description', [...fromCatalog, extra].filter(Boolean).join(', '));
                     }}
                     placeholder="Especifique outros equipamentos (separados por vírgula)..."
                   />
@@ -1242,8 +1242,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       const catalogNames = [...epiCatalog.map(ep => ep.name), 'Outros'];
                       const fromCatalog = aep.workCharacterization.toolsAndMaterials.epis
                         .split(', ').filter(n => n && catalogNames.includes(n));
-                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                      setTools('epis', [...fromCatalog, ...extra].join(', '));
+                      const extra = e.target.value;
+                      setTools('epis', [...fromCatalog, extra].filter(Boolean).join(', '));
                     }}
                     placeholder="Especifique outros EPIs (separados por vírgula)..."
                   />
