@@ -9,6 +9,7 @@ import { Modal } from '../components/ui/Modal';
 import { UnitModalForm, SectorModalForm, JobRoleModalForm, EMPTY_UNIT, EMPTY_SECTOR, EMPTY_ROLE } from '../components/SharedParameterModals';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
 import { SingleImageUpload } from '../components/SingleImageUpload';
+import { ImageEditor } from '../components/ImageEditor';
 import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
 import type {
   AETFunction,
@@ -390,6 +391,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [formData, setFormData] = useState<AETFunction>(initialData);
+  const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -614,7 +616,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const updatePhoto = (idx: number, field: keyof PhotoRecord, value: string) =>
     setAep(a => {
       const list = [...a.photographicRecords];
-      (list[idx] as any)[field] = value;
+      list[idx] = { ...list[idx], [field]: value };
       return { ...a, photographicRecords: list };
     });
 
@@ -1277,11 +1279,38 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                         <Trash2 className="w-3.5 h-3.5 text-red-400" />
                       </Button>
                     </div>
-                    <SingleImageUpload
-                      value={photo.imageDataUrl}
-                      onChange={url => updatePhoto(idx, 'imageDataUrl', url)}
-                      label="Imagem"
-                    />
+                    {photo.imageDataUrl ? (
+                      <div className="space-y-1.5">
+                        <div className="relative group rounded-lg overflow-hidden border border-slate-200 cursor-pointer" onClick={() => setEditingPhotoIdx(idx)}>
+                          <img
+                            src={photo.imageDataUrl}
+                            alt={`Foto ${idx + 1}`}
+                            className="w-full max-h-48 object-contain bg-slate-50"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 rounded-lg text-xs font-medium shadow">
+                              ✏️ Clique para editar
+                            </span>
+                          </div>
+                        </div>
+                        <SingleImageUpload
+                          value=""
+                          onChange={url => {
+                            if (url) { updatePhoto(idx, 'imageDataUrl', url); setEditingPhotoIdx(idx); }
+                          }}
+                          label="Trocar imagem"
+                        />
+                      </div>
+                    ) : (
+                      <SingleImageUpload
+                        value=""
+                        onChange={url => {
+                          updatePhoto(idx, 'imageDataUrl', url);
+                          if (url) setEditingPhotoIdx(idx);
+                        }}
+                        label="Imagem"
+                      />
+                    )}
                     <input
                       type="text"
                       value={photo.description}
@@ -1292,6 +1321,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   </div>
                 ))}
               </div>
+
             </div>
           )}
 
@@ -1734,6 +1764,17 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         companySectors={companySectors}
         companyRoles={companyJobRoles}
       />
+
+      {editingPhotoIdx !== null && aep.photographicRecords[editingPhotoIdx]?.imageDataUrl && (
+        <ImageEditor
+          imageDataUrl={aep.photographicRecords[editingPhotoIdx].imageDataUrl}
+          onSave={url => {
+            updatePhoto(editingPhotoIdx, 'imageDataUrl', url);
+            setEditingPhotoIdx(null);
+          }}
+          onClose={() => setEditingPhotoIdx(null)}
+        />
+      )}
 
 
 
