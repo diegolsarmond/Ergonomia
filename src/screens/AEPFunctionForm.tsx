@@ -1014,12 +1014,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           {/* ── Tab 2: Caracterização do Trabalho ── */}
           {activeTab === 1 && (
             <div className="space-y-4">
-              <SectionTitle>2.1 Descrição do Processo e Ciclo de Trabalho</SectionTitle>
-              <FormGroup label="Descrição">
-                <RichText value={aep.workCharacterization.processDescription} onChange={val => setWork('processDescription', val)} placeholder="Descreva o processo produtivo e o ciclo de trabalho." />
-              </FormGroup>
-
-              <SectionTitle>2.2 Organização do Trabalho</SectionTitle>
+              <SectionTitle>2.1 Organização do Trabalho</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Jornada de Trabalho">
                   <MultiSelectAutocomplete
@@ -1195,6 +1190,11 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     placeholder="Ex: Trimestral..."
                   />
                 )}
+              </FormGroup>
+
+              <SectionTitle>2.2 Descrição do Processo e Ciclo de Trabalho</SectionTitle>
+              <FormGroup label="Descrição">
+                <RichText value={aep.workCharacterization.processDescription} onChange={val => setWork('processDescription', val)} placeholder="Descreva o processo produtivo e o ciclo de trabalho." />
               </FormGroup>
 
               <SectionTitle>2.3 Equipamentos e EPIs</SectionTitle>
