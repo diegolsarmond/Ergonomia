@@ -697,6 +697,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     VERMELHO: 'bg-red-100 text-red-800 border-red-300',
   };
 
+  const classifTextColor: Record<string, string> = {
+    VERDE:    'text-green-700',
+    AMARELO:  'text-amber-600',
+    VERMELHO: 'text-red-700',
+  };
+
   const priorityColor: Record<string, string> = {
     Baixa:   'text-green-700',
     Média:   'text-amber-700',
@@ -1560,7 +1566,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       ))}
                       <div className="flex justify-between col-span-2 pt-1 border-t border-slate-200">
                         <span className="font-semibold text-slate-700">Média Geral</span>
-                        <span className="font-bold text-slate-900">{aep.psychosocialAverages.overall.toFixed(2)}</span>
+                        <span className={`font-bold ${classifTextColor[aep.psychosocialClassification] || 'text-slate-900'}`}>{aep.psychosocialAverages.overall.toFixed(2)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1623,18 +1629,18 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 </div>
               </div>
 
-               <FormGroup label="Orientação Final">
-                <RichText 
-                  value={aep.finalGuidance} 
-                  onChange={val => setAep(a => ({ ...a, finalGuidance: val }))} 
-                  placeholder="Orientações gerais ao cliente após a avaliação preliminar." 
+              <FormGroup label="Justificativa da Decisão">
+                <RichText
+                  value={aep.decisionJustification}
+                  onChange={val => setAep(a => ({ ...a, decisionJustification: val }))}
+                  placeholder="Justifique a decisão de indicar ou não a AET."
                 />
               </FormGroup>
-              <FormGroup label="Justificativa da Decisão">
-                <RichText 
-                  value={aep.decisionJustification} 
-                  onChange={val => setAep(a => ({ ...a, decisionJustification: val }))} 
-                  placeholder="Justifique a decisão de indicar ou não a AET." 
+              <FormGroup label="Diagnóstico">
+                <RichText
+                  value={aep.finalGuidance}
+                  onChange={val => setAep(a => ({ ...a, finalGuidance: val }))}
+                  placeholder="Orientações gerais ao cliente após a avaliação preliminar."
                 />
               </FormGroup>
             </div>
