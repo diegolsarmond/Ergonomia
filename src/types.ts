@@ -527,7 +527,7 @@ export interface AEPFunctionAssessment {
     recognitionJusticePsychSafety: number;
     overall: number;
   };
-  psychosocialClassification: 'VERDE' | 'AMARELO' | 'VERMELHO' | '';
+  psychosocialClassification: 'VERDE' | 'AMARELO' | 'LARANJA' | 'VERMELHO' | '';
   psychosocialInterpretation: string;
 
   // 7. Classificação de Risco / Gatilhos AET

@@ -342,20 +342,15 @@ function computePsychosocialAverages(answers: PsychosocialQuestion[]) {
     ? Math.round((allGroups.reduce((s, v) => s + v, 0) / allGroups.length) * 100) / 100
     : 0;
 
-  // Classification
-  const criticalIds = ['psy-1', 'psy-2', 'psy-10', 'psy-12'];
-  const hasCritical4 = answers.some(a => criticalIds.includes(a.id) && Number(a.score) === 4 && !a.inverted);
-  const highScoreCount = scored.filter(a => {
-    const raw = Number(a.score);
-    const v = a.inverted ? (6 - raw) : raw;
-    return v >= 3;
-  }).length;
-
-  let classification: 'VERDE' | 'AMARELO' | 'VERMELHO' | '' = '';
+  // Classification — baseada na média geral (escala 1–5)
+  // 0–1,9 → VERDE | 2,0–2,9 → AMARELO | 3,0–3,9 → LARANJA | ≥4,0 → VERMELHO
+  let classification: 'VERDE' | 'AMARELO' | 'LARANJA' | 'VERMELHO' | '' = '';
   if (overall > 0) {
-    if (overall >= 2.6 || highScoreCount >= 3 || hasCritical4) {
+    if (overall >= 4.0) {
       classification = 'VERMELHO';
-    } else if (overall >= 1.6 || (highScoreCount >= 1 && highScoreCount <= 2)) {
+    } else if (overall >= 3.0) {
+      classification = 'LARANJA';
+    } else if (overall >= 2.0) {
       classification = 'AMARELO';
     } else {
       classification = 'VERDE';
@@ -363,9 +358,10 @@ function computePsychosocialAverages(answers: PsychosocialQuestion[]) {
   }
 
   const interpretations: Record<string, string> = {
-    VERDE: 'Risco psicossocial baixo. Manter monitoramento periódico.',
-    AMARELO: 'Risco psicossocial moderado. Recomenda-se atenção aos fatores identificados e ações preventivas.',
-    VERMELHO: 'Risco psicossocial alto. Intervenção prioritária recomendada. Considerar indicação de AET.',
+    VERDE:    'Baixo risco — não recomenda AET.',
+    AMARELO:  'Atenção / Moderado — avaliar necessidade de AET.',
+    LARANJA:  'Alto risco — recomenda AET.',
+    VERMELHO: 'Crítico — AET obrigatória/imediata.',
   };
 
   return {
@@ -695,12 +691,14 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const classifColor: Record<string, string> = {
     VERDE:    'bg-green-100 text-green-800 border-green-300',
     AMARELO:  'bg-amber-100 text-amber-800 border-amber-300',
+    LARANJA:  'bg-orange-100 text-orange-800 border-orange-300',
     VERMELHO: 'bg-red-100 text-red-800 border-red-300',
   };
 
   const classifTextColor: Record<string, string> = {
     VERDE:    'text-green-700',
     AMARELO:  'text-amber-600',
+    LARANJA:  'text-orange-600',
     VERMELHO: 'text-red-700',
   };
 

@@ -115,6 +115,7 @@ const assessColor: Record<string, { bg: string; color: string }> = {
 const psyClassifColor: Record<string, { bg: string; color: string }> = {
   VERDE:    { bg: '#dcfce7', color: '#14532d' },
   AMARELO:  { bg: '#fef9c3', color: '#713f12' },
+  LARANJA:  { bg: '#ffedd5', color: '#7c2d12' },
   VERMELHO: { bg: '#fee2e2', color: '#7f1d1d' },
 };
 
