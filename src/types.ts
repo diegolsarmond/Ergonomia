@@ -447,6 +447,7 @@ export interface RACIAction {
   deadline: string;
   priority: 'Baixa' | 'Média' | 'Alta' | 'Crítica' | '';
   status: 'Pendente' | 'Em andamento' | 'Concluído' | 'Cancelado' | '';
+  imageDataUrl?: string;
 }
 
 export interface ScientificToolItem {

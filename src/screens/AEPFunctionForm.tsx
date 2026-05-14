@@ -392,6 +392,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const [activeTab, setActiveTab] = useState(0);
   const [formData, setFormData] = useState<AETFunction>(initialData);
   const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
+  const [editingRaciPhotoIdx, setEditingRaciPhotoIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -591,7 +592,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
       ...a,
       raciActionPlan: [
         ...a.raciActionPlan,
-        { id: uuidv4(), riskFactor: '', action: '', responsible: '', accountable: '', consulted: '', informed: '', deadline: '', priority: '', status: '' },
+        { id: uuidv4(), riskFactor: '', action: '', responsible: '', accountable: '', consulted: '', informed: '', deadline: '', priority: '', status: '', imageDataUrl: '' },
       ],
     }));
 
@@ -1664,6 +1665,35 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </Button>
                   </div>
+                  <FormGroup label="Foto / Print">
+                    {action.imageDataUrl ? (
+                      <div className="space-y-1.5">
+                        <div className="relative group rounded-lg overflow-hidden border border-slate-200 cursor-pointer" onClick={() => setEditingRaciPhotoIdx(idx)}>
+                          <img
+                            src={action.imageDataUrl}
+                            alt={`Foto ação ${idx + 1}`}
+                            className="w-full max-h-48 object-contain bg-slate-50"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 rounded-lg text-xs font-medium shadow">
+                              ✏️ Clique para editar
+                            </span>
+                          </div>
+                        </div>
+                        <SingleImageUpload
+                          value=""
+                          onChange={url => { if (url) { updateRaci(idx, 'imageDataUrl', url); setEditingRaciPhotoIdx(idx); } }}
+                          label="Trocar imagem"
+                        />
+                      </div>
+                    ) : (
+                      <SingleImageUpload
+                        value=""
+                        onChange={url => { if (url) { updateRaci(idx, 'imageDataUrl', url); setEditingRaciPhotoIdx(idx); } }}
+                        label="Imagem"
+                      />
+                    )}
+                  </FormGroup>
                   <FormGroup label="Fator de Risco">
                     <Input value={action.riskFactor} onChange={e => updateRaci(idx, 'riskFactor', e.target.value)} />
                   </FormGroup>
@@ -1779,6 +1809,17 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
             setEditingPhotoIdx(null);
           }}
           onClose={() => setEditingPhotoIdx(null)}
+        />
+      )}
+
+      {editingRaciPhotoIdx !== null && aep.raciActionPlan[editingRaciPhotoIdx]?.imageDataUrl && (
+        <ImageEditor
+          imageDataUrl={aep.raciActionPlan[editingRaciPhotoIdx].imageDataUrl!}
+          onSave={url => {
+            updateRaci(editingRaciPhotoIdx, 'imageDataUrl', url);
+            setEditingRaciPhotoIdx(null);
+          }}
+          onClose={() => setEditingRaciPhotoIdx(null)}
         />
       )}
 
