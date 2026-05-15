@@ -1,4 +1,5 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Check, Save, Lock, AlertCircle, Plus, Trash2, X } from 'lucide-react';
 import type { CustomProfile, Permission } from '../domain/auth/authTypes';
 import {
@@ -76,7 +77,7 @@ function NewProfileModal({ onClose, onCreated }: NewProfileModalProps) {
 
   const handleCreate = async () => {
     if (!label.trim()) { setError('Informe um nome para o perfil.'); return; }
-    const id = `profile_${Date.now()}`;
+    const id = uuidv4();
     const profile: CustomProfile = { id, label: label.trim(), permissions };
     await saveCustomProfile(profile);
     onCreated(profile);
