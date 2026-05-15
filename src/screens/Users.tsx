@@ -5,8 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
 import { OcupacaoAutocomplete } from '../components/OcupacaoAutocomplete';
 import type { AppUser, CustomProfile, UserRole, UserStatus } from '../domain/auth/authTypes';
-import { getCustomProfiles } from '../domain/auth/rolePermissionRepository';
-import { usersApi } from '../services/api';
+import { usersApi, profilesApi } from '../services/api';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -285,7 +284,7 @@ export function Users() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [fetchedUsers, fetchedProfiles] = await Promise.all([usersApi.list(), getCustomProfiles()]);
+    const [fetchedUsers, fetchedProfiles] = await Promise.all([usersApi.list(), profilesApi.list()]);
     setUsers(fetchedUsers);
     setProfiles(fetchedProfiles);
     setLoading(false);
