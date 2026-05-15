@@ -24,14 +24,18 @@ function rowToUser(r: any, permissions: string[] = []) {
   };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function getUserPermissions(userId: string, perfil: string): Promise<string[]> {
   if (perfil === 'ADMIN') return ['ALL'];
 
   const [profilePerms, userPerms] = await Promise.all([
-    pool.query(
-      `SELECT pp.permissao FROM perfil_permissoes pp WHERE pp.perfil_id = $1`,
-      [perfil]
-    ),
+    UUID_RE.test(perfil)
+      ? pool.query(
+          `SELECT pp.permissao FROM perfil_permissoes pp WHERE pp.perfil_id = $1`,
+          [perfil]
+        )
+      : Promise.resolve({ rows: [] }),
     pool.query(
       `SELECT permissao FROM usuario_permissoes WHERE usuario_id = $1`,
       [userId]
