@@ -1,11 +1,7 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Save, Lock, AlertCircle, Plus, Trash2, X } from 'lucide-react';
 import type { CustomProfile, Permission } from '../domain/auth/authTypes';
-import {
-  getCustomProfiles,
-  saveCustomProfile,
-  deleteCustomProfile,
-} from '../domain/auth/rolePermissionRepository';
+import { profilesApi } from '../services/api';
 import { ADMIN_PERMISSIONS } from '../domain/auth/permissions';
 import { useAuth } from '../context/AuthContext';
 
@@ -76,10 +72,12 @@ function NewProfileModal({ onClose, onCreated }: NewProfileModalProps) {
 
   const handleCreate = async () => {
     if (!label.trim()) { setError('Informe um nome para o perfil.'); return; }
-    const id = `profile_${Date.now()}`;
-    const profile: CustomProfile = { id, label: label.trim(), permissions };
-    await saveCustomProfile(profile);
-    onCreated(profile);
+    try {
+      const profile = await profilesApi.create(label.trim(), permissions);
+      onCreated(profile);
+    } catch {
+      setError('Erro ao criar perfil. Tente novamente.');
+    }
   };
 
   return (
@@ -181,7 +179,11 @@ export function ProfilesPermissions() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setCustomProfiles(await getCustomProfiles());
+    try {
+      setCustomProfiles(await profilesApi.list());
+    } catch {
+      setError('Erro ao carregar perfis.');
+    }
     setLoading(false);
   }, []);
 
@@ -204,7 +206,7 @@ export function ProfilesPermissions() {
     setSaving(profile.id);
     setError(null);
     try {
-      await saveCustomProfile(profile);
+      await profilesApi.update(profile.id, profile.label, profile.permissions);
       await refreshRolePermissions();
       setSaved(profile.id);
       setTimeout(() => setSaved(null), 2500);
@@ -217,7 +219,7 @@ export function ProfilesPermissions() {
 
   const handleDelete = async (profile: CustomProfile) => {
     try {
-      await deleteCustomProfile(profile.id);
+      await profilesApi.delete(profile.id);
       await refreshRolePermissions();
       setCustomProfiles(prev => prev.filter(p => p.id !== profile.id));
       setConfirmDelete(null);

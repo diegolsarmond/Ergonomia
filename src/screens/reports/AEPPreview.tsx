@@ -3,6 +3,7 @@ import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem, Illumin
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
 import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, useSectionPages, PALETTE } from './components/ReportCommon';
 import { useAET } from '../../context/AETContext';
+import logo2 from '../../assets/images/logo_2.png';
 
 // ── Risk Matrix ──────────────────────────────────────────────────────────────
 
@@ -108,12 +109,13 @@ const assessColor: Record<string, { bg: string; color: string }> = {
   'OK':      { bg: '#dcfce7', color: '#14532d' },
   'Atenção': { bg: '#fef9c3', color: '#713f12' },
   'Crítico': { bg: '#fee2e2', color: '#7f1d1d' },
-  'N.A.':    { bg: '#f1f5f9', color: '#64748b' },
+  'N.A.':    { bg: '#cbd5e1', color: '#1e293b' },
 };
 
 const psyClassifColor: Record<string, { bg: string; color: string }> = {
   VERDE:    { bg: '#dcfce7', color: '#14532d' },
   AMARELO:  { bg: '#fef9c3', color: '#713f12' },
+  LARANJA:  { bg: '#ffedd5', color: '#7c2d12' },
   VERMELHO: { bg: '#fee2e2', color: '#7f1d1d' },
 };
 
@@ -121,57 +123,61 @@ const BiomecTable: React.FC<{
   title: string;
   items: BiomechanicalItem[];
   riskFactorsCatalog: any[];
-}> = ({ title, items, riskFactorsCatalog }) => (
-  <>
-    <h4>{title}</h4>
-    <table style={{ fontSize: '0.72rem' }}>
-      <thead>
-        <tr>
-          <th style={{ width: '30%' }}>Fator Biomecânico</th>
-          <th style={{ width: '12%' }}>Avaliação</th>
-          <th style={{ width: '25%' }}>Fatores de Risco</th>
-          <th>Descrição / Observação</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item, i) => {
-          const ac = item.assessment ? assessColor[item.assessment] : null;
-          const selectedRiskNames = (item.selectedRiskFactors || [])
-            .map(id => riskFactorsCatalog.find(rf => rf.id === id)?.name)
-            .filter(Boolean);
+}> = ({ title, items, riskFactorsCatalog }) => {
+  if (items.length === 0) return null;
 
-          return (
-            <tr key={i}>
-              <td style={{ fontWeight: 600 }}>{item.factor}</td>
-              <td style={{ textAlign: 'center' }}>
-                {item.assessment ? (
-                  <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: ac?.bg, color: ac?.color }}>
-                    {item.assessment}
-                  </span>
-                ) : '—'}
-              </td>
-              <td>
-                {selectedRiskNames.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: '14px' }}>
-                    {selectedRiskNames.map((name, idx) => (
-                      <li key={idx}>{name}</li>
-                    ))}
-                  </ul>
-                ) : '—'}
-              </td>
-              <td>{item.description || '—'}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+  const isGroupNA = items.length === 1 && items[0].riskFactorId === '__na__';
+  const visibleItems = items.filter(i => i.riskFactorId !== '__na__');
+
+  return (
+  <>
+    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {title}
+      {isGroupNA && (
+        <span style={{ display: 'inline-block', padding: '1px 10px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: assessColor['N.A.'].bg, color: assessColor['N.A.'].color }}>
+          N.A.
+        </span>
+      )}
+    </h4>
+    {!isGroupNA && visibleItems.length > 0 && (
+      <table style={{ fontSize: '0.72rem' }}>
+        <thead>
+          <tr>
+            <th style={{ width: '12%' }}>Avaliação</th>
+            <th style={{ width: '30%' }}>Fatores de Risco</th>
+            <th>Descrição / Observação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleItems.map((item, i) => {
+            const ac = item.assessment ? assessColor[item.assessment] : null;
+            const rf = riskFactorsCatalog.find(r => r.id === item.riskFactorId);
+            const name = rf?.name ?? item.riskFactorId;
+
+            return (
+              <tr key={i}>
+                <td style={{ textAlign: 'center' }}>
+                  {item.assessment ? (
+                    <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.65rem', background: ac?.bg, color: ac?.color }}>
+                      {item.assessment}
+                    </span>
+                  ) : '—'}
+                </td>
+                <td>{name}</td>
+                <td>{item.description || '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    )}
   </>
-);
+  );
+};
 
 // ── Illuminance Measurement Section ─────────────────────────────────────────
 
 // Row type labels for the measurement grid
-const ROW_TYPE_LABEL: Record<string, string> = { r: 'r', q: 'q', p: 'p', t: 't' };
 const HATCH_BG = 'repeating-linear-gradient(45deg, #e5e7eb 0, #e5e7eb 2px, #f9fafb 2px, #f9fafb 8px)';
 
 const IlluminanceSection: React.FC<{ measurements: IlluminanceMeasurement[] }> = ({ measurements }) => {
@@ -191,23 +197,41 @@ const IlluminanceSection: React.FC<{ measurements: IlluminanceMeasurement[] }> =
           : { bg: '#f1f5f9', color: '#64748b', label: '—' };
 
         // Use measurementRows (normative model) with fallback to gridPoints
+        const GRID_COLS = 8;
         const mRows = m.measurementRows ?? [];
-        const maxCols = m.gridParameters?.maxCols ?? 8;
-        const hasMRows = mRows.length > 0 && mRows.some(r => r.values.some(v => v !== null));
+        const hasMRows = mRows.length > 0 && mRows.some(r =>
+          r.values.some((v: number | null) => v !== null) || r.naFlags?.some((f: boolean) => f)
+        );
+
+        // Compute row average locally (same logic as panel), ignoring N/A flags
+        const calcRowAvg = (row: typeof mRows[number]): number | null => {
+          const vals = row.values.filter((v: number | null, i: number) =>
+            v !== null && !(row.naFlags?.[i] ?? false)
+          ) as number[];
+          return vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+        };
 
         // Fallback: simple gridPoints
         const gRows = m.gridConfig?.rows ?? 4;
         const gCols = m.gridConfig?.cols ?? 8;
         const hasGrid = !hasMRows && m.gridPoints?.some(p => p.lux !== null && !p.notApplicable);
 
-        // Responsive column widths: total cols = 1 label + maxCols data + 3 summary (N/M/P)
-        const totalMCols = 1 + maxCols + 3;
+        // Column widths: label + 8 data + avg + param(N/M)
+        const totalMCols = 1 + GRID_COLS + 2;
         const labelW = `${Math.round(100 / totalMCols * 1.4)}%`;
-        const dataW  = `${Math.round(100 / totalMCols * 0.9)}%`;
-        const sumW   = `${Math.round(100 / totalMCols * 0.9)}%`;
+        const dataW  = `${Math.round(100 / totalMCols * 0.85)}%`;
+        const sumW   = `${Math.round(100 / totalMCols * 1.0)}%`;
         const totalGCols = 1 + gCols;
         const gLabelW = `${Math.round(100 / totalGCols * 1.4)}%`;
         const gDataW  = `${Math.round(100 / totalGCols * 0.9)}%`;
+
+        // Summary label and param per row type (matching panel)
+        const ROW_SUMMARY: Record<string, { avg: string; param?: string; paramVal?: number }> = {
+          r: { avg: 'R', param: 'N', paramVal: m.gridParameters?.N },
+          q: { avg: 'Q', param: 'M', paramVal: m.gridParameters?.M },
+          p: { avg: 'P' },
+          t: { avg: 'T' },
+        };
 
         const foundIssues  = m.inconsistencyItems?.filter(i => i.found) ?? [];
         const failedChecks = m.verificationItems?.filter(v => v.answer === 'Sim') ?? [];
@@ -219,14 +243,9 @@ const IlluminanceSection: React.FC<{ measurements: IlluminanceMeasurement[] }> =
           <div key={m.id} style={{ marginBottom: '28px', borderTop: idx > 0 ? `2px solid ${PALETTE.border}` : undefined, paddingTop: idx > 0 ? '20px' : undefined }}>
 
             {/* Title */}
-            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: PALETTE.dark, marginBottom: '2px' }}>
-              {idx + 1}. {m.posto || `Medição ${idx + 1}`}
+            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: PALETTE.dark, marginBottom: '6px' }}>
+              Posto {idx + 1} - {m.posto || m.environment || `Medição ${idx + 1}`}
             </p>
-            {(m.environment || m.environmentType) && (
-              <p style={{ fontSize: '0.78rem', color: PALETTE.muted, marginBottom: '6px' }}>
-                {[m.environment, m.environmentType].filter(Boolean).join(' · ')}
-              </p>
-            )}
 
             {/* ── Tabela 1: parâmetros (= header do modelo) ── */}
             <table style={{ fontSize: '0.75rem', marginBottom: '6px' }}>
@@ -266,54 +285,60 @@ const IlluminanceSection: React.FC<{ measurements: IlluminanceMeasurement[] }> =
 
             {/* ── Malha normativa (measurementRows) ── */}
             {hasMRows && (
-              <table style={{ fontSize: '0.68rem', marginBottom: '8px', tableLayout: 'fixed', width: '100%' }}>
+              <table style={{ fontSize: '0.68rem', marginBottom: '8px', tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}>
                 <colgroup>
                   <col style={{ width: labelW }} />
-                  {Array.from({ length: maxCols }, (_, c) => <col key={c} style={{ width: dataW }} />)}
-                  <col style={{ width: sumW }} />
+                  {Array.from({ length: GRID_COLS }, (_, c) => <col key={c} style={{ width: dataW }} />)}
                   <col style={{ width: sumW }} />
                   <col style={{ width: sumW }} />
                 </colgroup>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'center' }}>Linha</th>
-                    {Array.from({ length: maxCols }, (_, c) => (
-                      <th key={c} style={{ textAlign: 'center' }}>p{c + 1}</th>
-                    ))}
-                    <th style={{ textAlign: 'center' }}>N</th>
-                    <th style={{ textAlign: 'center' }}>M</th>
-                    <th style={{ textAlign: 'center' }}>P</th>
-                  </tr>
-                </thead>
                 <tbody>
-                  {mRows.map((row) => {
-                    const label = `${ROW_TYPE_LABEL[row.rowType] ?? row.rowType}${row.index + 1}`;
-                    const hasData = row.values.slice(0, row.activeCols).some(v => v !== null);
-                    const rowAvg = calc?.rowAverages?.find(ra => ra.type === row.rowType && ra.index === row.index);
+                  {mRows.map((row: typeof mRows[number]) => {
+                    const summary = ROW_SUMMARY[row.rowType] ?? { avg: row.rowType.toUpperCase() };
+                    const colPrefix = row.rowType;
+                    const avg = calcRowAvg(row);
+                    const thStyle: React.CSSProperties = {
+                      textAlign: 'center', background: '#1e293b', color: '#fff',
+                      fontWeight: 600, padding: '3px 2px', border: '1px solid #334155',
+                    };
+                    const tdStyle: React.CSSProperties = {
+                      textAlign: 'center', padding: '3px 2px', border: '1px solid #e2e8f0',
+                    };
                     return (
-                      <tr key={row.id}>
-                        <td style={{ textAlign: 'center', fontWeight: 600, color: PALETTE.primary, background: PALETTE.light }}>{label}</td>
-                        {Array.from({ length: maxCols }, (_, c) => {
-                          const active = c < row.activeCols;
-                          const na = row.naFlags?.[c];
-                          const val = active ? row.values[c] : null;
-                          return (
-                            <td key={c} style={{
-                              textAlign: 'center',
-                              background: (!active || na) ? HATCH_BG : undefined,
-                              color: na ? '#9ca3af' : 'inherit',
-                            }}>
-                              {!active ? '' : na ? 'N.A.' : (val !== null && val !== undefined ? val : '')}
-                            </td>
-                          );
-                        })}
-                        {/* N / M / P summary columns — only show avg for last row */}
-                        <td style={{ textAlign: 'center', background: HATCH_BG }} />
-                        <td style={{ textAlign: 'center', background: HATCH_BG }} />
-                        <td style={{ textAlign: 'center', fontWeight: rowAvg ? 700 : undefined, color: rowAvg ? PALETTE.dark : undefined }}>
-                          {rowAvg ? Math.round(rowAvg.avg) : ''}
-                        </td>
-                      </tr>
+                      <React.Fragment key={row.id}>
+                        {/* Header row for this measurement row */}
+                        <tr>
+                          <th style={thStyle}></th>
+                          {Array.from({ length: GRID_COLS }, (_, c) => (
+                            <th key={c} style={thStyle}>{colPrefix}{c + 1}</th>
+                          ))}
+                          <th style={thStyle}>{summary.avg}</th>
+                          <th style={thStyle}>{'param' in summary ? summary.param : ''}</th>
+                        </tr>
+                        {/* Data row */}
+                        <tr>
+                          <td style={{ ...tdStyle, fontWeight: 600, color: PALETTE.primary, background: PALETTE.light }}></td>
+                          {Array.from({ length: GRID_COLS }, (_, c) => {
+                            const na = row.naFlags?.[c] ?? false;
+                            const val = row.values[c];
+                            return (
+                              <td key={c} style={{
+                                ...tdStyle,
+                                background: na ? HATCH_BG : undefined,
+                                color: na ? '#9ca3af' : 'inherit',
+                              }}>
+                                {na ? 'N.A.' : (val !== null && val !== undefined ? val : '')}
+                              </td>
+                            );
+                          })}
+                          <td style={{ ...tdStyle, fontWeight: 700, color: '#2563eb' }}>
+                            {avg ?? '—'}
+                          </td>
+                          <td style={{ ...tdStyle, fontWeight: 700, color: PALETTE.dark }}>
+                            {'paramVal' in summary ? summary.paramVal ?? '' : ''}
+                          </td>
+                        </tr>
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -461,6 +486,12 @@ const AEPFunctionSection: React.FC<{
     const resp  = aep.technicalResponsible;
     const raci  = aep.raciActionPlan;
 
+    // Compute from triggers/psychosocial (same logic as form), falling back to stored flag
+    const effectiveRequiresAET =
+      func.requiresAET ||
+      trigs.some((t: any) => t.answer === 'Sim') ||
+      aep.psychosocialClassification === 'VERMELHO';
+
     return (
       <section className="px-12 py-10 print:break-before-page">
         <h2>{sectionNum}. {func.name || 'Função sem nome'}</h2>
@@ -578,46 +609,64 @@ const AEPFunctionSection: React.FC<{
         <IlluminanceSection measurements={aep.illuminanceMeasurements ?? []} />
 
         {/* 6. Psicossocial */}
-        {psy.some(q => q.score !== '') && (
-          <>
-            <h3 style={{ marginTop: '32px' }}>6. Avaliação Psicossocial</h3>
-            <table style={{ fontSize: '0.68rem' }}>
-              <thead>
-                <tr>
-                  <th style={{ width: '22%' }}>Grupo</th>
-                  <th>Fator Psicossocial</th>
-                  <th style={{ width: '8%' }}>Pontuação</th>
-                  <th style={{ width: '20%' }}>Observações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {psy.map(q => (
-                  <tr key={q.id}>
-                    <td>{q.group}</td>
-                    <td>{q.question}{q.inverted ? ' (invertida)' : ''}</td>
-                    <td style={{ textAlign: 'center' }}>{q.score !== '' ? String(q.score) : '—'}</td>
-                    <td>{q.comments || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {aep.psychosocialClassification && (
-              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>
-                  Média Geral: {aep.psychosocialAverages.overall.toFixed(2)}
-                </span>
-                <span style={{
-                  display: 'inline-block', padding: '2px 14px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.78rem',
-                  background: psyClassifColor[aep.psychosocialClassification]?.bg,
-                  color: psyClassifColor[aep.psychosocialClassification]?.color,
-                }}>
-                  {aep.psychosocialClassification}
-                </span>
-                <span style={{ fontSize: '0.78rem', color: '#6b7280', fontStyle: 'italic' }}>{aep.psychosocialInterpretation}</span>
-              </div>
-            )}
-          </>
-        )}
+        {psy.some((q: any) => q.score !== '') && (() => {
+          const psyGroups = Array.from(new Set(psy.map((q: any) => q.group)));
+          return (
+            <>
+              <h3 style={{ marginTop: '32px' }}>6. Avaliação Psicossocial</h3>
+
+              {/* Legenda */}
+              <p style={{ fontSize: '0.68rem', color: '#6b7280', marginBottom: '10px', fontStyle: 'italic' }}>
+                Escala: <strong>1</strong> = Nunca &nbsp;·&nbsp; <strong>2</strong> = Raramente &nbsp;·&nbsp; <strong>3</strong> = Às vezes &nbsp;·&nbsp; <strong>4</strong> = Frequentemente &nbsp;·&nbsp; <strong>5</strong> = Sempre
+              </p>
+
+              {psyGroups.map(groupName => {
+                const groupItems = psy.filter((q: any) => q.group === groupName);
+                return (
+                  <div key={groupName} style={{ marginBottom: '12px' }}>
+                    <p style={{ fontSize: '0.72rem', fontWeight: 700, color: PALETTE.primary, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                      {groupName}
+                    </p>
+                    <table style={{ fontSize: '0.68rem' }}>
+                      <thead>
+                        <tr>
+                          <th>Fator Psicossocial</th>
+                          <th style={{ width: '8%', textAlign: 'center' }}>Pontuação</th>
+                          <th style={{ width: '22%' }}>Observações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupItems.map((q: any) => (
+                          <tr key={q.id}>
+                            <td>{q.question}{q.inverted ? <em style={{ color: '#0d9488', fontSize: '0.62rem' }}> (invertida)</em> : ''}</td>
+                            <td style={{ textAlign: 'center', fontWeight: 700 }}>{q.score !== '' ? String(q.score) : '—'}</td>
+                            <td>{q.comments || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+
+              {aep.psychosocialClassification && (
+                <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>
+                    Média Geral: {aep.psychosocialAverages.overall.toFixed(2)}
+                  </span>
+                  <span style={{
+                    display: 'inline-block', padding: '2px 14px', borderRadius: '9999px', fontWeight: 700, fontSize: '0.78rem',
+                    background: psyClassifColor[aep.psychosocialClassification]?.bg,
+                    color: psyClassifColor[aep.psychosocialClassification]?.color,
+                  }}>
+                    {aep.psychosocialClassification}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: '#6b7280', fontStyle: 'italic' }}>{aep.psychosocialInterpretation}</span>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* 7. Classificação de Risco / Gatilhos AET */}
         {trigs.some(t => t.answer !== '') && (
@@ -641,14 +690,24 @@ const AEPFunctionSection: React.FC<{
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 padding: '5px 14px', borderRadius: '9999px',
-                background: func.requiresAET ? '#dc2626' : '#22c55e', color: '#fff',
+                background: effectiveRequiresAET ? '#dc2626' : '#22c55e', color: '#fff',
                 fontSize: '0.82rem', fontWeight: 600,
               }}>
-                {func.requiresAET ? 'Requer AET' : 'Não requer AET'}
+                {effectiveRequiresAET ? 'Requer AET' : 'Não requer AET'}
               </span>
             </div>
-            {aep.finalGuidance && <Field label="Orientação Final" value={aep.finalGuidance} />}
-            {aep.decisionJustification && <Field label="Justificativa da Decisão" value={aep.decisionJustification} />}
+            {aep.finalGuidance && (
+              <div className="field" style={{ marginTop: '12px' }}>
+                <div className="field-label">Orientação Final</div>
+                <div className="field-value" dangerouslySetInnerHTML={{ __html: aep.finalGuidance }} />
+              </div>
+            )}
+            {aep.decisionJustification && (
+              <div className="field">
+                <div className="field-label">Justificativa da Decisão</div>
+                <div className="field-value" dangerouslySetInnerHTML={{ __html: aep.decisionJustification }} />
+              </div>
+            )}
           </>
         )}
 
@@ -916,21 +975,31 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
             </div>
           </section>
 
-          {/* ══ CONTEÚDO (thead/tfoot para logotipo repetido) ══ */}
+          {/* ══ CONTEÚDO (thead/tfoot para cabeçalho e rodapé repetidos) ══ */}
           <table className="w-full" style={{ border: 'none' }}>
             <thead>
               <tr>
-                <td style={{ border: 'none' }}>
-                  <div className="flex justify-end mb-4 px-12">
-                    {project.companyLogoDataUrl
-                      ? <img src={project.companyLogoDataUrl} alt="Logo empresa" className="max-h-12 object-contain" />
-                      : <span className="text-xs text-gray-400 font-medium tracking-wide">Logo Cliente</span>}
-                  </div>
+                <td style={{ border: 'none', padding: 0 }}>
+                  {project.companyLogoDataUrl && (
+                    <div className="pdf-repeat-logo hidden justify-end px-12 pt-2 pb-2">
+                      <img
+                        src={project.companyLogoDataUrl}
+                        alt="Logo empresa"
+                        style={{ maxHeight: '18mm', maxWidth: '60mm', objectFit: 'contain', display: 'block' }}
+                      />
+                    </div>
+                  )}
                 </td>
               </tr>
             </thead>
             <tfoot>
-              <tr><td style={{ border: 'none' }}><div className="flex justify-between items-center mt-4 px-12" /></td></tr>
+              <tr>
+                <td style={{ border: 'none', padding: 0 }}>
+                  <div className="pdf-footer hidden items-center px-12 pt-2 pb-2">
+                    <img src={logo2} alt="Logo consultoria" style={{ maxHeight: '12mm', maxWidth: '48mm', objectFit: 'contain', display: 'block' }} />
+                  </div>
+                </td>
+              </tr>
             </tfoot>
             <tbody>
               <tr>

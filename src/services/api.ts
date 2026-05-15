@@ -3,7 +3,7 @@
  * Substitui o LocalForage como camada de persistência.
  */
 
-import type { AppUser, Permission, UserStatus } from '../domain/auth/authTypes';
+import type { AppUser, CustomProfile, Permission, UserStatus } from '../domain/auth/authTypes';
 
 const BASE = '/api';
 const TOKEN_KEY = 'auth_token';
@@ -101,6 +101,26 @@ export const usersApi = {
     post<{ message: string }>(`/users/${id}/reset-password`, { novaSenha }),
 };
 
+
+// ── Perfis customizados ──────────────────────────────────────────────────────
+
+function backendProfileToApp(r: any): CustomProfile {
+  return { id: r.id, label: r.rotulo, permissions: r.permissoes as Permission[] };
+}
+
+export const profilesApi = {
+  list: async (): Promise<CustomProfile[]> => {
+    const rows = await get<any[]>('/users/profiles/list');
+    return rows.map(backendProfileToApp);
+  },
+  create: async (label: string, permissions: Permission[]): Promise<CustomProfile> => {
+    const r = await post<any>('/users/profiles/list', { rotulo: label, permissoes: permissions });
+    return backendProfileToApp(r);
+  },
+  update: (id: string, label: string, permissions: Permission[]): Promise<void> =>
+    put<void>(`/users/profiles/${id}`, { rotulo: label, permissoes: permissions }),
+  delete: (id: string) => del(`/users/profiles/${id}`),
+};
 
 // ── Empresas ────────────────────────────────────────────────────────────────
 export const companiesApi = {

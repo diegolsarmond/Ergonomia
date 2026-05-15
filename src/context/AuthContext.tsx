@@ -1,12 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { AppUser, AuthSession, Permission, UserRole } from '../domain/auth/authTypes';
 import { SESSION_DURATION_HOURS } from '../domain/auth/authDefaults';
-import {
-  getRolePermissions,
-  type RolePermissionsMap,
-} from '../domain/auth/rolePermissionRepository';
-import { ROLE_PERMISSIONS } from '../domain/auth/permissions';
-import { authApi, getToken, setToken, clearToken } from '../services/api';
+import type { RolePermissionsMap } from '../domain/auth/rolePermissionRepository';
+import { ADMIN_PERMISSIONS, ROLE_PERMISSIONS } from '../domain/auth/permissions';
+import { authApi, profilesApi, getToken, setToken, clearToken } from '../services/api';
 
 // ── Context shape ─────────────────────────────────────────────────────────────
 
@@ -52,9 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const perms = await getRolePermissions();
-      setRolePermissions(perms);
-
       if (getToken()) {
         try {
           const user = await authApi.me();
@@ -76,7 +70,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Refresh role permissions (call after saving changes) ────────────────────
 
   const refreshRolePermissions = useCallback(async () => {
-    setRolePermissions(await getRolePermissions());
+    try {
+      const profiles = await profilesApi.list();
+      const map: RolePermissionsMap = { ADMIN: [...ADMIN_PERMISSIONS] };
+      for (const p of profiles) {
+        map[p.id] = p.permissions;
+      }
+      setRolePermissions(map);
+    } catch {
+      // ignore — permissions already loaded via currentUser
+    }
   }, []);
 
   // ── Login ───────────────────────────────────────────────────────────────────

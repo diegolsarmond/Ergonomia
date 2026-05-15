@@ -6,8 +6,16 @@ import { AEPPreview } from './reports/AEPPreview';
 
 export const PDFPreview = () => {
   const { id } = useParams<{ id: string }>();
-  const { getProject } = useAET();
+  const { getProject, loading } = useAET();
   const project = getProject(id!);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-gray-500 text-lg">Carregando...</p>
+      </div>
+    );
+  }
 
   if (!project) {
     return (

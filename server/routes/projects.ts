@@ -53,7 +53,13 @@ router.post('/', async (req, res) => {
 
 // ─── PUT /api/projects/:id — atualiza em AEP ou AET conforme reportType ──────
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.put('/:id', async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    res.status(400).json({ error: 'ID de projeto inválido' });
+    return;
+  }
   const project = { ...req.body, id: req.params.id };
   const client = await pool.connect();
   try {

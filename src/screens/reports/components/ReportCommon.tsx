@@ -150,14 +150,32 @@ export const ReportToolbar = ({ projectId }: { projectId: string }) => {
   );
 };
 
-export const PDF_STYLES = `
+export const getPdfStyles = (footerLogoUrl?: string) => `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-  @page { size: A4; margin: 20mm 15mm 25mm 15mm; }
+  @page { size: A4; margin: 20mm 15mm 22mm 15mm; }
   @page :first { margin: 0; }
+  @page {
+    ${footerLogoUrl ? `@bottom-left { content: url("${footerLogoUrl}"); vertical-align: middle; }` : ''}
+    @bottom-right {
+      content: "Página " counter(page) " / " counter(pages);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      font-size: 8pt;
+      color: #6b7280;
+      vertical-align: middle;
+    }
+  }
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .pdf-page { page-break-inside: avoid; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    .pdf-repeat-logo { display: flex !important; }
+    .pdf-repeat-logo img { max-height: 18mm; max-width: 60mm; object-fit: contain; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
+`;
+
+/** @deprecated use getPdfStyles() */
+export const PDF_STYLES = getPdfStyles() + `
   .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; }
   .pdf-preview :not(.pdf-cover) > h2 { font-size: 1.25rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: .06em; }
   .pdf-preview :not(.pdf-cover) > h3 { font-size: 1.05rem; font-weight: 700; color: ${PALETTE.dark}; border-left: 3px solid ${PALETTE.primary}; padding-left: .55rem; margin-top: 1.5rem; margin-bottom: .5rem; }
@@ -210,7 +228,7 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     <div style={{ position: 'absolute', top: '8%', left: 0, right: '50%', height: '1px', background: PALETTE.coverLine }} />
 
     {/* Client logo */}
-    <div style={{ position: 'absolute', top: '3%', left: '7.5%', width: '15cqw' }}>
+    <div style={{ position: 'absolute', top: '3%', left: '7.5%', width: '19cqw' }}>
       {companyLogoDataUrl
         ? <img src={companyLogoDataUrl} alt="Logomarca do Cliente" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
         : <div style={{ width: '100%', aspectRatio: '2 / 1', background: PALETTE.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: PALETTE.muted }}>Logo Empresa</div>
@@ -227,18 +245,18 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     </div>
 
     {/* Company name */}
-    <div style={{ position: 'absolute', top: '45%', bottom: '33%', left: '17%', display: 'flex', alignItems: 'center' }}>
+    <div style={{ position: 'absolute', top: '45%', bottom: '33%', left: '17%', right: '11%', display: 'flex', alignItems: 'center' }}>
       <div style={{ position: 'relative', height: '100%', width: '2px', background: PALETTE.coverLine, marginRight: '4cqw' }}>
         <div style={{ position: 'absolute', left: '-3px', top: 0, width: '8px', height: '8px', background: PALETTE.coverLine }} />
         <div style={{ position: 'absolute', left: '-3px', bottom: 0, width: '8px', height: '8px', background: PALETTE.coverLine }} />
       </div>
-      <h2 style={{ fontSize: '3.5cqw', fontWeight: 700, letterSpacing: '0.2em', color: PALETTE.primary, margin: 0 }}>
+      <h2 style={{ fontSize: '3.5cqw', fontWeight: 700, letterSpacing: '0.2em', color: PALETTE.primary, margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
         {companyName || 'EMPRESA CLIENTE'}
       </h2>
     </div>
 
     {/* Month / Year */}
-    <div style={{ position: 'absolute', bottom: '18%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center', fontWeight: 700, fontSize: '1.4cqw', letterSpacing: '0.2em', color: PALETTE.primary, textTransform: 'uppercase' }}>
+    <div style={{ position: 'absolute', bottom: '18%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center', fontWeight: 700, fontSize: '2.4cqw', letterSpacing: '0.2em', color: PALETTE.primary, textTransform: 'uppercase' }}>
       {monthYear || 'MÊS E ANO'}
     </div>
 

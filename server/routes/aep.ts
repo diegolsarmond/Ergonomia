@@ -52,7 +52,7 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
        assinatura_avaliador=$17, data=$18::date, logo_consultoria=$19, logo_empresa=$20,
        logo_responsavel=$21, empresa_id=$22, unidade_id=$23, atualizado_em=NOW()`,
     [
-      project.id,
+      uuid(project.id),
       str(project.companyName), str(project.fantasyName), str(project.cnpj),
       str(project.address), str(project.unit), str(project.product),
       str(project.riskDegree), str(project.location),
@@ -130,7 +130,7 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
          resp_nome=$45, resp_registro=$46, resp_formacao=$47, resp_empresa=$48,
          resp_assinatura=$49, unidade_id=$50, setor_id=$51, atualizado_em=NOW()`,
       [
-        f.id, project.id, i,
+        uuid(f.id), uuid(project.id), i,
         str(f.name) || str(ident.unitBranch),
         str(ident.code),
         str(ident.unitBranch),

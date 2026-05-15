@@ -9,6 +9,7 @@ import { Modal } from '../components/ui/Modal';
 import { UnitModalForm, SectorModalForm, JobRoleModalForm, EMPTY_UNIT, EMPTY_SECTOR, EMPTY_ROLE } from '../components/SharedParameterModals';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
 import { SingleImageUpload } from '../components/SingleImageUpload';
+import { ImageEditor } from '../components/ImageEditor';
 import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
 import type {
   AETFunction,
@@ -37,10 +38,9 @@ const AEP_TABS = [
 ];
 
 const ASSESSMENT_OPTIONS: { value: BiomechanicalAssessment; label: string; color: string }[] = [
-  { value: 'OK',       label: 'OK',      color: 'bg-green-100 text-green-800 border-green-300' },
+  { value: 'Regular', label: 'Regular', color: 'bg-green-100 text-green-800 border-green-300' },
   { value: 'Atenção',  label: 'Atenção', color: 'bg-amber-100 text-amber-800 border-amber-300' },
   { value: 'Crítico',  label: 'Crítico', color: 'bg-red-100 text-red-800 border-red-300' },
-  { value: 'N.A.',     label: 'N.A.',    color: 'bg-slate-100 text-slate-600 border-slate-300' },
 ];
 
 
@@ -199,6 +199,95 @@ const CatalogMultiSelect: React.FC<CatalogMultiSelectProps> = ({ label, items, v
   );
 };
 
+const MultiSelectAutocomplete: React.FC<{
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}> = ({ label, options, value, onChange, placeholder }) => {
+  const selected = value.split(', ').filter(Boolean);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  const toggle = (opt: string) => {
+    const cur = value.split(', ').filter(Boolean);
+    const nxt = cur.includes(opt) ? cur.filter(v => v !== opt) : [...cur, opt];
+    onChange(nxt.join(', '));
+  };
+
+  return (
+    <div className="space-y-2">
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.filter(s => options.includes(s) || s === 'Outros').map(opt => (
+            <span key={opt} className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-700 font-medium">
+              {opt}
+              <button type="button" onClick={() => toggle(opt)} className="hover:text-teal-900 leading-none">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => { setOpen(o => !o); setSearch(''); }}
+          className="w-full flex items-center justify-between px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-500 hover:border-teal-400 hover:text-teal-600 transition-colors bg-white"
+        >
+          <span>{placeholder ?? `Selecionar ${label.toLowerCase()}...`}</span>
+          <Plus className="w-4 h-4" />
+        </button>
+        {open && (
+          <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+            <div className="p-2 border-b border-slate-100">
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar..."
+                className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-teal-400"
+              />
+            </div>
+            <ul className="max-h-48 overflow-y-auto">
+              {filtered.length === 0 && (
+                <li className="px-3 py-2 text-xs text-slate-400">Nenhum item encontrado.</li>
+              )}
+              {filtered.map(opt => {
+                const isSelected = selected.includes(opt);
+                return (
+                  <li key={opt}>
+                    <button
+                      type="button"
+                      onClick={() => { toggle(opt); setOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${isSelected ? 'bg-teal-50 text-teal-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center text-xs ${isSelected ? 'bg-teal-500 border-teal-500 text-white' : 'border-slate-300'}`}>
+                        {isSelected && '✓'}
+                      </span>
+                      {opt}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
@@ -253,20 +342,15 @@ function computePsychosocialAverages(answers: PsychosocialQuestion[]) {
     ? Math.round((allGroups.reduce((s, v) => s + v, 0) / allGroups.length) * 100) / 100
     : 0;
 
-  // Classification
-  const criticalIds = ['psy-1', 'psy-2', 'psy-10', 'psy-12'];
-  const hasCritical4 = answers.some(a => criticalIds.includes(a.id) && Number(a.score) === 4 && !a.inverted);
-  const highScoreCount = scored.filter(a => {
-    const raw = Number(a.score);
-    const v = a.inverted ? (6 - raw) : raw;
-    return v >= 3;
-  }).length;
-
-  let classification: 'VERDE' | 'AMARELO' | 'VERMELHO' | '' = '';
+  // Classification — baseada na média geral (escala 1–5)
+  // 0–1,9 → VERDE | 2,0–2,9 → AMARELO | 3,0–3,9 → LARANJA | ≥4,0 → VERMELHO
+  let classification: 'VERDE' | 'AMARELO' | 'LARANJA' | 'VERMELHO' | '' = '';
   if (overall > 0) {
-    if (overall >= 2.6 || highScoreCount >= 3 || hasCritical4) {
+    if (overall >= 4.0) {
       classification = 'VERMELHO';
-    } else if (overall >= 1.6 || (highScoreCount >= 1 && highScoreCount <= 2)) {
+    } else if (overall >= 3.0) {
+      classification = 'LARANJA';
+    } else if (overall >= 2.0) {
       classification = 'AMARELO';
     } else {
       classification = 'VERDE';
@@ -274,9 +358,10 @@ function computePsychosocialAverages(answers: PsychosocialQuestion[]) {
   }
 
   const interpretations: Record<string, string> = {
-    VERDE: 'Risco psicossocial baixo. Manter monitoramento periódico.',
-    AMARELO: 'Risco psicossocial moderado. Recomenda-se atenção aos fatores identificados e ações preventivas.',
-    VERMELHO: 'Risco psicossocial alto. Intervenção prioritária recomendada. Considerar indicação de AET.',
+    VERDE:    'Baixo risco — não recomenda AET.',
+    AMARELO:  'Atenção / Moderado — avaliar necessidade de AET.',
+    LARANJA:  'Alto risco — recomenda AET.',
+    VERMELHO: 'Crítico — AET obrigatória/imediata.',
   };
 
   return {
@@ -302,6 +387,8 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [formData, setFormData] = useState<AETFunction>(initialData);
+  const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
+  const [editingRaciPhotoIdx, setEditingRaciPhotoIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -501,7 +588,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
       ...a,
       raciActionPlan: [
         ...a.raciActionPlan,
-        { id: uuidv4(), riskFactor: '', action: '', responsible: '', accountable: '', consulted: '', informed: '', deadline: '', priority: '', status: '' },
+        { id: uuidv4(), riskFactor: '', action: '', responsible: '', accountable: '', consulted: '', informed: '', deadline: '', priority: '', status: '', imageDataUrl: '' },
       ],
     }));
 
@@ -526,7 +613,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const updatePhoto = (idx: number, field: keyof PhotoRecord, value: string) =>
     setAep(a => {
       const list = [...a.photographicRecords];
-      (list[idx] as any)[field] = value;
+      list[idx] = { ...list[idx], [field]: value };
       return { ...a, photographicRecords: list };
     });
 
@@ -604,7 +691,15 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const classifColor: Record<string, string> = {
     VERDE:    'bg-green-100 text-green-800 border-green-300',
     AMARELO:  'bg-amber-100 text-amber-800 border-amber-300',
+    LARANJA:  'bg-orange-100 text-orange-800 border-orange-300',
     VERMELHO: 'bg-red-100 text-red-800 border-red-300',
+  };
+
+  const classifTextColor: Record<string, string> = {
+    VERDE:    'text-green-700',
+    AMARELO:  'text-amber-600',
+    LARANJA:  'text-orange-600',
+    VERMELHO: 'text-red-700',
   };
 
   const priorityColor: Record<string, string> = {
@@ -614,6 +709,20 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
     Crítica: 'text-red-700',
   };
 
+  const setGroupNA = (
+    group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
+    na: boolean,
+  ) =>
+    setAep(a => ({
+      ...a,
+      biomechanics: {
+        ...a.biomechanics,
+        [group]: na
+          ? [{ riskFactorId: '__na__', assessment: 'N.A.' as BiomechanicalAssessment, description: '' }]
+          : (a.biomechanics[group] as BiomechanicalItem[]).filter(i => i.riskFactorId !== '__na__'),
+      },
+    }));
+
   const renderBiomecGroup = (
     title: string,
     group: keyof Omit<AEPFunctionAssessment['biomechanics'], 'environmentalComfort'>,
@@ -622,14 +731,42 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
       rf.active &&
       rf.biomechanicalFactors?.some(bf => bf.trim().toLowerCase() === title.trim().toLowerCase())
     );
-    const savedItems = aep.biomechanics[group] as BiomechanicalItem[];
+    const allItems = aep.biomechanics[group] as BiomechanicalItem[];
+    const isGroupNA = allItems.some(i => i.riskFactorId === '__na__');
+    const savedItems = allItems.filter(i => i.riskFactorId !== '__na__');
     const availableToAdd = catalogRisks.filter(rf => !savedItems.find(i => i.riskFactorId === rf.id));
 
     return (
       <div className="mb-6">
-        <h4 className="text-sm font-semibold text-slate-700 mb-2">{title}</h4>
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="text-sm font-semibold text-slate-700">{title}</h4>
+          <button
+            type="button"
+            onClick={() => setGroupNA(group, !isGroupNA)}
+            className="flex items-center gap-2 ml-auto group"
+            title={isGroupNA ? 'Marcar como aplicável' : 'Marcar como não aplicável'}
+          >
+            <span className={`text-[10px] font-medium transition-colors ${isGroupNA ? 'text-slate-700 font-bold' : 'text-slate-400'}`}>
+              N.A.
+            </span>
+            <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 transition-colors duration-200 ${
+              isGroupNA ? 'bg-slate-300 border-slate-400' : 'bg-teal-500 border-teal-500'
+            }`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                isGroupNA ? 'translate-x-0' : 'translate-x-4'
+              }`} />
+            </span>
+            <span className={`text-[10px] font-medium transition-colors ${isGroupNA ? 'text-slate-500' : 'text-teal-700'}`}>
+              Aplica
+            </span>
+          </button>
+        </div>
 
-        {catalogRisks.length === 0 ? (
+        {isGroupNA ? (
+          <div className="px-4 py-2 bg-slate-100 border border-slate-300 rounded-xl">
+            <span className="text-xs text-slate-500 italic">Esta categoria não se aplica à função avaliada.</span>
+          </div>
+        ) : catalogRisks.length === 0 ? (
           <div className="px-4 py-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
             <span className="text-xs text-slate-400 italic">
               Nenhum fator de risco cadastrado para esta categoria em Parâmetros → Fatores de Risco Biomecânicos.
@@ -652,23 +789,29 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     {savedItems.map(item => {
                       const rf = catalogRisks.find(r => r.id === item.riskFactorId);
                       if (!rf) return null;
-                      const assessmentColor = item.assessment
-                        ? ASSESSMENT_OPTIONS.find(o => o.value === item.assessment)?.color ?? 'border-slate-200'
-                        : 'border-slate-200 text-slate-400';
                       return (
                         <tr key={item.riskFactorId} className="hover:bg-slate-50/50">
                           <td className="p-2 border border-slate-200 text-slate-700 text-xs font-medium">{rf.name}</td>
                           <td className="p-2 border border-slate-200">
-                            <select
-                              value={item.assessment}
-                              onChange={e => updateBiomecItem(group, item.riskFactorId, 'assessment', e.target.value)}
-                              className={`w-full rounded-lg border px-2 py-1 text-[10px] font-medium ${assessmentColor}`}
-                            >
-                              <option value="">—</option>
-                              {ASSESSMENT_OPTIONS.map(o => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                              ))}
-                            </select>
+                            <div className="flex flex-wrap items-center gap-1">
+                              {ASSESSMENT_OPTIONS.map(o => {
+                                const isSelected = item.assessment === o.value;
+                                return (
+                                  <button
+                                    key={o.value}
+                                    type="button"
+                                    onClick={() => updateBiomecItem(group, item.riskFactorId, 'assessment', isSelected ? '' : o.value)}
+                                    className={`px-2 py-1 text-[10px] font-medium rounded-md border transition-all ${
+                                      isSelected
+                                        ? `${o.color} shadow-sm`
+                                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                    }`}
+                                  >
+                                    {o.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </td>
                           <td className="p-2 border border-slate-200">
                             <input
@@ -869,110 +1012,194 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
           {/* ── Tab 2: Caracterização do Trabalho ── */}
           {activeTab === 1 && (
             <div className="space-y-4">
-              <SectionTitle>2.1 Descrição do Processo e Ciclo de Trabalho</SectionTitle>
-              <FormGroup label="Descrição">
-                <Textarea value={aep.workCharacterization.processDescription} onChange={e => setWork('processDescription', e.target.value)} rows={6} placeholder="Descreva o processo produtivo e o ciclo de trabalho." />
-              </FormGroup>
-
-              <SectionTitle>2.2 Organização do Trabalho</SectionTitle>
+              <SectionTitle>2.1 Organização do Trabalho</SectionTitle>
               <div className="grid grid-cols-2 gap-4">
                 <FormGroup label="Jornada de Trabalho">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {['6h/Dia', '8h/Dia', '12h/Dia'].map(opt => {
-                      const selected = aep.workCharacterization.workOrganization.workday.split(', ').includes(opt);
-                      return (
-                        <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.workOrganization.workday.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== opt) : [...cur, opt];
-                            setWorkOrg('workday', nxt.join(', '));
-                          }} />
-                          {opt}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <Input
-                    value={(() => {
-                      const options = ['6h/Dia', '8h/Dia', '12h/Dia'];
-                      return aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && !options.includes(v)).join(', ');
-                    })()}
-                    onChange={e => {
-                      const options = ['6h/Dia', '8h/Dia', '12h/Dia'];
-                      const fromOptions = aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && options.includes(v));
-                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                      setWorkOrg('workday', [...fromOptions, ...extra].join(', '));
-                    }}
-                    placeholder="Outra jornada..."
+                  <MultiSelectAutocomplete
+                    label="Jornada de Trabalho"
+                    options={['6h/Dia', '8h/Dia', '12h/Dia', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.workday}
+                    onChange={v => setWorkOrg('workday', v)}
                   />
+                  {aep.workCharacterization.workOrganization.workday.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['6h/Dia', '8h/Dia', '12h/Dia', 'Outros'];
+                        return aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['6h/Dia', '8h/Dia', '12h/Dia', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.workday.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value;
+                        setWorkOrg('workday', [...fromOptions, extra].filter(Boolean).join(', '));
+                      }}
+                      placeholder="Outra jornada..."
+                    />
+                  )}
                 </FormGroup>
+
                 <FormGroup label="Escala / Turno">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {shiftCatalog.filter(s => s.active).map(s => {
-                      const selected = aep.workCharacterization.workOrganization.scale.split(', ').includes(s.name);
-                      return (
-                        <label key={s.id} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.workOrganization.scale.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== s.name) : [...cur, s.name];
-                            setWorkOrg('scale', nxt.join(', '));
-                          }} />
-                          {s.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <Input value={aep.workCharacterization.workOrganization.scale} onChange={e => setWorkOrg('scale', e.target.value)} placeholder="Ex: 6x1, 5x2, 12x36..." />
-                </FormGroup>
-                <FormGroup label="Horas Extras">
-                  <Input value={aep.workCharacterization.workOrganization.overtime} onChange={e => setWorkOrg('overtime', e.target.value)} placeholder="Ex: Eventualmente" />
-                </FormGroup>
-                <FormGroup label="Pausa para o almoço">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {['60min.', '15min.', 'N/A'].map(opt => {
-                      const selected = aep.workCharacterization.workOrganization.lunchBreak.split(', ').includes(opt);
-                      return (
-                        <label key={opt} className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl text-sm transition-all cursor-pointer ${selected ? 'bg-teal-50 border-teal-200 text-teal-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Checkbox checked={selected} onChange={() => {
-                            const cur = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(Boolean);
-                            const nxt = selected ? cur.filter(v => v !== opt) : [...cur, opt];
-                            setWorkOrg('lunchBreak', nxt.join(', '));
-                          }} />
-                          {opt}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <Input
-                    value={(() => {
-                      const options = ['60min.', '15min.', 'N/A'];
-                      return aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && !options.includes(v)).join(', ');
-                    })()}
-                    onChange={e => {
-                      const options = ['60min.', '15min.', 'N/A'];
-                      const fromOptions = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && options.includes(v));
-                      const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                      setWorkOrg('lunchBreak', [...fromOptions, ...extra].join(', '));
-                    }}
-                    placeholder="Outra pausa..."
+                  <MultiSelectAutocomplete
+                    label="Escala / Turno"
+                    options={[...shiftCatalog.filter(s => s.active).map(s => s.name), 'Outros']}
+                    value={aep.workCharacterization.workOrganization.scale}
+                    onChange={v => setWorkOrg('scale', v)}
                   />
+                  {aep.workCharacterization.workOrganization.scale.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = [...shiftCatalog.filter(s => s.active).map(s => s.name), 'Outros'];
+                        return aep.workCharacterization.workOrganization.scale.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = [...shiftCatalog.filter(s => s.active).map(s => s.name), 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.scale.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value;
+                        setWorkOrg('scale', [...fromOptions, extra].filter(Boolean).join(', '));
+                      }}
+                      placeholder="Ex: 6x1, 5x2, 12x36..."
+                    />
+                  )}
                 </FormGroup>
+
+                <FormGroup label="Horas Extras">
+                  <MultiSelectAutocomplete
+                    label="Horas Extras"
+                    options={['Não há', 'Eventualmente', 'Frequentemente', 'Raramente', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.overtime}
+                    onChange={v => setWorkOrg('overtime', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.overtime.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['Não há', 'Eventualmente', 'Frequentemente', 'Raramente', 'Outros'];
+                        return aep.workCharacterization.workOrganization.overtime.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['Não há', 'Eventualmente', 'Frequentemente', 'Raramente', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.overtime.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value;
+                        setWorkOrg('overtime', [...fromOptions, extra].filter(Boolean).join(', '));
+                      }}
+                      placeholder="Ex: Todo sábado, etc."
+                    />
+                  )}
+                </FormGroup>
+
+                <FormGroup label="Pausa para o almoço">
+                  <MultiSelectAutocomplete
+                    label="Pausa para o almoço"
+                    options={['60min.', '15min.', 'N/A', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.lunchBreak}
+                    onChange={v => setWorkOrg('lunchBreak', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.lunchBreak.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['60min.', '15min.', 'N/A', 'Outros'];
+                        return aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['60min.', '15min.', 'N/A', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.lunchBreak.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value;
+                        setWorkOrg('lunchBreak', [...fromOptions, extra].filter(Boolean).join(', '));
+                      }}
+                      placeholder="Outra pausa..."
+                    />
+                  )}
+                </FormGroup>
+
                 <FormGroup label="Outras Pausas">
-                  <Input value={aep.workCharacterization.workOrganization.otherBreaks} onChange={e => setWorkOrg('otherBreaks', e.target.value)} placeholder="Descreva outras pausas existentes..." />
+                  <MultiSelectAutocomplete
+                    label="Outras Pausas"
+                    options={['Não há', '10min.', '15min.', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.otherBreaks}
+                    onChange={v => setWorkOrg('otherBreaks', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.otherBreaks.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['Não há', '10min.', '15min.', 'Outros'];
+                        return aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['Não há', '10min.', '15min.', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.otherBreaks.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value;
+                        setWorkOrg('otherBreaks', [...fromOptions, extra].filter(Boolean).join(', '));
+                      }}
+                      placeholder="Descreva outras pausas existentes..."
+                    />
+                  )}
                 </FormGroup>
+
                 <FormGroup label="Rodízio de Tarefas">
-                  <Input value={aep.workCharacterization.workOrganization.taskRotation} onChange={e => setWorkOrg('taskRotation', e.target.value)} placeholder="Ex: Não há rodízio formalizado" />
+                  <MultiSelectAutocomplete
+                    label="Rodízio de Tarefas"
+                    options={['Não há rodízio formalizado', 'Outros']}
+                    value={aep.workCharacterization.workOrganization.taskRotation}
+                    onChange={v => setWorkOrg('taskRotation', v)}
+                  />
+                  {aep.workCharacterization.workOrganization.taskRotation.split(', ').includes('Outros') && (
+                    <Input
+                      className="mt-2"
+                      value={(() => {
+                        const options = ['Não há rodízio formalizado', 'Outros'];
+                        return aep.workCharacterization.workOrganization.taskRotation.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                      })()}
+                      onChange={e => {
+                        const options = ['Não há rodízio formalizado', 'Outros'];
+                        const fromOptions = aep.workCharacterization.workOrganization.taskRotation.split(', ').filter(v => v && options.includes(v));
+                        const extra = e.target.value;
+                        setWorkOrg('taskRotation', [...fromOptions, extra].filter(Boolean).join(', '));
+                      }}
+                      placeholder="Descreva o rodízio..."
+                    />
+                  )}
                 </FormGroup>
+
               </div>
               <FormGroup label="Diálogos de Segurança / DDS">
-                <Input value={aep.workCharacterization.workOrganization.safetyDialogues} onChange={e => setWorkOrg('safetyDialogues', e.target.value)} placeholder="Ex: Semanal" />
+                <MultiSelectAutocomplete
+                  label="Diálogos de Segurança / DDS"
+                  options={['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Não há', 'Outros']}
+                  value={aep.workCharacterization.workOrganization.safetyDialogues}
+                  onChange={v => setWorkOrg('safetyDialogues', v)}
+                />
+                {aep.workCharacterization.workOrganization.safetyDialogues.split(', ').includes('Outros') && (
+                  <Input
+                    className="mt-2"
+                    value={(() => {
+                      const options = ['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Não há', 'Outros'];
+                      return aep.workCharacterization.workOrganization.safetyDialogues.split(', ').filter(v => v && !options.includes(v)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const options = ['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Não há', 'Outros'];
+                      const fromOptions = aep.workCharacterization.workOrganization.safetyDialogues.split(', ').filter(v => v && options.includes(v));
+                      const extra = e.target.value;
+                      setWorkOrg('safetyDialogues', [...fromOptions, extra].filter(Boolean).join(', '));
+                    }}
+                    placeholder="Ex: Trimestral..."
+                  />
+                )}
+              </FormGroup>
+
+              <SectionTitle>2.2 Descrição do Processo e Ciclo de Trabalho</SectionTitle>
+              <FormGroup label="Descrição">
+                <RichText value={aep.workCharacterization.processDescription} onChange={val => setWork('processDescription', val)} placeholder="Descreva o processo produtivo e o ciclo de trabalho." />
               </FormGroup>
 
               <SectionTitle>2.3 Equipamentos e EPIs</SectionTitle>
               <FormGroup label="Equipamentos Utilizados">
                 <CatalogMultiSelect
                   label="Equipamentos"
-                  items={equipmentCatalog}
+                  items={[...equipmentCatalog, { id: 'outros', name: 'Outros', active: true } as any]}
                   value={aep.workCharacterization.toolsAndMaterials.description}
                   onChange={v => setTools('description', v)}
                   onAddNew={async name => {
@@ -980,27 +1207,29 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   }}
                   placeholder="Selecionar equipamentos do catálogo..."
                 />
-                <Input
-                  className="mt-2"
-                  value={(() => {
-                    const catalogNames = equipmentCatalog.map(e => e.name);
-                    return aep.workCharacterization.toolsAndMaterials.description
-                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
-                  })()}
-                  onChange={e => {
-                    const catalogNames = equipmentCatalog.map(eq => eq.name);
-                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.description
-                      .split(', ').filter(n => n && catalogNames.includes(n));
-                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                    setTools('description', [...fromCatalog, ...extra].join(', '));
-                  }}
-                  placeholder="Outros equipamentos (não cadastrados), separados por vírgula..."
-                />
+                {aep.workCharacterization.toolsAndMaterials.description.split(', ').includes('Outros') && (
+                  <Input
+                    className="mt-2"
+                    value={(() => {
+                      const catalogNames = [...equipmentCatalog.map(e => e.name), 'Outros'];
+                      return aep.workCharacterization.toolsAndMaterials.description
+                        .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const catalogNames = [...equipmentCatalog.map(eq => eq.name), 'Outros'];
+                      const fromCatalog = aep.workCharacterization.toolsAndMaterials.description
+                        .split(', ').filter(n => n && catalogNames.includes(n));
+                      const extra = e.target.value;
+                      setTools('description', [...fromCatalog, extra].filter(Boolean).join(', '));
+                    }}
+                    placeholder="Especifique outros equipamentos (separados por vírgula)..."
+                  />
+                )}
               </FormGroup>
               <FormGroup label="EPIs Utilizados">
                 <CatalogMultiSelect
                   label="EPIs"
-                  items={epiCatalog}
+                  items={[...epiCatalog, { id: 'outros', name: 'Outros', active: true } as any]}
                   value={aep.workCharacterization.toolsAndMaterials.epis}
                   onChange={v => setTools('epis', v)}
                   onAddNew={async name => {
@@ -1008,22 +1237,24 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   }}
                   placeholder="Selecionar EPIs do catálogo..."
                 />
-                <Input
-                  className="mt-2"
-                  value={(() => {
-                    const catalogNames = epiCatalog.map(e => e.name);
-                    return aep.workCharacterization.toolsAndMaterials.epis
-                      .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
-                  })()}
-                  onChange={e => {
-                    const catalogNames = epiCatalog.map(ep => ep.name);
-                    const fromCatalog = aep.workCharacterization.toolsAndMaterials.epis
-                      .split(', ').filter(n => n && catalogNames.includes(n));
-                    const extra = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                    setTools('epis', [...fromCatalog, ...extra].join(', '));
-                  }}
-                  placeholder="Outros EPIs (não cadastrados), separados por vírgula..."
-                />
+                {aep.workCharacterization.toolsAndMaterials.epis.split(', ').includes('Outros') && (
+                  <Input
+                    className="mt-2"
+                    value={(() => {
+                      const catalogNames = [...epiCatalog.map(e => e.name), 'Outros'];
+                      return aep.workCharacterization.toolsAndMaterials.epis
+                        .split(', ').filter(n => n && !catalogNames.includes(n)).join(', ');
+                    })()}
+                    onChange={e => {
+                      const catalogNames = [...epiCatalog.map(ep => ep.name), 'Outros'];
+                      const fromCatalog = aep.workCharacterization.toolsAndMaterials.epis
+                        .split(', ').filter(n => n && catalogNames.includes(n));
+                      const extra = e.target.value;
+                      setTools('epis', [...fromCatalog, extra].filter(Boolean).join(', '));
+                    }}
+                    placeholder="Especifique outros EPIs (separados por vírgula)..."
+                  />
+                )}
               </FormGroup>
               <FormGroup label="Outros Recursos">
                 <Input value={aep.workCharacterization.toolsAndMaterials.others} onChange={e => setTools('others', e.target.value)} />
@@ -1053,11 +1284,38 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                         <Trash2 className="w-3.5 h-3.5 text-red-400" />
                       </Button>
                     </div>
-                    <SingleImageUpload
-                      value={photo.imageDataUrl}
-                      onChange={url => updatePhoto(idx, 'imageDataUrl', url)}
-                      label="Imagem"
-                    />
+                    {photo.imageDataUrl ? (
+                      <div className="space-y-1.5">
+                        <div className="relative group rounded-lg overflow-hidden border border-slate-200 cursor-pointer" onClick={() => setEditingPhotoIdx(idx)}>
+                          <img
+                            src={photo.imageDataUrl}
+                            alt={`Foto ${idx + 1}`}
+                            className="w-full max-h-48 object-contain bg-slate-50"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 rounded-lg text-xs font-medium shadow">
+                              ✏️ Clique para editar
+                            </span>
+                          </div>
+                        </div>
+                        <SingleImageUpload
+                          value=""
+                          onChange={url => {
+                            if (url) { updatePhoto(idx, 'imageDataUrl', url); setEditingPhotoIdx(idx); }
+                          }}
+                          label="Trocar imagem"
+                        />
+                      </div>
+                    ) : (
+                      <SingleImageUpload
+                        value=""
+                        onChange={url => {
+                          updatePhoto(idx, 'imageDataUrl', url);
+                          if (url) setEditingPhotoIdx(idx);
+                        }}
+                        label="Imagem"
+                      />
+                    )}
                     <input
                       type="text"
                       value={photo.description}
@@ -1068,6 +1326,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   </div>
                 ))}
               </div>
+
             </div>
           )}
 
@@ -1306,7 +1565,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       ))}
                       <div className="flex justify-between col-span-2 pt-1 border-t border-slate-200">
                         <span className="font-semibold text-slate-700">Média Geral</span>
-                        <span className="font-bold text-slate-900">{aep.psychosocialAverages.overall.toFixed(2)}</span>
+                        <span className={`font-bold ${classifTextColor[aep.psychosocialClassification] || 'text-slate-900'}`}>{aep.psychosocialAverages.overall.toFixed(2)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1369,18 +1628,18 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 </div>
               </div>
 
-               <FormGroup label="Orientação Final">
-                <RichText 
-                  value={aep.finalGuidance} 
-                  onChange={val => setAep(a => ({ ...a, finalGuidance: val }))} 
-                  placeholder="Orientações gerais ao cliente após a avaliação preliminar." 
+              <FormGroup label="Justificativa da Decisão">
+                <RichText
+                  value={aep.decisionJustification}
+                  onChange={val => setAep(a => ({ ...a, decisionJustification: val }))}
+                  placeholder="Justifique a decisão de indicar ou não a AET."
                 />
               </FormGroup>
-              <FormGroup label="Justificativa da Decisão">
-                <RichText 
-                  value={aep.decisionJustification} 
-                  onChange={val => setAep(a => ({ ...a, decisionJustification: val }))} 
-                  placeholder="Justifique a decisão de indicar ou não a AET." 
+              <FormGroup label="Diagnóstico">
+                <RichText
+                  value={aep.finalGuidance}
+                  onChange={val => setAep(a => ({ ...a, finalGuidance: val }))}
+                  placeholder="Orientações gerais ao cliente após a avaliação preliminar."
                 />
               </FormGroup>
             </div>
@@ -1404,6 +1663,35 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </Button>
                   </div>
+                  <FormGroup label="Foto / Print">
+                    {action.imageDataUrl ? (
+                      <div className="space-y-1.5">
+                        <div className="relative group rounded-lg overflow-hidden border border-slate-200 cursor-pointer" onClick={() => setEditingRaciPhotoIdx(idx)}>
+                          <img
+                            src={action.imageDataUrl}
+                            alt={`Foto ação ${idx + 1}`}
+                            className="w-full max-h-48 object-contain bg-slate-50"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 rounded-lg text-xs font-medium shadow">
+                              ✏️ Clique para editar
+                            </span>
+                          </div>
+                        </div>
+                        <SingleImageUpload
+                          value=""
+                          onChange={url => { if (url) { updateRaci(idx, 'imageDataUrl', url); setEditingRaciPhotoIdx(idx); } }}
+                          label="Trocar imagem"
+                        />
+                      </div>
+                    ) : (
+                      <SingleImageUpload
+                        value=""
+                        onChange={url => { if (url) { updateRaci(idx, 'imageDataUrl', url); setEditingRaciPhotoIdx(idx); } }}
+                        label="Imagem"
+                      />
+                    )}
+                  </FormGroup>
                   <FormGroup label="Fator de Risco">
                     <Input value={action.riskFactor} onChange={e => updateRaci(idx, 'riskFactor', e.target.value)} />
                   </FormGroup>
@@ -1510,6 +1798,28 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         companySectors={companySectors}
         companyRoles={companyJobRoles}
       />
+
+      {editingPhotoIdx !== null && aep.photographicRecords[editingPhotoIdx]?.imageDataUrl && (
+        <ImageEditor
+          imageDataUrl={aep.photographicRecords[editingPhotoIdx].imageDataUrl}
+          onSave={url => {
+            updatePhoto(editingPhotoIdx, 'imageDataUrl', url);
+            setEditingPhotoIdx(null);
+          }}
+          onClose={() => setEditingPhotoIdx(null)}
+        />
+      )}
+
+      {editingRaciPhotoIdx !== null && aep.raciActionPlan[editingRaciPhotoIdx]?.imageDataUrl && (
+        <ImageEditor
+          imageDataUrl={aep.raciActionPlan[editingRaciPhotoIdx].imageDataUrl!}
+          onSave={url => {
+            updateRaci(editingRaciPhotoIdx, 'imageDataUrl', url);
+            setEditingRaciPhotoIdx(null);
+          }}
+          onClose={() => setEditingRaciPhotoIdx(null)}
+        />
+      )}
 
 
 
