@@ -10,6 +10,8 @@ import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './screens/Login';
+import { ForgotPassword } from './screens/ForgotPassword';
+import { ResetPassword } from './screens/ResetPassword';
 import { Dashboard } from './screens/Dashboard';
 import { ProjectView } from './screens/ProjectView';
 import { FunctionForm } from './screens/FunctionForm';
@@ -37,8 +39,10 @@ export default function App() {
       <AETProvider>
         <BrowserRouter>
           <Routes>
-            {/* Pública */}
+            {/* Públicas */}
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protegidas */}
             <Route
