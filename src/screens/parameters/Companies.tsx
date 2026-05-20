@@ -89,12 +89,12 @@ const CompanyForm: React.FC<{
     setCnpjLoading(true);
     setCnpjError('');
     try {
-      const res = await fetch(`https://kitana.opencnpj.com/cnpj/${cnpjDigits}`);
-      const json = await res.json();
-      if (!json.success || !json.data) { setCnpjError('CNPJ não encontrado.'); return; }
-      const d = json.data;
-      set('razaoSocial', d.razaoSocial ?? '');
-      set('nomeFantasia', d.nomeFantasia ?? '');
+      const res = await fetch(`https://api.opencnpj.org/${cnpjDigits}`);
+      if (!res.ok) { setCnpjError('CNPJ não encontrado.'); return; }
+      const d = await res.json();
+      if (!d || !d.cnpj) { setCnpjError('CNPJ não encontrado.'); return; }
+      set('razaoSocial', d.razao_social ?? '');
+      set('nomeFantasia', d.nome_fantasia ?? '');
       set('logradouro', d.logradouro ?? '');
       set('numero', d.numero ?? '');
       set('complemento', d.complemento ?? '');
@@ -102,7 +102,7 @@ const CompanyForm: React.FC<{
       set('municipio', d.municipio ?? '');
       set('uf', d.uf ?? '');
       set('cep', d.cep ?? '');
-      set('product', d.cnaes?.[0]?.descricao ?? '');
+      set('product', d.cnae_principal ?? '');
     } catch {
       setCnpjError('Erro ao consultar CNPJ. Tente novamente.');
     } finally {
