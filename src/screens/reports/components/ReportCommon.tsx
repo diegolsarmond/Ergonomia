@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { auditoriaApi } from '../../../services/api';
 import type { RiskLevel } from '../../../types';
 
 // ── Palette ──────────────────────────────────────────────────────────────────
@@ -125,8 +126,26 @@ export const PieChart = ({ data }: { data: { label: string; pct: number; color: 
   );
 };
 
-export const ReportToolbar = ({ projectId }: { projectId: string }) => {
+interface ReportToolbarProps {
+  projectId: string;
+  reportType?: 'AET' | 'AEP';
+  projectName?: string;
+}
+
+export const ReportToolbar: React.FC<ReportToolbarProps> = ({ projectId, reportType, projectName }) => {
   const navigate = useNavigate();
+
+  const handlePrint = async () => {
+    const tabela = reportType === 'AEP' ? 'aep_projetos' : 'aet_projetos';
+    const desc = `Impressão/PDF do projeto ${reportType ?? ''}: ${projectName ?? projectId}`;
+    try {
+      await auditoriaApi.registrar('IMPRESSÃO', tabela, projectId, desc);
+    } catch {
+      // falha silenciosa — não bloqueia a impressão
+    }
+    window.print();
+  };
+
   return (
     <div className="print:hidden sticky top-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
       <button
@@ -138,7 +157,7 @@ export const ReportToolbar = ({ projectId }: { projectId: string }) => {
         <span className="sm:hidden">Voltar</span>
       </button>
       <button
-        onClick={() => window.print()}
+        onClick={handlePrint}
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white hover:opacity-90 transition-opacity w-full sm:w-auto justify-center"
         style={{ background: PALETTE.primary }}
       >

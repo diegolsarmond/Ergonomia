@@ -4,6 +4,7 @@ import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_IN
 import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, useSectionPages, PALETTE } from './components/ReportCommon';
 import { useAET } from '../../context/AETContext';
 import logo2 from '../../assets/images/logo_2.png';
+import { auditoriaApi } from '../../services/api';
 
 // ── Risk Matrix ──────────────────────────────────────────────────────────────
 
@@ -911,9 +912,16 @@ const AEPFunctionSection: React.FC<{
 
 export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
   const { biomechanicalRiskFactors } = useAET();
+  const auditFiredRef = React.useRef(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('print') === 'true') {
+      if (!auditFiredRef.current) {
+        auditFiredRef.current = true;
+        const desc = `Impressão/PDF do projeto AEP: ${project.companyName || project.id}`;
+        auditoriaApi.registrar('IMPRESSÃO', 'aep_projetos', project.id, desc).catch(() => {});
+      }
       const timer = setTimeout(() => window.print(), 500);
       return () => clearTimeout(timer);
     }
@@ -943,7 +951,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
 
   return (
     <>
-      <ReportToolbar projectId={project.id} />
+      <ReportToolbar projectId={project.id} reportType="AEP" projectName={project.companyName} />
 
       <div className="w-full overflow-x-auto print:overflow-visible bg-gray-100 print:bg-transparent">
         <div ref={containerRef} className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none print:w-full shadow-lg print:shadow-none">

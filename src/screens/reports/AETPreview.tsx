@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, AETImprovement, AETEquipmentItem, AETEPIItem, ErgonomicRisk } from '../../types';
 import { DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA } from '../../types';
 import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, useSectionPages } from './components/ReportCommon';
+import { auditoriaApi } from '../../services/api';
 
 // ── AET Function Section ─────────────────────────────────────────────────────
 
@@ -450,9 +451,16 @@ const FunctionSection: React.FC<FunctionSectionProps> = ({ func, sectionNum }) =
 // ── AETPreview ───────────────────────────────────────────────────────────────
 
 export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
+  const auditFiredRef = React.useRef(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('print') === 'true') {
+      if (!auditFiredRef.current) {
+        auditFiredRef.current = true;
+        const desc = `Impressão/PDF do projeto AET: ${project.companyName || project.id}`;
+        auditoriaApi.registrar('IMPRESSÃO', 'aet_projetos', project.id, desc).catch(() => {});
+      }
       const timer = setTimeout(() => window.print(), 500);
       return () => clearTimeout(timer);
     }
@@ -477,7 +485,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
 
   return (
     <>
-      <ReportToolbar projectId={project.id} />
+      <ReportToolbar projectId={project.id} reportType="AET" projectName={project.companyName} />
 
       <div className="w-full overflow-x-auto print:overflow-visible bg-gray-100 print:bg-transparent">
         <div ref={containerRef} className="pdf-preview bg-white min-w-[800px] max-w-[210mm] mx-auto my-8 print:my-0 print:min-w-0 print:max-w-none print:w-full shadow-lg print:shadow-none">

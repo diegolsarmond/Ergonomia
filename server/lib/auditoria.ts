@@ -9,7 +9,9 @@ export type AcaoAuditoria =
   | 'INATIVAÇÃO'
   | 'ATIVAÇÃO'
   | 'BLOQUEIO'
-  | 'DESBLOQUEIO';
+  | 'DESBLOQUEIO'
+  | 'EXPORTAÇÃO'
+  | 'IMPRESSÃO';
 
 type DbClient = typeof pool | PoolClient;
 
