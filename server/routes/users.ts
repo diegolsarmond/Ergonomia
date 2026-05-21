@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -128,6 +129,7 @@ router.post('/', requireAdmin, async (req, res) => {
         crefito ?? null,
       ]
     );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'usuarios', rows[0].id, `Usuário criado: ${rows[0].nome} (${rows[0].nome_usuario})`);
     res.status(201).json(rowToUser(rows[0]));
   } catch (err: any) {
     if (err.code === '23505') {
@@ -178,6 +180,7 @@ router.put('/:id', async (req, res) => {
       res.status(404).json({ error: 'Usuário não encontrado' });
       return;
     }
+    await registrarAuditoria(req, 'EDIÇÃO', 'usuarios', req.params.id, `Usuário editado: ${rows[0].nome} (${rows[0].nome_usuario})`);
     const permissions = await getUserPermissions(rows[0].id, rows[0].perfil);
     res.json(rowToUser(rows[0], permissions));
   } catch (err: any) {
@@ -231,15 +234,22 @@ router.post('/:id/reset-password', requireAdmin, async (req, res) => {
  */
 router.delete('/:id', requireAdmin, async (req, res) => {
   if (req.auth!.userId === req.params.id) {
-    res.status(400).json({ error: 'Não é possível remover o próprio usuário' });
+    res.status(400).json({ error: 'Não é possível desativar o próprio usuário' });
     return;
   }
   try {
-    const { rowCount } = await pool.query(`DELETE FROM usuarios WHERE id = $1`, [req.params.id]);
-    if (!rowCount) {
-      res.status(404).json({ error: 'Usuário não encontrado' });
+    const { rows } = await pool.query(
+      `UPDATE usuarios SET status = 'inativo', atualizado_em = NOW()
+       WHERE id = $1 AND status != 'inativo'
+       RETURNING *`,
+      [req.params.id]
+    );
+    if (!rows.length) {
+      res.status(404).json({ error: 'Usuário não encontrado ou já inativo' });
       return;
     }
+    await pool.query(`DELETE FROM sessoes WHERE usuario_id = $1`, [req.params.id]);
+    await registrarAuditoria(req, 'EXCLUSÃO', 'usuarios', req.params.id, `Usuário desativado: ${rows[0].nome} (${rows[0].nome_usuario})`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -303,6 +313,7 @@ router.post('/profiles/list', requireAdmin, async (req, res) => {
         [profileId, ...permissoes]
       );
     }
+    await registrarAuditoria(req, 'CRIAÇÃO', 'perfis_customizados', profileId, `Perfil criado: ${rotulo}`, client);
     await client.query('COMMIT');
     res.status(201).json({ id: profileId, rotulo, permissoes: permissoes ?? [] });
   } catch (err) {
@@ -335,6 +346,7 @@ router.put('/profiles/:profileId', requireAdmin, async (req, res) => {
         );
       }
     }
+    await registrarAuditoria(req, 'EDIÇÃO', 'perfis_customizados', profileId, `Perfil editado: ${rotulo ?? profileId}`, client);
     await client.query('COMMIT');
     res.json({ message: 'Perfil atualizado' });
   } catch (err) {
@@ -347,7 +359,17 @@ router.put('/profiles/:profileId', requireAdmin, async (req, res) => {
 
 router.delete('/profiles/:profileId', requireAdmin, async (req, res) => {
   try {
-    await pool.query(`DELETE FROM perfis_customizados WHERE id = $1`, [req.params.profileId]);
+    const { rows } = await pool.query(
+      `UPDATE perfis_customizados SET ativo = FALSE, atualizado_em = NOW()
+       WHERE id = $1 AND ativo
+       RETURNING *`,
+      [req.params.profileId]
+    );
+    if (!rows.length) {
+      res.status(404).json({ error: 'Perfil não encontrado ou já inativo' });
+      return;
+    }
+    await registrarAuditoria(req, 'EXCLUSÃO', 'perfis_customizados', req.params.profileId, `Perfil desativado: ${rows[0].rotulo}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

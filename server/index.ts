@@ -28,11 +28,14 @@ import clientsRouter from './routes/clients.js';
 import ocupacoesRouter from './routes/ocupacoes.js';
 import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
+import auditoriaRouter from './routes/auditoria.js';
+import { optionalAuth } from './middleware/auth.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
 app.use(express.json({ limit: '50mb' }));
+app.use(optionalAuth);
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
@@ -75,6 +78,7 @@ app.use('/api/aet',                    aetRouter);
 app.use('/api/projects',               projectsRouter);
 app.use('/api/clients',                clientsRouter);
 app.use('/api/ocupacoes',              ocupacoesRouter);
+app.use('/api/auditoria',             auditoriaRouter);
 
 // Serve frontend static files when the dist/ folder exists (production build)
 const distPath = path.resolve(__dirname, '../dist');

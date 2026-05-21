@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ function rowToRisk(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM classificacoes_risco ORDER BY pontuacao_minima');
+    const { rows } = await pool.query('SELECT * FROM classificacoes_risco WHERE ativo ORDER BY pontuacao_minima');
     res.json(rows.map(rowToRisk));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -31,6 +32,7 @@ router.post('/', async (req, res) => {
        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5) RETURNING *`,
       [r.name, r.minScore, r.maxScore, r.color, r.interpretation]
     );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'classificacoes_risco', rows[0].id, `Classificação de risco criada: ${rows[0].nome}`);
     res.status(201).json(rowToRisk(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -46,6 +48,7 @@ router.put('/:id', async (req, res) => {
       [r.name, r.minScore, r.maxScore, r.color, r.interpretation, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EDIÇÃO', 'classificacoes_risco', req.params.id, `Classificação de risco editada: ${rows[0].nome}`);
     res.json(rowToRisk(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -54,7 +57,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM classificacoes_risco WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE classificacoes_risco SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'classificacoes_risco', req.params.id, `Classificação de risco desativada: ${rows[0].nome}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

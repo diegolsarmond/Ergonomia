@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ function rowToEPI(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM epis ORDER BY nome');
+    const { rows } = await pool.query('SELECT * FROM epis WHERE ativo ORDER BY nome');
     res.json(rows.map(rowToEPI));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -31,6 +32,7 @@ router.post('/', async (req, res) => {
        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5) RETURNING *`,
       [e.name, e.type, e.description, e.mandatoryByDefault ?? false, e.active ?? true]
     );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'epis', rows[0].id, `EPI criado: ${rows[0].nome}`);
     res.status(201).json(rowToEPI(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -46,6 +48,7 @@ router.put('/:id', async (req, res) => {
       [e.name, e.type, e.description, e.mandatoryByDefault ?? false, e.active ?? true, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EDIÇÃO', 'epis', req.params.id, `EPI editado: ${rows[0].nome}`);
     res.json(rowToEPI(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -54,7 +57,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM epis WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE epis SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'epis', req.params.id, `EPI desativado: ${rows[0].nome}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

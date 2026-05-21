@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ async function rowToFactor(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM fatores_risco_biomecanico ORDER BY nome');
+    const { rows } = await pool.query('SELECT * FROM fatores_risco_biomecanico WHERE ativo ORDER BY nome');
     const result = await Promise.all(rows.map(rowToFactor));
     res.json(result);
   } catch (err) {
@@ -42,6 +43,7 @@ router.post('/', async (req, res) => {
         'INSERT INTO fator_risco_biomecanico_categorias (fator_id, categoria) VALUES ($1,$2) ON CONFLICT DO NOTHING',
         [id, cat]
       );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'fatores_risco_biomecanico', id, `Fator de risco criado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.status(201).json(await rowToFactor(rows[0]));
   } catch (err) {
@@ -69,6 +71,7 @@ router.put('/:id', async (req, res) => {
         'INSERT INTO fator_risco_biomecanico_categorias (fator_id, categoria) VALUES ($1,$2)',
         [req.params.id, cat]
       );
+    await registrarAuditoria(req, 'EDIÇÃO', 'fatores_risco_biomecanico', req.params.id, `Fator de risco editado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.json(await rowToFactor(rows[0]));
   } catch (err) {
@@ -81,7 +84,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM fatores_risco_biomecanico WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE fatores_risco_biomecanico SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'fatores_risco_biomecanico', req.params.id, `Fator de risco desativado: ${rows[0].nome}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

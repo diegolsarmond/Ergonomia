@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ async function rowToQuestion(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM perguntas_checklist ORDER BY texto');
+    const { rows } = await pool.query('SELECT * FROM perguntas_checklist WHERE ativo ORDER BY texto');
     const result = await Promise.all(rows.map(rowToQuestion));
     res.json(result);
   } catch (err) {
@@ -41,6 +42,7 @@ router.post('/', async (req, res) => {
         'INSERT INTO checklist_pergunta_funcoes (pergunta_id, nome_funcao) VALUES ($1,$2) ON CONFLICT DO NOTHING',
         [id, fId]
       );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'perguntas_checklist', id, `Pergunta de checklist criada: ${rows[0].texto?.substring(0, 60)}`, client);
     await client.query('COMMIT');
     res.status(201).json(await rowToQuestion(rows[0]));
   } catch (err) {
@@ -68,6 +70,7 @@ router.put('/:id', async (req, res) => {
         'INSERT INTO checklist_pergunta_funcoes (pergunta_id, nome_funcao) VALUES ($1,$2)',
         [req.params.id, fId]
       );
+    await registrarAuditoria(req, 'EDIÇÃO', 'perguntas_checklist', req.params.id, `Pergunta de checklist editada: ${rows[0].texto?.substring(0, 60)}`, client);
     await client.query('COMMIT');
     res.json(await rowToQuestion(rows[0]));
   } catch (err) {
@@ -80,7 +83,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM perguntas_checklist WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE perguntas_checklist SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'perguntas_checklist', req.params.id, `Pergunta de checklist desativada: ${rows[0].texto?.substring(0, 60)}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

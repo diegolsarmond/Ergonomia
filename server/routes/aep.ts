@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -346,6 +347,7 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
     FROM aep_projetos p
     LEFT JOIN empresas e ON e.id = p.empresa_id
     LEFT JOIN unidades u ON u.id = p.unidade_id
+    WHERE p.ativo
     ORDER BY p.criado_em
   `);
   const result: any[] = [];
@@ -707,7 +709,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM aep_projetos WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE aep_projetos SET ativo = FALSE WHERE id=$1 AND ativo RETURNING id, nome_empresa',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Projeto AEP não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'aep_projetos', req.params.id, `Projeto AEP desativado: ${rows[0].nome_empresa ?? ''}`);
     res.status(204).end();
   } catch (err) {
     console.error('DELETE /api/aep error:', err);
