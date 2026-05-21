@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { auditoriaApi } from '../../../services/api';
 import type { RiskLevel } from '../../../types';
+import logo3 from '../../../assets/images/logo_3.png';
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 export const PALETTE = {
@@ -190,6 +191,8 @@ export const getPdfStyles = (footerLogoUrl?: string) => `
     tfoot { display: table-footer-group; }
     .pdf-repeat-logo { display: flex !important; }
     .pdf-repeat-logo img { max-height: 18mm; max-width: 60mm; object-fit: contain; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pdf-footer { display: flex !important; }
+    .pdf-footer img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 `;
 
@@ -239,8 +242,8 @@ export const CoverPage: React.FC<CoverPageProps> = ({
   >
     {/* Top-right block */}
     <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '8%', background: PALETTE.primary }} />
-    {/* Right vertical stripe */}
-    <div style={{ position: 'absolute', top: '8%', bottom: '6%', right: 0, width: '11%', background: PALETTE.primary }} />
+    {/* Right vertical stripe — para acima da área do nome da empresa */}
+    <div style={{ position: 'absolute', top: '8%', bottom: '55%', right: 0, width: '11%', background: PALETTE.primary }} />
     {/* Left vertical guide */}
     <div style={{ position: 'absolute', top: 0, bottom: 0, left: '6%', width: '1px', background: PALETTE.coverLine }} />
     {/* Top horizontal guide */}
@@ -279,29 +282,16 @@ export const CoverPage: React.FC<CoverPageProps> = ({
       {monthYear || 'MÊS E ANO'}
     </div>
 
-    {/* Bottom guide line */}
-    <div style={{ position: 'absolute', bottom: '6%', left: 0, right: '11%', height: '1px', background: PALETTE.coverLine }} />
+    {/* Bottom guide line — largura total pois a faixa não vai até o rodapé */}
+    <div style={{ position: 'absolute', bottom: '6%', left: 0, right: 0, height: '1px', background: PALETTE.coverLine }} />
 
     {/* Consultoria logo / Ergominas brand */}
     <div style={{ position: 'absolute', bottom: '4.5%', left: '6%', right: '11%', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
       {consultoriaLogoDataUrl
         ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '30px', objectFit: 'contain' }} />
         : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8cqw', background: '#fdfdfd', padding: '0 2cqw' }}>
-            <svg style={{ width: '4.5cqw', height: '4.5cqw' }} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <g transform="translate(50, 35) scale(0.35)">
-                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#38BDF8" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#0284C7" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#0369A1" />
-              </g>
-              <g transform="translate(30, 65) scale(0.35)">
-                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#F43F5E" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#E11D48" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#BE123C" />
-              </g>
-              <g transform="translate(70, 65) scale(0.35)">
-                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#34D399" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#10B981" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#047857" />
-              </g>
-              <g transform="translate(50, 52) scale(0.35)">
-                <path d="M0 -40 L35 -20 L0 0 L-35 -20 Z" fill="#FBBF24" /><path d="M-35 -20 L0 0 L0 40 L-35 20 Z" fill="#D97706" /><path d="M35 -20 L0 0 L0 40 L35 20 Z" fill="#B45309" />
-              </g>
-            </svg>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5cqw' }}>
+            <img src={logo3} alt="Ergominas" style={{ height: '4.5cqw', objectFit: 'contain', display: 'block' }} />
             <span style={{ fontWeight: 900, fontSize: '2.8cqw', letterSpacing: '0.1em', color: PALETTE.primary, transform: 'translateY(0.3cqw)' }}>ERGOMINAS</span>
           </div>
         )
@@ -313,4 +303,42 @@ export const CoverPage: React.FC<CoverPageProps> = ({
       WWW.ERGOMINAS.COM.BR
     </div>
   </section>
+);
+
+// ── PageFooter ────────────────────────────────────────────────────────────────
+// Rodapé repetido em todas as páginas do PDF (via <tfoot>), idêntico ao da capa.
+
+interface PageFooterProps {
+  consultoriaLogoDataUrl?: string;
+}
+
+export const PageFooter: React.FC<PageFooterProps> = ({ consultoriaLogoDataUrl }) => (
+  <div
+    className="pdf-footer hidden"
+    style={{
+      fontFamily: "'Montserrat', 'Segoe UI', sans-serif",
+      borderTop: `1px solid ${PALETTE.coverLine}`,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '3mm 0 2mm',
+      gap: '2px',
+      width: '100%',
+    }}
+  >
+    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+      {consultoriaLogoDataUrl
+        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '20px', objectFit: 'contain', display: 'block' }} />
+        : (
+          <>
+            <img src={logo3} alt="Ergominas" style={{ height: '18px', objectFit: 'contain', display: 'block' }} />
+            <span style={{ fontWeight: 900, fontSize: '8pt', letterSpacing: '0.1em', color: PALETTE.primary }}>ERGOMINAS</span>
+          </>
+        )
+      }
+    </div>
+    <span style={{ fontWeight: 500, fontSize: '5.5pt', letterSpacing: '0.3em', color: PALETTE.primary, textTransform: 'uppercase' }}>
+      WWW.ERGOMINAS.COM.BR
+    </span>
+  </div>
 );
