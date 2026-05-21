@@ -25,9 +25,16 @@ export async function registrarAuditoria(
   const usuarioId: string | null = req.auth?.userId ?? null;
   const usuarioNome: string = req.auth?.nome ?? req.auth?.username ?? 'Não autenticado';
 
-  await q.query(
-    `INSERT INTO auditoria (usuario_id, usuario_nome, acao, tabela, registro_id, descricao)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [usuarioId, usuarioNome, acao, tabela, registroId, descricao],
-  );
+  console.log(`[AUDITORIA] ${acao} | tabela=${tabela} | id=${registroId} | usuario=${usuarioNome}`);
+  try {
+    await q.query(
+      `INSERT INTO auditoria (usuario_id, usuario_nome, acao, tabela, registro_id, descricao)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [usuarioId, usuarioNome, acao, tabela, registroId, descricao],
+    );
+    console.log(`[AUDITORIA] OK — registro inserido`);
+  } catch (err) {
+    console.error(`[AUDITORIA] ERRO ao inserir:`, err);
+    throw err;
+  }
 }
