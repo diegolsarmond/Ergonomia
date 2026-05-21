@@ -1,9 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem, IlluminanceMeasurement } from '../../types';
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, useSectionPages, PALETTE } from './components/ReportCommon';
+import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, PALETTE } from './components/ReportCommon';
 import { useAET } from '../../context/AETContext';
-import logo2 from '../../assets/images/logo_2.png';
 import { auditoriaApi } from '../../services/api';
 
 // ── Risk Matrix ──────────────────────────────────────────────────────────────
@@ -965,25 +964,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
             monthYear={monthYear}
           />
 
-          {/* ══ SUMÁRIO ══ */}
-          <section className="pdf-page px-12 py-16 print:break-after-page">
-            <h2>Sumário</h2>
-            <div className="space-y-2 mt-4">
-              <TocLine num="1" title="Introdução" page={pages['aep-intro']} />
-              <TocLine num="1.1" title="Ergonomia" indent page={pages['aep-intro']} />
-              <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aep-intro']} />
-              <TocLine num="1.3" title="Objetivo" indent page={pages['aep-intro']} />
-              <TocLine num="1.4" title="Metodologia" indent page={pages['aep-intro']} />
-              <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" page={pages[`aep-func-${project.functions[0]?.id}`]} />
-              {project.functions.map((func, idx) => (
-                <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aep-func-${func.id}`]} />
-              ))}
-              <TocLine num={respNum}    title="Responsabilidade Técnica" page={pages['aep-resp']} />
-              {hasAnnexes && <TocLine num={anexosNum} title="Anexos – Registros Fotográficos" page={pages['aep-anexos']} />}
-            </div>
-          </section>
-
-          {/* ══ CONTEÚDO (thead/tfoot para cabeçalho e rodapé repetidos) ══ */}
+          {/* ══ CONTEÚDO (thead/tfoot para cabeçalho e rodapé repetidos, inclui Sumário) ══ */}
           <table className="w-full" style={{ border: 'none' }}>
             <thead>
               <tr>
@@ -1003,15 +984,31 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
             <tfoot>
               <tr>
                 <td style={{ border: 'none', padding: 0 }}>
-                  <div className="pdf-footer hidden items-center px-12 pt-2 pb-2">
-                    <img src={logo2} alt="Logo consultoria" style={{ maxHeight: '12mm', maxWidth: '48mm', objectFit: 'contain', display: 'block' }} />
-                  </div>
+                  <PageFooter consultoriaLogoDataUrl={project.consultoriaLogoDataUrl} />
                 </td>
               </tr>
             </tfoot>
             <tbody>
               <tr>
                 <td className="p-0" style={{ border: 'none' }}>
+
+                  {/* ── Sumário ── */}
+                  <section className="pdf-page px-12 py-16 print:break-after-page">
+                    <h2>Sumário</h2>
+                    <div className="space-y-2 mt-4">
+                      <TocLine num="1" title="Introdução" page={pages['aep-intro']} />
+                      <TocLine num="1.1" title="Ergonomia" indent page={pages['aep-intro']} />
+                      <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aep-intro']} />
+                      <TocLine num="1.3" title="Objetivo" indent page={pages['aep-intro']} />
+                      <TocLine num="1.4" title="Metodologia" indent page={pages['aep-intro']} />
+                      <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" page={pages[`aep-func-${project.functions[0]?.id}`]} />
+                      {project.functions.map((func, idx) => (
+                        <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aep-func-${func.id}`]} />
+                      ))}
+                      <TocLine num={respNum}    title="Responsabilidade Técnica" page={pages['aep-resp']} />
+                      {hasAnnexes && <TocLine num={anexosNum} title="Anexos – Registros Fotográficos" page={pages['aep-anexos']} />}
+                    </div>
+                  </section>
 
                   {/* ── 1. Introdução ── */}
                   <section id="aep-intro" className="pdf-page px-12 py-8 print:break-after-page">
