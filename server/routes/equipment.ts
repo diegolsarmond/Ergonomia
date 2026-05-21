@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ async function rowToEquipment(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM equipamentos_padrao ORDER BY nome');
+    const { rows } = await pool.query('SELECT * FROM equipamentos_padrao WHERE ativo ORDER BY nome');
     const result = await Promise.all(rows.map(rowToEquipment));
     res.json(result);
   } catch (err) {
@@ -46,6 +47,7 @@ router.post('/', async (req, res) => {
         'INSERT INTO equipamento_operacoes (equipamento_id, operacao, ordem) VALUES ($1,$2,$3)',
         [id, ops[i], i + 1]
       );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'equipamentos_padrao', id, `Equipamento criado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.status(201).json(await rowToEquipment(rows[0]));
   } catch (err) {
@@ -74,6 +76,7 @@ router.put('/:id', async (req, res) => {
         'INSERT INTO equipamento_operacoes (equipamento_id, operacao, ordem) VALUES ($1,$2,$3)',
         [req.params.id, ops[i], i + 1]
       );
+    await registrarAuditoria(req, 'EDIÇÃO', 'equipamentos_padrao', req.params.id, `Equipamento editado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.json(await rowToEquipment(rows[0]));
   } catch (err) {
@@ -86,7 +89,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM equipamentos_padrao WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE equipamentos_padrao SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'equipamentos_padrao', req.params.id, `Equipamento desativado: ${rows[0].nome}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

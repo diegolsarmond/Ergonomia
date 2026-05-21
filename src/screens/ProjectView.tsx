@@ -3,6 +3,7 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
+import { auditoriaApi } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X, AlignLeft } from 'lucide-react';
@@ -147,6 +148,9 @@ export const ProjectView = () => {
   const handleExportJSON = () => {
     const json = exportProjectJSON(project.id);
     if (!json) return;
+    const tabela = project.reportType === 'AEP' ? 'aep_projetos' : 'aet_projetos';
+    const desc = `Exportação JSON do projeto ${project.reportType || 'AET'}: ${project.companyName}`;
+    auditoriaApi.registrar('EXPORTAÇÃO', tabela, project.id, desc).catch(() => {});
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

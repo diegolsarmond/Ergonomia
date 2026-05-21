@@ -32,6 +32,7 @@ import { BiomechanicalRiskFactors } from './screens/parameters/BiomechanicalRisk
 import { Users } from './screens/Users';
 import { ProfilesPermissions } from './screens/ProfilesPermissions';
 import { IlluminanceNormativeParameters } from './screens/IlluminanceNormativeParameters';
+import { AuditoriaAdmin } from './screens/AuditoriaAdmin';
 
 export default function App() {
   return (
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="parameters/illuminance-norms" element={<IlluminanceNormativeParameters />} />
               <Route path="users" element={<Users />} />
               <Route path="profiles-permissions" element={<ProfilesPermissions />} />
+              <Route path="auditoria" element={<AuditoriaAdmin />} />
             </Route>
 
             <Route

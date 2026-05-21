@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ function rowToPause(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM pausas_padrao ORDER BY nome');
+    const { rows } = await pool.query('SELECT * FROM pausas_padrao WHERE ativo ORDER BY nome');
     res.json(rows.map(rowToPause));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -31,6 +32,7 @@ router.post('/', async (req, res) => {
        VALUES (gen_random_uuid(),$1,$2,$3,$4,$5) RETURNING *`,
       [p.name, p.duration, p.durationUnit, p.description, p.active ?? true]
     );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'pausas_padrao', rows[0].id, `Pausa criada: ${rows[0].nome}`);
     res.status(201).json(rowToPause(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -46,6 +48,7 @@ router.put('/:id', async (req, res) => {
       [p.name, p.duration, p.durationUnit, p.description, p.active ?? true, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EDIÇÃO', 'pausas_padrao', req.params.id, `Pausa editada: ${rows[0].nome}`);
     res.json(rowToPause(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -54,7 +57,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM pausas_padrao WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE pausas_padrao SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'pausas_padrao', req.params.id, `Pausa desativada: ${rows[0].nome}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

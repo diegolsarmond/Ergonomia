@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
-// Converte linha do banco → objeto TypeScript
 function rowToCompany(r: any) {
   return {
     id: r.id,
@@ -28,7 +28,7 @@ function rowToCompany(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM empresas ORDER BY razao_social');
+    const { rows } = await pool.query('SELECT * FROM empresas WHERE ativo ORDER BY razao_social');
     res.json(rows.map(rowToCompany));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -47,6 +47,7 @@ router.post('/', async (req, res) => {
        c.bairro, c.municipio, c.uf, c.cep, c.product, c.marketSituation,
        c.productionLocation, c.riskDegree, c.logoDataUrl, c.active ?? true]
     );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'empresas', rows[0].id, `Empresa criada: ${rows[0].razao_social}`);
     res.status(201).json(rowToCompany(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -66,6 +67,7 @@ router.put('/:id', async (req, res) => {
        c.productionLocation, c.riskDegree, c.logoDataUrl, c.active ?? true, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EDIÇÃO', 'empresas', req.params.id, `Empresa editada: ${rows[0].razao_social}`);
     res.json(rowToCompany(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -74,7 +76,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM empresas WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE empresas SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'empresas', req.params.id, `Empresa desativada: ${rows[0].razao_social}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

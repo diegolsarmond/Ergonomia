@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ async function rowToQuestion(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM perguntas_entrevista ORDER BY ordem');
+    const { rows } = await pool.query('SELECT * FROM perguntas_entrevista WHERE ativo ORDER BY ordem');
     const result = await Promise.all(rows.map(rowToQuestion));
     res.json(result);
   } catch (err) {
@@ -47,6 +48,7 @@ router.post('/', async (req, res) => {
         'INSERT INTO pergunta_entrevista_opcoes (pergunta_id, texto_opcao, ordem) VALUES ($1,$2,$3)',
         [id, options[i], i + 1]
       );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'perguntas_entrevista', id, `Pergunta criada: ${rows[0].pergunta?.substring(0, 60)}`, client);
     await client.query('COMMIT');
     res.status(201).json(await rowToQuestion(rows[0]));
   } catch (err) {
@@ -75,6 +77,7 @@ router.put('/:id', async (req, res) => {
         'INSERT INTO pergunta_entrevista_opcoes (pergunta_id, texto_opcao, ordem) VALUES ($1,$2,$3)',
         [req.params.id, options[i], i + 1]
       );
+    await registrarAuditoria(req, 'EDIÇÃO', 'perguntas_entrevista', req.params.id, `Pergunta editada: ${rows[0].pergunta?.substring(0, 60)}`, client);
     await client.query('COMMIT');
     res.json(await rowToQuestion(rows[0]));
   } catch (err) {
@@ -87,7 +90,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM perguntas_entrevista WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE perguntas_entrevista SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'perguntas_entrevista', req.params.id, `Pergunta desativada: ${rows[0].pergunta?.substring(0, 60)}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

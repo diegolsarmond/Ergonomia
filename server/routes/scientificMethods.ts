@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ async function rowToMethod(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM modelos_metodo_cientifico ORDER BY nome');
+    const { rows } = await pool.query('SELECT * FROM modelos_metodo_cientifico WHERE ativo ORDER BY nome');
     const result = await Promise.all(rows.map(rowToMethod));
     res.json(result);
   } catch (err) {
@@ -42,6 +43,7 @@ router.post('/', async (req, res) => {
         'INSERT INTO modelo_metodo_cientifico_imagens (modelo_id, imagem_url, ordem) VALUES ($1,$2,$3)',
         [id, imgs[i], i + 1]
       );
+    await registrarAuditoria(req, 'CRIAÇÃO', 'modelos_metodo_cientifico', id, `Método científico criado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.status(201).json(await rowToMethod(rows[0]));
   } catch (err) {
@@ -69,6 +71,7 @@ router.put('/:id', async (req, res) => {
         'INSERT INTO modelo_metodo_cientifico_imagens (modelo_id, imagem_url, ordem) VALUES ($1,$2,$3)',
         [req.params.id, imgs[i], i + 1]
       );
+    await registrarAuditoria(req, 'EDIÇÃO', 'modelos_metodo_cientifico', req.params.id, `Método científico editado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.json(await rowToMethod(rows[0]));
   } catch (err) {
@@ -81,7 +84,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM modelos_metodo_cientifico WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE modelos_metodo_cientifico SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'modelos_metodo_cientifico', req.params.id, `Método científico desativado: ${rows[0].nome}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

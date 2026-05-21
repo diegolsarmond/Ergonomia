@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ async function rowToJobRole(r: any) {
 
 router.get('/', async (_req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM cargos_padrao ORDER BY nome');
+    const { rows } = await pool.query('SELECT * FROM cargos_padrao WHERE ativo ORDER BY nome');
     const result = await Promise.all(rows.map(rowToJobRole));
     res.json(result);
   } catch (err) {
@@ -50,6 +51,7 @@ router.post('/', async (req, res) => {
       for (const eqId of r.equipmentIds)
         await client.query('INSERT INTO cargo_equipamentos (cargo_id, equipamento_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, eqId]);
     }
+    await registrarAuditoria(req, 'CRIAÇÃO', 'cargos_padrao', id, `Cargo criado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.status(201).json(await rowToJobRole(rows[0]));
   } catch (err) {
@@ -83,6 +85,7 @@ router.put('/:id', async (req, res) => {
       for (const eqId of r.equipmentIds)
         await client.query('INSERT INTO cargo_equipamentos (cargo_id, equipamento_id) VALUES ($1,$2)', [id, eqId]);
     }
+    await registrarAuditoria(req, 'EDIÇÃO', 'cargos_padrao', id, `Cargo editado: ${rows[0].nome}`, client);
     await client.query('COMMIT');
     res.json(await rowToJobRole(rows[0]));
   } catch (err) {
@@ -95,7 +98,12 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM cargos_padrao WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query(
+      'UPDATE cargos_padrao SET ativo = FALSE WHERE id=$1 AND ativo RETURNING *',
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Não encontrado' });
+    await registrarAuditoria(req, 'EXCLUSÃO', 'cargos_padrao', req.params.id, `Cargo desativado: ${rows[0].nome}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });

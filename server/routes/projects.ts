@@ -7,6 +7,7 @@ import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
 import { saveAEP, loadAllAEP } from './aep.js';
 import { saveAET, loadAllAET } from './aet.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -40,6 +41,8 @@ router.post('/', async (req, res) => {
     } else {
       await saveAEP(client, project);
     }
+    const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
+    await registrarAuditoria(req, 'CRIAÇÃO', tabela, project.id ?? '', `Projeto criado: ${project.companyName ?? project.nomeEmpresa ?? ''}`, client);
     await client.query('COMMIT');
     res.status(201).json(project);
   } catch (err) {
@@ -69,6 +72,8 @@ router.put('/:id', async (req, res) => {
     } else {
       await saveAEP(client, project);
     }
+    const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
+    await registrarAuditoria(req, 'EDIÇÃO', tabela, req.params.id, `Projeto editado: ${project.companyName ?? project.nomeEmpresa ?? ''}`, client);
     await client.query('COMMIT');
     res.json(project);
   } catch (err) {
@@ -80,7 +85,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// ─── DELETE /api/projects/:id — tenta em ambas as tabelas ────────────────────
+// ─── DELETE /api/projects/:id — inativa em ambas as tabelas ──────────────────
 
 router.delete('/:id', async (req, res) => {
   const id = req.params.id;
@@ -88,12 +93,19 @@ router.delete('/:id', async (req, res) => {
   try {
     await client.query('BEGIN');
     const [ra, rb] = await Promise.all([
-      client.query('DELETE FROM aep_projetos WHERE id=$1', [id]),
-      client.query('DELETE FROM aet_projetos WHERE id=$1', [id]),
+      client.query('UPDATE aep_projetos SET ativo = FALSE WHERE id=$1 AND ativo RETURNING id, nome_empresa', [id]),
+      client.query('UPDATE aet_projetos SET ativo = FALSE WHERE id=$1 AND ativo RETURNING id, nome_empresa', [id]),
     ]);
     await client.query('COMMIT');
-    const deleted = (ra.rowCount ?? 0) + (rb.rowCount ?? 0);
-    if (!deleted) return res.status(404).json({ error: 'Projeto não encontrado' });
+
+    const aepRow = ra.rows[0];
+    const aetRow = rb.rows[0];
+    const inativado = aepRow ?? aetRow;
+
+    if (!inativado) return res.status(404).json({ error: 'Projeto não encontrado' });
+
+    const tabela = aepRow ? 'aep_projetos' : 'aet_projetos';
+    await registrarAuditoria(req, 'EXCLUSÃO', tabela, id, `Projeto desativado: ${inativado.nome_empresa ?? ''}`);
     res.status(204).end();
   } catch (err) {
     await client.query('ROLLBACK');

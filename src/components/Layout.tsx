@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FileText, BookOpen, ChevronDown, ChevronRight, Settings,
   List, FlaskConical, Building2, Lightbulb,
-  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck, ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logoImg from '../assets/images/logo_3.png';
@@ -114,6 +114,9 @@ export const Layout = () => {
               )}
               {(hasPermission('SETTINGS_VIEW') || hasPermission('USERS_VIEW')) && (
                 <NavLink to="/profiles-permissions" icon={ShieldCheck} label="Perfis e Permissões" active={location.pathname === '/profiles-permissions'} />
+              )}
+              {currentUser?.role === 'ADMIN' && (
+                <NavLink to="/auditoria" icon={ClipboardList} label="Auditoria" active={location.pathname === '/auditoria'} />
               )}
             </div>
           )}

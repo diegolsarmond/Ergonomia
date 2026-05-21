@@ -261,3 +261,44 @@ export const clientsApi = {
   update: (id: string, client: any) => put<any>(`/clients/${id}`, client),
   delete: (id: string) => del(`/clients/${id}`),
 };
+
+// ── Auditoria ─────────────────────────────────────────────────────────────────
+export interface AuditoriaRow {
+  id: number;
+  data_hora: string;
+  usuario_id: string | null;
+  usuario_nome: string;
+  acao: string;
+  tabela: string;
+  registro_id: string;
+  descricao: string | null;
+}
+
+export interface AuditoriaListParams {
+  tabela?: string;
+  registroId?: string;
+  usuarioId?: string;
+  acao?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const auditoriaApi = {
+  list: (params?: AuditoriaListParams): Promise<{ rows: AuditoriaRow[]; total: number }> => {
+    const qs = new URLSearchParams();
+    if (params?.tabela)     qs.set('tabela',     params.tabela);
+    if (params?.registroId) qs.set('registroId', params.registroId);
+    if (params?.usuarioId)  qs.set('usuarioId',  params.usuarioId);
+    if (params?.acao)       qs.set('acao',        params.acao);
+    if (params?.dataInicio) qs.set('dataInicio',  params.dataInicio);
+    if (params?.dataFim)    qs.set('dataFim',     params.dataFim);
+    if (params?.limit != null)  qs.set('limit',  String(params.limit));
+    if (params?.offset != null) qs.set('offset', String(params.offset));
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return get<{ rows: AuditoriaRow[]; total: number }>(`/auditoria${query}`);
+  },
+  registrar: (acao: string, tabela: string, registroId: string, descricao: string): Promise<void> =>
+    post<void>('/auditoria', { acao, tabela, registroId, descricao }),
+};
