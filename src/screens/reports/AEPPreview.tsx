@@ -558,12 +558,12 @@ const AEPFunctionSection: React.FC<{
           <>
             <h3 style={{ marginTop: '32px' }}>3. Registro Fotográfico</h3>
             <p style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '12px' }}>{aep.lgpdNote}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', width: '100%', minWidth: 0 }}>
               {aep.photographicRecords.map((photo, i) => (
-                <div key={photo.id} style={{ textAlign: 'center' }}>
+                <div key={photo.id} style={{ textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
                   {photo.imageDataUrl && (
                     <img src={photo.imageDataUrl} alt={photo.description || `Foto ${i + 1}`}
-                      style={{ width: '100%', height: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }} />
+                      style={{ width: '100%', height: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb', display: 'block' }} />
                   )}
                   {photo.description && <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '4px' }}>{photo.description}</p>}
                 </div>
@@ -970,7 +970,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           />
 
           {/* ══ CONTEÚDO (thead/tfoot para cabeçalho e rodapé repetidos, inclui Sumário) ══ */}
-          <table className="w-full" style={{ border: 'none' }}>
+          <table className="w-full" style={{ border: 'none', tableLayout: 'fixed' }}>
             <thead>
               <tr>
                 <td style={{ border: 'none', padding: 0 }}>

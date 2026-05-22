@@ -505,7 +505,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           />
 
           {/* ── Cabeçalho / Rodapé repetidos (inclui Sumário para o rodapé aparecer também nessa página) ── */}
-          <table className="w-full" style={{ border: 'none' }}>
+          <table className="w-full" style={{ border: 'none', tableLayout: 'fixed' }}>
             <thead>
               <tr>
                 <td style={{ border: 'none', padding: 0 }}>

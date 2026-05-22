@@ -76,23 +76,35 @@ export function useSectionPages(
 // ── noBreakHyphen ────────────────────────────────────────────────────────────
 // Replaces word-hyphens (e.g. "trata-se") with non-breaking hyphen (U+2011)
 // so the browser never breaks a line at that hyphen.
+// Also strips all invisible break-opportunity characters that editors (e.g. Quill)
+// may insert: soft hyphens (U+00AD / &shy;), zero-width spaces (U+200B),
+// zero-width non-joiners (U+200C), and <wbr> elements.
 // Handles HTML strings safely: skips content inside tags to preserve class names.
 export function noBreakHyphen(html: string): string {
-  return html.replace(/(<[^>]*>)|(\w)-(\w)/g, (match, tag, pre, post) => {
-    if (tag !== undefined) return tag;
-    return `${pre}‑${post}`;
-  });
+  return html
+    .replace(/<wbr\s*\/?>/gi, '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/&shy;|&#xad;|&#173;/gi, '')
+    .replace(/[\u00AD\u200B\u200C\u2028\u2029]/g, '')
+    .replace(/(<[^>]*>)|(\w)-(\w)/g, (match, tag, pre, post) => {
+      if (tag !== undefined) return tag;
+      return `${pre}‑${post}`;
+    });
 }
 
 // ── Shared sub-components ────────────────────────────────────────────────────
 
 export const Field = ({ label, value }: { label: string; value: string | number | undefined | null }) => {
   if (value === undefined || value === null || value === '') return null;
-  const display = typeof value === 'string' ? value.replace(/(\w)-(\w)/g, '$1‑$2') : value;
+  const content = typeof value === 'string'
+    ? value.replace(/(\w)-(\w)/g, '$1‑$2').split('\n').map((line, i, arr) => (
+        <React.Fragment key={i}>{line}{i < arr.length - 1 && <br />}</React.Fragment>
+      ))
+    : value;
   return (
     <div className="field">
       {label && <div className="field-label">{label}</div>}
-      <div className="field-value">{display}</div>
+      <div className="field-value">{content}</div>
     </div>
   );
 };
@@ -210,14 +222,15 @@ export const getPdfStyles = (footerLogoUrl?: string) => `
 
 /** @deprecated use getPdfStyles() */
 export const PDF_STYLES = getPdfStyles() + `
-  .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; }
+  .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; hyphens: none; -webkit-hyphens: none; }
+  .pdf-preview img { max-width: 100%; height: auto; }
   .pdf-preview :not(.pdf-cover) > h2 { font-size: 1.25rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: .06em; }
   .pdf-preview :not(.pdf-cover) > h3 { font-size: 1.05rem; font-weight: 700; color: ${PALETTE.dark}; border-left: 3px solid ${PALETTE.primary}; padding-left: .55rem; margin-top: 1.5rem; margin-bottom: .5rem; }
   .pdf-preview :not(.pdf-cover) > h4 { font-size: .92rem; font-weight: 600; color: ${PALETTE.muted}; margin-top: 1rem; margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .05em; }
   .pdf-preview .field { margin-bottom: .6rem; }
   .pdf-preview .field-label { font-weight: 600; font-size: .82rem; color: ${PALETTE.muted}; text-transform: uppercase; letter-spacing: .04em; }
-  .pdf-preview .field-value { font-size: 1rem; color: #2A3D3A; white-space: pre-wrap; word-wrap: break-word; word-break: break-word; }
-  .pdf-preview .field-value p { margin-bottom: 0.5rem; }
+  .pdf-preview .field-value { font-size: 1rem; color: #2A3D3A; text-align: justify; overflow-wrap: break-word; word-break: normal; hyphens: none; -webkit-hyphens: none; }
+  .pdf-preview .field-value p { margin-bottom: 0.5rem; text-align: justify; overflow-wrap: break-word; word-break: normal; hyphens: none; -webkit-hyphens: none; }
   .pdf-preview .ql-align-center { text-align: center; }
   .pdf-preview .ql-align-right { text-align: right; }
   .pdf-preview .ql-align-justify { text-align: justify; }
