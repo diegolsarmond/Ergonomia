@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { pool } from '../db.js';
 import { requireAuth, JWT_SECRET, JWT_EXPIRES_IN, AuthPayload } from '../middleware/auth.js';
 import { sendPasswordResetEmail } from '../services/email.js';
+import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
@@ -192,7 +193,65 @@ router.post('/change-password', requireAuth, async (req, res) => {
       `UPDATE usuarios SET senha_hash = $1, alterar_senha = FALSE, atualizado_em = NOW() WHERE id = $2`,
       [hash, req.auth!.userId]
     );
+    await registrarAuditoria(req, 'EDIÇÃO', 'usuarios', req.auth!.userId, 'Alteração de senha pelo próprio usuário');
     res.json({ message: 'Senha alterada com sucesso' });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   put:
+ *     summary: Atualiza dados do perfil do próprio usuário autenticado
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put('/profile', requireAuth, async (req, res) => {
+  const { nome, formacao, crefito } = req.body;
+
+  const updates: string[] = [];
+  const values: unknown[] = [];
+
+  if (nome !== undefined) {
+    if (typeof nome !== 'string' || nome.trim().length < 2) {
+      res.status(400).json({ error: 'Nome inválido (mínimo 2 caracteres).' });
+      return;
+    }
+    updates.push(`nome = $${updates.length + 1}`);
+    values.push(nome.trim());
+  }
+  if (formacao !== undefined) {
+    updates.push(`formacao = $${updates.length + 1}`);
+    values.push(formacao ? String(formacao).trim() : null);
+  }
+  if (crefito !== undefined) {
+    updates.push(`crefito = $${updates.length + 1}`);
+    values.push(crefito ? String(crefito).trim() : null);
+  }
+
+  if (updates.length === 0) {
+    res.status(400).json({ error: 'Nenhum campo para atualizar.' });
+    return;
+  }
+
+  updates.push(`atualizado_em = NOW()`);
+  values.push(req.auth!.userId);
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE usuarios SET ${updates.join(', ')} WHERE id = $${values.length} RETURNING *`,
+      values,
+    );
+    if (!rows.length) {
+      res.status(404).json({ error: 'Usuário não encontrado.' });
+      return;
+    }
+    await registrarAuditoria(req, 'EDIÇÃO', 'usuarios', req.auth!.userId, 'Atualização de dados do próprio perfil');
+    const permissions = await getUserPermissions(rows[0].id, rows[0].perfil);
+    res.json(rowToUser(rows[0], permissions));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

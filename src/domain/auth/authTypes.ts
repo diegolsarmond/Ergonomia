@@ -41,6 +41,7 @@ export interface AppUser {
   passwordHash: string;
   passwordSalt?: string;
   role: UserRole;
+  roleName?: string;
   permissions: Permission[];
   status: UserStatus;
   mustChangePassword: boolean;

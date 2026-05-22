@@ -33,6 +33,7 @@ import { Users } from './screens/Users';
 import { ProfilesPermissions } from './screens/ProfilesPermissions';
 import { IlluminanceNormativeParameters } from './screens/IlluminanceNormativeParameters';
 import { AuditoriaAdmin } from './screens/AuditoriaAdmin';
+import { MeuPerfil } from './screens/MeuPerfil';
 
 export default function App() {
   return (
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="users" element={<Users />} />
               <Route path="profiles-permissions" element={<ProfilesPermissions />} />
               <Route path="auditoria" element={<AuditoriaAdmin />} />
+              <Route path="meu-perfil" element={<MeuPerfil />} />
             </Route>
 
             <Route

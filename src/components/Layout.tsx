@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   FileText, BookOpen, ChevronDown, ChevronRight, Settings,
   List, FlaskConical, Building2, Lightbulb,
-  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck, ClipboardList
+  HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck, ClipboardList, UserCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logoImg from '../assets/images/logo_3.png';
@@ -164,17 +164,26 @@ export const Layout = () => {
         <div className="px-5 py-4 border-t border-white/5 space-y-3">
           {currentUser && (
             <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-[12px] font-medium text-slate-300 truncate">{currentUser.name}</p>
                 <p className="text-[10px] text-slate-500">{ROLE_LABELS[currentUser.role] ?? currentUser.role}</p>
               </div>
-              <button
-                onClick={handleLogout}
-                title="Sair"
-                className="shrink-0 p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-700 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Link
+                  to="/meu-perfil"
+                  title="Meu perfil"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-teal-400 hover:bg-slate-700 transition-colors"
+                >
+                  <UserCircle className="w-4 h-4" />
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  title="Sair"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-700 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
           <div className="flex items-center gap-2">

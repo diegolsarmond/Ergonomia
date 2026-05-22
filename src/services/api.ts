@@ -52,6 +52,7 @@ function backendUserToApp(r: any): AppUser {
     username: r.nomeUsuario,
     passwordHash: '',
     role: r.perfil,
+    roleName: r.perfilRotulo ?? undefined,
     permissions: (r.permissions ?? []) as Permission[],
     status: STATUS_TO_FRONTEND[r.status] ?? 'active',
     mustChangePassword: r.alterarSenha ?? false,
@@ -76,6 +77,10 @@ export const authApi = {
   },
   changePassword: (senhaAtual: string, novaSenha: string) =>
     post<{ message: string }>('/auth/change-password', { senhaAtual, novaSenha }),
+  updateProfile: async (data: { nome?: string; formacao?: string; crefito?: string }): Promise<AppUser> => {
+    const r = await put<any>('/auth/profile', data);
+    return backendUserToApp(r);
+  },
   forgotPassword: (email: string) =>
     post<{ message: string }>('/auth/forgot-password', { email }),
   resetPassword: (token: string, novaSenha: string, confirmarSenha: string) =>
