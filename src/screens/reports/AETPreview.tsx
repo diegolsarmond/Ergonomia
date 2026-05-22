@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, AETImprovement, AETEquipmentItem, AETEPIItem, ErgonomicRisk } from '../../types';
 import { DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages } from './components/ReportCommon';
+import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, noBreakHyphen } from './components/ReportCommon';
 import { auditoriaApi } from '../../services/api';
 
 // ── AET Function Section ─────────────────────────────────────────────────────
@@ -474,10 +474,15 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
   const introObjetivo    = project.introObjetivo    || DEFAULT_AET_INTRO_OBJETIVO;
   const introMetodologia = project.introMetodologia || DEFAULT_AET_INTRO_METODOLOGIA;
 
+  const funcoesParam = new URLSearchParams(window.location.search).get('funcoes');
+  const filteredFunctions = funcoesParam
+    ? project.functions.filter(f => funcoesParam.split(',').includes(f.id))
+    : project.functions;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionIds = [
     'aet-intro',
-    ...project.functions.map(f => `aet-func-${f.id}`),
+    ...filteredFunctions.map(f => `aet-func-${f.id}`),
     'aet-resp',
     'aet-anexos',
   ];
@@ -500,7 +505,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           />
 
           {/* ── Cabeçalho / Rodapé repetidos (inclui Sumário para o rodapé aparecer também nessa página) ── */}
-          <table className="w-full" style={{ border: 'none' }}>
+          <table className="w-full" style={{ border: 'none', tableLayout: 'fixed' }}>
             <thead>
               <tr>
                 <td style={{ border: 'none', padding: 0 }}>
@@ -532,8 +537,8 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aet-intro']} />
                       <TocLine num="1.3" title="Objetivo" indent page={pages['aet-intro']} />
                       <TocLine num="1.4" title="Metodologia" indent page={pages['aet-intro']} />
-                      <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" page={pages[`aet-func-${project.functions[0]?.id}`]} />
-                      {project.functions.map((func, idx) => (
+                      <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" page={pages[`aet-func-${filteredFunctions[0]?.id}`]} />
+                      {filteredFunctions.map((func, idx) => (
                         <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aet-func-${func.id}`]} />
                       ))}
                       <TocLine num="3" title="Responsabilidade Técnica" page={pages['aet-resp']} />
@@ -545,7 +550,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                   <section id="aet-intro" className="pdf-page px-12 py-8 print:break-after-page">
                     <h2>1. Introdução</h2>
                     <h3>1.1 Ergonomia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introErgonomia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introErgonomia) }} />
                     <h3>1.2 Análise Global da Empresa</h3>
                     <div className="grid grid-cols-2 gap-x-8 mt-2">
                       <Field label="Razão Social" value={project.companyName} />
@@ -558,13 +563,13 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       <Field label="Local de Produção" value={project.location} />
                     </div>
                     <h3>1.3 Objetivo</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introObjetivo }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introObjetivo) }} />
                     <h3>1.4 Metodologia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introMetodologia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introMetodologia) }} />
                   </section>
 
                   {/* ── Funções ── */}
-                  {project.functions.map((func, fIdx) => (
+                  {filteredFunctions.map((func, fIdx) => (
                     <div key={func.id} id={`aet-func-${func.id}`}>
                       <FunctionSection func={func} sectionNum={`2.${fIdx + 1}`} />
                     </div>

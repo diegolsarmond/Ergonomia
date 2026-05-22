@@ -73,14 +73,38 @@ export function useSectionPages(
   return pages;
 }
 
+// ── noBreakHyphen ────────────────────────────────────────────────────────────
+// Replaces word-hyphens (e.g. "trata-se") with non-breaking hyphen (U+2011)
+// so the browser never breaks a line at that hyphen.
+// Also strips all invisible break-opportunity characters that editors (e.g. Quill)
+// may insert: soft hyphens (U+00AD / &shy;), zero-width spaces (U+200B),
+// zero-width non-joiners (U+200C), and <wbr> elements.
+// Handles HTML strings safely: skips content inside tags to preserve class names.
+export function noBreakHyphen(html: string): string {
+  return html
+    .replace(/<wbr\s*\/?>/gi, '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/&shy;|&#xad;|&#173;/gi, '')
+    .replace(/[\u00AD\u200B\u200C\u2028\u2029]/g, '')
+    .replace(/(<[^>]*>)|(\w)-(\w)/g, (match, tag, pre, post) => {
+      if (tag !== undefined) return tag;
+      return `${pre}‑${post}`;
+    });
+}
+
 // ── Shared sub-components ────────────────────────────────────────────────────
 
 export const Field = ({ label, value }: { label: string; value: string | number | undefined | null }) => {
   if (value === undefined || value === null || value === '') return null;
+  const content = typeof value === 'string'
+    ? value.replace(/(\w)-(\w)/g, '$1‑$2').split('\n').map((line, i, arr) => (
+        <React.Fragment key={i}>{line}{i < arr.length - 1 && <br />}</React.Fragment>
+      ))
+    : value;
   return (
     <div className="field">
       {label && <div className="field-label">{label}</div>}
-      <div className="field-value">{value}</div>
+      <div className="field-value">{content}</div>
     </div>
   );
 };
@@ -198,14 +222,15 @@ export const getPdfStyles = (footerLogoUrl?: string) => `
 
 /** @deprecated use getPdfStyles() */
 export const PDF_STYLES = getPdfStyles() + `
-  .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; }
+  .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; hyphens: none; -webkit-hyphens: none; }
+  .pdf-preview img { max-width: 100%; height: auto; }
   .pdf-preview :not(.pdf-cover) > h2 { font-size: 1.25rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: .06em; }
   .pdf-preview :not(.pdf-cover) > h3 { font-size: 1.05rem; font-weight: 700; color: ${PALETTE.dark}; border-left: 3px solid ${PALETTE.primary}; padding-left: .55rem; margin-top: 1.5rem; margin-bottom: .5rem; }
   .pdf-preview :not(.pdf-cover) > h4 { font-size: .92rem; font-weight: 600; color: ${PALETTE.muted}; margin-top: 1rem; margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .05em; }
   .pdf-preview .field { margin-bottom: .6rem; }
   .pdf-preview .field-label { font-weight: 600; font-size: .82rem; color: ${PALETTE.muted}; text-transform: uppercase; letter-spacing: .04em; }
-  .pdf-preview .field-value { font-size: 1rem; color: #2A3D3A; white-space: pre-wrap; word-wrap: break-word; word-break: break-word; }
-  .pdf-preview .field-value p { margin-bottom: 0.5rem; }
+  .pdf-preview .field-value { font-size: 1rem; color: #2A3D3A; text-align: justify; overflow-wrap: break-word; word-break: normal; hyphens: none; -webkit-hyphens: none; }
+  .pdf-preview .field-value p { margin-bottom: 0.5rem; text-align: justify; overflow-wrap: break-word; word-break: normal; hyphens: none; -webkit-hyphens: none; }
   .pdf-preview .ql-align-center { text-align: center; }
   .pdf-preview .ql-align-right { text-align: right; }
   .pdf-preview .ql-align-justify { text-align: justify; }
@@ -242,20 +267,19 @@ export const CoverPage: React.FC<CoverPageProps> = ({
   >
     {/* Top-right block */}
     <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '8%', background: PALETTE.primary }} />
-    {/* Right vertical stripe — para acima da área do nome da empresa */}
-    <div style={{ position: 'absolute', top: '8%', bottom: '55%', right: 0, width: '11%', background: PALETTE.primary }} />
+    {/* Right vertical stripe — desce até tocar a linha horizontal inferior */}
+    <div style={{ position: 'absolute', top: '8%', bottom: '6%', right: 0, width: '11%', background: PALETTE.primary }} />
     {/* Left vertical guide */}
     <div style={{ position: 'absolute', top: 0, bottom: 0, left: '6%', width: '1px', background: PALETTE.coverLine }} />
     {/* Top horizontal guide */}
     <div style={{ position: 'absolute', top: '8%', left: 0, right: '50%', height: '1px', background: PALETTE.coverLine }} />
 
     {/* Client logo */}
-    <div style={{ position: 'absolute', top: '3%', left: '7.5%', width: '19cqw' }}>
-      {companyLogoDataUrl
-        ? <img src={companyLogoDataUrl} alt="Logomarca do Cliente" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
-        : <div style={{ width: '100%', aspectRatio: '2 / 1', background: PALETTE.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: PALETTE.muted }}>Logo Empresa</div>
-      }
-    </div>
+    {companyLogoDataUrl && (
+      <div style={{ position: 'absolute', top: '1%', left: '7.5%', width: '14cqw', height: '6%' }}>
+        <img src={companyLogoDataUrl} alt="Logomarca do Cliente" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left center' }} />
+      </div>
+    )}
 
     {/* Report title */}
     <div style={{ position: 'absolute', top: '18%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center' }}>
@@ -285,22 +309,20 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     {/* Bottom guide line — largura total pois a faixa não vai até o rodapé */}
     <div style={{ position: 'absolute', bottom: '6%', left: 0, right: 0, height: '1px', background: PALETTE.coverLine }} />
 
-    {/* Consultoria logo / Ergominas brand */}
-    <div style={{ position: 'absolute', bottom: '4.5%', left: '6%', right: '11%', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+    {/* Consultoria logo / Ergominas brand + website — abaixo da linha verde */}
+    <div style={{ position: 'absolute', top: '94.5%', bottom: '0.5%', left: '6%', right: '11%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3cqw', pointerEvents: 'none' }}>
       {consultoriaLogoDataUrl
-        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '30px', objectFit: 'contain' }} />
+        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '3.2cqw', objectFit: 'contain' }} />
         : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5cqw' }}>
-            <img src={logo3} alt="Ergominas" style={{ height: '4.5cqw', objectFit: 'contain', display: 'block' }} />
-            <span style={{ fontWeight: 900, fontSize: '2.8cqw', letterSpacing: '0.1em', color: PALETTE.primary, transform: 'translateY(0.3cqw)' }}>ERGOMINAS</span>
+            <img src={logo3} alt="Ergominas" style={{ height: '3.5cqw', objectFit: 'contain', display: 'block' }} />
+            <span style={{ fontWeight: 900, fontSize: '2.2cqw', letterSpacing: '0.1em', color: PALETTE.primary }}>ERGOMINAS</span>
           </div>
         )
       }
-    </div>
-
-    {/* Website URL */}
-    <div style={{ position: 'absolute', bottom: '2%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center', fontWeight: 500, fontSize: '1cqw', letterSpacing: '0.35em', color: PALETTE.primary }}>
-      WWW.ERGOMINAS.COM.BR
+      <span style={{ fontWeight: 500, fontSize: '0.85cqw', letterSpacing: '0.35em', color: PALETTE.primary }}>
+        WWW.ERGOMINAS.COM.BR
+      </span>
     </div>
   </section>
 );
@@ -321,17 +343,17 @@ export const PageFooter: React.FC<PageFooterProps> = ({ consultoriaLogoDataUrl }
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '3mm 0 2mm',
+      padding: '5mm 0 2mm',
       gap: '2px',
       width: '100%',
     }}
   >
     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
       {consultoriaLogoDataUrl
-        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '20px', objectFit: 'contain', display: 'block' }} />
+        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '16px', objectFit: 'contain', display: 'block' }} />
         : (
           <>
-            <img src={logo3} alt="Ergominas" style={{ height: '18px', objectFit: 'contain', display: 'block' }} />
+            <img src={logo3} alt="Ergominas" style={{ height: '14px', objectFit: 'contain', display: 'block' }} />
             <span style={{ fontWeight: 900, fontSize: '8pt', letterSpacing: '0.1em', color: PALETTE.primary }}>ERGOMINAS</span>
           </>
         )

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem, IlluminanceMeasurement } from '../../types';
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, PALETTE } from './components/ReportCommon';
+import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, PALETTE, noBreakHyphen } from './components/ReportCommon';
 import { useAET } from '../../context/AETContext';
 import { auditoriaApi } from '../../services/api';
 
@@ -558,12 +558,12 @@ const AEPFunctionSection: React.FC<{
           <>
             <h3 style={{ marginTop: '32px' }}>3. Registro Fotográfico</h3>
             <p style={{ fontSize: '0.7rem', color: '#6b7280', fontStyle: 'italic', marginBottom: '12px' }}>{aep.lgpdNote}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', width: '100%', minWidth: 0 }}>
               {aep.photographicRecords.map((photo, i) => (
-                <div key={photo.id} style={{ textAlign: 'center' }}>
+                <div key={photo.id} style={{ textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>
                   {photo.imageDataUrl && (
                     <img src={photo.imageDataUrl} alt={photo.description || `Foto ${i + 1}`}
-                      style={{ width: '100%', height: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }} />
+                      style={{ width: '100%', height: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb', display: 'block' }} />
                   )}
                   {photo.description && <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '4px' }}>{photo.description}</p>}
                 </div>
@@ -699,13 +699,13 @@ const AEPFunctionSection: React.FC<{
             {aep.finalGuidance && (
               <div className="field" style={{ marginTop: '12px' }}>
                 <div className="field-label">Orientação Final</div>
-                <div className="field-value" dangerouslySetInnerHTML={{ __html: aep.finalGuidance }} />
+                <div className="field-value" dangerouslySetInnerHTML={{ __html: noBreakHyphen(aep.finalGuidance) }} />
               </div>
             )}
             {aep.decisionJustification && (
               <div className="field">
                 <div className="field-label">Justificativa da Decisão</div>
-                <div className="field-value" dangerouslySetInnerHTML={{ __html: aep.decisionJustification }} />
+                <div className="field-value" dangerouslySetInnerHTML={{ __html: noBreakHyphen(aep.decisionJustification) }} />
               </div>
             )}
           </>
@@ -934,15 +934,20 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
   const introObjetivo    = project.introObjetivo    || DEFAULT_AEP_INTRO_OBJETIVO;
   const introMetodologia = project.introMetodologia || DEFAULT_AEP_INTRO_METODOLOGIA;
 
-  const hasAnnexes = project.functions.some(f => f.images?.length > 0);
-  const funcCount  = project.functions.length;
+  const funcoesParam = new URLSearchParams(window.location.search).get('funcoes');
+  const filteredFunctions = funcoesParam
+    ? project.functions.filter(f => funcoesParam.split(',').includes(f.id))
+    : project.functions;
+
+  const hasAnnexes = filteredFunctions.some(f => f.images?.length > 0);
+  const funcCount  = filteredFunctions.length;
   const respNum    = funcCount > 0 ? `${funcCount + 2}` : '3';
   const anexosNum  = funcCount > 0 ? `${funcCount + 3}` : '4';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionIds = [
     'aep-intro',
-    ...project.functions.map(f => `aep-func-${f.id}`),
+    ...filteredFunctions.map(f => `aep-func-${f.id}`),
     'aep-resp',
     'aep-anexos',
   ];
@@ -965,7 +970,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
           />
 
           {/* ══ CONTEÚDO (thead/tfoot para cabeçalho e rodapé repetidos, inclui Sumário) ══ */}
-          <table className="w-full" style={{ border: 'none' }}>
+          <table className="w-full" style={{ border: 'none', tableLayout: 'fixed' }}>
             <thead>
               <tr>
                 <td style={{ border: 'none', padding: 0 }}>
@@ -1001,8 +1006,8 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aep-intro']} />
                       <TocLine num="1.3" title="Objetivo" indent page={pages['aep-intro']} />
                       <TocLine num="1.4" title="Metodologia" indent page={pages['aep-intro']} />
-                      <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" page={pages[`aep-func-${project.functions[0]?.id}`]} />
-                      {project.functions.map((func, idx) => (
+                      <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" page={pages[`aep-func-${filteredFunctions[0]?.id}`]} />
+                      {filteredFunctions.map((func, idx) => (
                         <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aep-func-${func.id}`]} />
                       ))}
                       <TocLine num={respNum}    title="Responsabilidade Técnica" page={pages['aep-resp']} />
@@ -1015,7 +1020,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                     <h2>1. Introdução</h2>
 
                     <h3>1.1 Ergonomia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introErgonomia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introErgonomia) }} />
 
                     <h3>1.2 Análise Global da Empresa</h3>
                     <div className="grid grid-cols-2 gap-x-8 mt-2">
@@ -1030,14 +1035,14 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                     </div>
 
                     <h3>1.3 Objetivo</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introObjetivo }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introObjetivo) }} />
 
                     <h3>1.4 Metodologia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introMetodologia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introMetodologia) }} />
                   </section>
 
                   {/* ── 2. Funções ── */}
-                  {project.functions.length === 0 && (
+                  {filteredFunctions.length === 0 && (
                     <section className="pdf-page px-12 py-8">
                       <h2>2. AEP – Análise Ergonômica Preliminar</h2>
                       <p className="field-value" style={{ color: '#9ca3af', fontStyle: 'italic' }}>
@@ -1045,7 +1050,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       </p>
                     </section>
                   )}
-                  {project.functions.map((func, fIdx) => (
+                  {filteredFunctions.map((func, fIdx) => (
                     <div key={func.id} id={`aep-func-${func.id}`}>
                       <AEPFunctionSection func={func} sectionNum={`2.${fIdx + 1}`} riskFactorsCatalog={biomechanicalRiskFactors} />
                     </div>
@@ -1080,7 +1085,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                   {hasAnnexes && (
                     <section id="aep-anexos" className="pdf-page px-12 py-14 print:break-before-page">
                       <h2>{anexosNum}. Anexos – Registros Fotográficos</h2>
-                      {project.functions.map((func) => {
+                      {filteredFunctions.map((func) => {
                         if (!func.images?.length) return null;
                         return (
                           <div key={func.id} className="mt-6">
