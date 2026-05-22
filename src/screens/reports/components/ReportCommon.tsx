@@ -242,8 +242,8 @@ export const CoverPage: React.FC<CoverPageProps> = ({
   >
     {/* Top-right block */}
     <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '8%', background: PALETTE.primary }} />
-    {/* Right vertical stripe — para acima da área do nome da empresa */}
-    <div style={{ position: 'absolute', top: '8%', bottom: '55%', right: 0, width: '11%', background: PALETTE.primary }} />
+    {/* Right vertical stripe — desce até tocar a linha horizontal inferior */}
+    <div style={{ position: 'absolute', top: '8%', bottom: '6%', right: 0, width: '11%', background: PALETTE.primary }} />
     {/* Left vertical guide */}
     <div style={{ position: 'absolute', top: 0, bottom: 0, left: '6%', width: '1px', background: PALETTE.coverLine }} />
     {/* Top horizontal guide */}

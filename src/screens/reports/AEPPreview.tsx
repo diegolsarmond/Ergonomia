@@ -934,15 +934,20 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
   const introObjetivo    = project.introObjetivo    || DEFAULT_AEP_INTRO_OBJETIVO;
   const introMetodologia = project.introMetodologia || DEFAULT_AEP_INTRO_METODOLOGIA;
 
-  const hasAnnexes = project.functions.some(f => f.images?.length > 0);
-  const funcCount  = project.functions.length;
+  const funcoesParam = new URLSearchParams(window.location.search).get('funcoes');
+  const filteredFunctions = funcoesParam
+    ? project.functions.filter(f => funcoesParam.split(',').includes(f.id))
+    : project.functions;
+
+  const hasAnnexes = filteredFunctions.some(f => f.images?.length > 0);
+  const funcCount  = filteredFunctions.length;
   const respNum    = funcCount > 0 ? `${funcCount + 2}` : '3';
   const anexosNum  = funcCount > 0 ? `${funcCount + 3}` : '4';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionIds = [
     'aep-intro',
-    ...project.functions.map(f => `aep-func-${f.id}`),
+    ...filteredFunctions.map(f => `aep-func-${f.id}`),
     'aep-resp',
     'aep-anexos',
   ];
@@ -1001,8 +1006,8 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aep-intro']} />
                       <TocLine num="1.3" title="Objetivo" indent page={pages['aep-intro']} />
                       <TocLine num="1.4" title="Metodologia" indent page={pages['aep-intro']} />
-                      <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" page={pages[`aep-func-${project.functions[0]?.id}`]} />
-                      {project.functions.map((func, idx) => (
+                      <TocLine num="2" title="AEP – Análise Ergonômica Preliminar" page={pages[`aep-func-${filteredFunctions[0]?.id}`]} />
+                      {filteredFunctions.map((func, idx) => (
                         <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aep-func-${func.id}`]} />
                       ))}
                       <TocLine num={respNum}    title="Responsabilidade Técnica" page={pages['aep-resp']} />
@@ -1037,7 +1042,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                   </section>
 
                   {/* ── 2. Funções ── */}
-                  {project.functions.length === 0 && (
+                  {filteredFunctions.length === 0 && (
                     <section className="pdf-page px-12 py-8">
                       <h2>2. AEP – Análise Ergonômica Preliminar</h2>
                       <p className="field-value" style={{ color: '#9ca3af', fontStyle: 'italic' }}>
@@ -1045,7 +1050,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       </p>
                     </section>
                   )}
-                  {project.functions.map((func, fIdx) => (
+                  {filteredFunctions.map((func, fIdx) => (
                     <div key={func.id} id={`aep-func-${func.id}`}>
                       <AEPFunctionSection func={func} sectionNum={`2.${fIdx + 1}`} riskFactorsCatalog={biomechanicalRiskFactors} />
                     </div>
@@ -1080,7 +1085,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                   {hasAnnexes && (
                     <section id="aep-anexos" className="pdf-page px-12 py-14 print:break-before-page">
                       <h2>{anexosNum}. Anexos – Registros Fotográficos</h2>
-                      {project.functions.map((func) => {
+                      {filteredFunctions.map((func) => {
                         if (!func.images?.length) return null;
                         return (
                           <div key={func.id} className="mt-6">

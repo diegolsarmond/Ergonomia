@@ -26,6 +26,9 @@ export const ProjectView = () => {
     mode: 'errors' | 'warnings';
   } | null>(null);
 
+  const [funcSelectionModal, setFuncSelectionModal] = useState(false);
+  const [selectedFuncIds, setSelectedFuncIds] = useState<string[]>([]);
+
   const [isEditIntroModalOpen, setIsEditIntroModalOpen] = useState(false);
   const [introData, setIntroData] = useState({
     introErgonomia: project?.introErgonomia || '',
@@ -124,8 +127,18 @@ export const ProjectView = () => {
     navigate(`/project/${project.id}/function/new`);
   };
 
-  const doPrint = () => {
-    window.open(`/project/${project.id}/preview?print=true`, '_blank');
+  const doPrint = (funcIds: string[]) => {
+    const allIds = project.functions.map(f => f.id);
+    const isAll = funcIds.length === allIds.length;
+    const url = isAll
+      ? `/project/${project.id}/preview?print=true`
+      : `/project/${project.id}/preview?print=true&funcoes=${funcIds.join(',')}`;
+    window.open(url, '_blank');
+  };
+
+  const openFuncSelectionModal = () => {
+    setSelectedFuncIds(project.functions.map(f => f.id));
+    setFuncSelectionModal(true);
   };
 
   const handlePrintDirectly = () => {
@@ -138,7 +151,7 @@ export const ProjectView = () => {
       setValidationModal({ result, mode: 'warnings' });
       return;
     }
-    doPrint();
+    openFuncSelectionModal();
   };
 
   const handleDuplicate = async (funcId: string) => {
@@ -162,14 +175,14 @@ export const ProjectView = () => {
 
   return (
     <div className="p-6 lg:p-8 xl:p-10">
-      {/* â”€â”€ Breadcrumb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Breadcrumb â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="flex items-center gap-2 mb-6 text-sm text-slate-400">
         <button onClick={() => navigate('/')} className="hover:text-teal-600 transition-colors cursor-pointer">Projetos</button>
         <ChevronRight className="w-3.5 h-3.5" />
         <span className="text-slate-600 font-medium truncate">{project.companyName}</span>
       </div>
 
-      {/* â”€â”€ Page Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Page Header â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="page-header mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center relative z-10 gap-4">
           <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -207,7 +220,7 @@ export const ProjectView = () => {
         </div>
       </div>
 
-      {/* â”€â”€ Info Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Info Cards â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
         <Card>
           <CardHeader>
@@ -257,7 +270,7 @@ export const ProjectView = () => {
         </Card>
       </div>
 
-      {/* â”€â”€ Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* â"€â"€ Functions â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-800">
@@ -317,7 +330,63 @@ export const ProjectView = () => {
       </div>
 
 
-      {/* â”€â”€ Validation modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Seleção de funções para impressão ───────────────────────────────── */}
+      {funcSelectionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
+              <Printer className="w-5 h-5 text-teal-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-slate-800">Selecionar funções para impressão</p>
+                <p className="text-xs text-slate-400 mt-0.5">Escolha quais funções devem constar no relatório</p>
+              </div>
+              <button onClick={() => setFuncSelectionModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-6 py-4 space-y-1 flex-1">
+              <label className="flex items-center gap-3 cursor-pointer px-2 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-teal-600 shrink-0"
+                  checked={selectedFuncIds.length === project.functions.length}
+                  onChange={e => setSelectedFuncIds(e.target.checked ? project.functions.map(f => f.id) : [])}
+                />
+                <span className="text-sm font-semibold text-slate-800">Todas as funções</span>
+              </label>
+              <div className="border-t border-slate-100 pt-1">
+                {project.functions.map((func, idx) => (
+                  <label key={func.id} className="flex items-center gap-3 cursor-pointer px-2 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 accent-teal-600 shrink-0"
+                      checked={selectedFuncIds.includes(func.id)}
+                      onChange={e => setSelectedFuncIds(prev =>
+                        e.target.checked ? [...prev, func.id] : prev.filter(id => id !== func.id)
+                      )}
+                    />
+                    <span className="text-xs font-bold text-teal-600 w-5 text-center shrink-0">{idx + 1}</span>
+                    <span className="text-sm text-slate-700">{func.name || 'Função sem nome'}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+              <Button variant="outline" onClick={() => setFuncSelectionModal(false)}>Cancelar</Button>
+              <Button
+                disabled={selectedFuncIds.length === 0}
+                onClick={() => { setFuncSelectionModal(false); doPrint(selectedFuncIds); }}
+              >
+                <Printer className="w-4 h-4" />Imprimir
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* â"€â"€ Validation modal â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
       {validationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]">
@@ -376,7 +445,7 @@ export const ProjectView = () => {
                 {validationModal.mode === 'errors' ? 'Fechar' : 'Cancelar'}
               </Button>
               {validationModal.mode === 'warnings' && (
-                <Button onClick={() => { setValidationModal(null); doPrint(); }} className="!bg-amber-500 hover:!bg-amber-600 !text-white">
+                <Button onClick={() => { setValidationModal(null); openFuncSelectionModal(); }} className="!bg-amber-500 hover:!bg-amber-600 !text-white">
                   Continuar mesmo assim
                 </Button>
               )}
@@ -541,7 +610,7 @@ export const ProjectView = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveIntro} className="space-y-6">
-                <FormGroup label="1.1 Ergonomia â€“ texto conceitual">
+                <FormGroup label="1.1 Ergonomia — texto conceitual">
                   <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
                     <ReactQuill 
                       theme="snow"

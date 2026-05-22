@@ -474,10 +474,15 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
   const introObjetivo    = project.introObjetivo    || DEFAULT_AET_INTRO_OBJETIVO;
   const introMetodologia = project.introMetodologia || DEFAULT_AET_INTRO_METODOLOGIA;
 
+  const funcoesParam = new URLSearchParams(window.location.search).get('funcoes');
+  const filteredFunctions = funcoesParam
+    ? project.functions.filter(f => funcoesParam.split(',').includes(f.id))
+    : project.functions;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionIds = [
     'aet-intro',
-    ...project.functions.map(f => `aet-func-${f.id}`),
+    ...filteredFunctions.map(f => `aet-func-${f.id}`),
     'aet-resp',
     'aet-anexos',
   ];
@@ -532,8 +537,8 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       <TocLine num="1.2" title="Análise Global da Empresa" indent page={pages['aet-intro']} />
                       <TocLine num="1.3" title="Objetivo" indent page={pages['aet-intro']} />
                       <TocLine num="1.4" title="Metodologia" indent page={pages['aet-intro']} />
-                      <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" page={pages[`aet-func-${project.functions[0]?.id}`]} />
-                      {project.functions.map((func, idx) => (
+                      <TocLine num="2" title="AET – ANÁLISE ERGONÔMICA DO TRABALHO" page={pages[`aet-func-${filteredFunctions[0]?.id}`]} />
+                      {filteredFunctions.map((func, idx) => (
                         <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aet-func-${func.id}`]} />
                       ))}
                       <TocLine num="3" title="Responsabilidade Técnica" page={pages['aet-resp']} />
@@ -564,7 +569,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                   </section>
 
                   {/* ── Funções ── */}
-                  {project.functions.map((func, fIdx) => (
+                  {filteredFunctions.map((func, fIdx) => (
                     <div key={func.id} id={`aet-func-${func.id}`}>
                       <FunctionSection func={func} sectionNum={`2.${fIdx + 1}`} />
                     </div>
