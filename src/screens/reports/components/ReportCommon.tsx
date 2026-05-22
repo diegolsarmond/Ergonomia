@@ -250,12 +250,11 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     <div style={{ position: 'absolute', top: '8%', left: 0, right: '50%', height: '1px', background: PALETTE.coverLine }} />
 
     {/* Client logo */}
-    <div style={{ position: 'absolute', top: '3%', left: '7.5%', width: '19cqw' }}>
-      {companyLogoDataUrl
-        ? <img src={companyLogoDataUrl} alt="Logomarca do Cliente" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
-        : <div style={{ width: '100%', aspectRatio: '2 / 1', background: PALETTE.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: PALETTE.muted }}>Logo Empresa</div>
-      }
-    </div>
+    {companyLogoDataUrl && (
+      <div style={{ position: 'absolute', top: '1%', left: '7.5%', width: '14cqw', height: '6%' }}>
+        <img src={companyLogoDataUrl} alt="Logomarca do Cliente" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left center' }} />
+      </div>
+    )}
 
     {/* Report title */}
     <div style={{ position: 'absolute', top: '18%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center' }}>
@@ -285,22 +284,20 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     {/* Bottom guide line — largura total pois a faixa não vai até o rodapé */}
     <div style={{ position: 'absolute', bottom: '6%', left: 0, right: 0, height: '1px', background: PALETTE.coverLine }} />
 
-    {/* Consultoria logo / Ergominas brand */}
-    <div style={{ position: 'absolute', bottom: '4.5%', left: '6%', right: '11%', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
+    {/* Consultoria logo / Ergominas brand + website — abaixo da linha verde */}
+    <div style={{ position: 'absolute', top: '94.5%', bottom: '0.5%', left: '6%', right: '11%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.3cqw', pointerEvents: 'none' }}>
       {consultoriaLogoDataUrl
-        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '30px', objectFit: 'contain' }} />
+        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '3.2cqw', objectFit: 'contain' }} />
         : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5cqw' }}>
-            <img src={logo3} alt="Ergominas" style={{ height: '4.5cqw', objectFit: 'contain', display: 'block' }} />
-            <span style={{ fontWeight: 900, fontSize: '2.8cqw', letterSpacing: '0.1em', color: PALETTE.primary, transform: 'translateY(0.3cqw)' }}>ERGOMINAS</span>
+            <img src={logo3} alt="Ergominas" style={{ height: '3.5cqw', objectFit: 'contain', display: 'block' }} />
+            <span style={{ fontWeight: 900, fontSize: '2.2cqw', letterSpacing: '0.1em', color: PALETTE.primary }}>ERGOMINAS</span>
           </div>
         )
       }
-    </div>
-
-    {/* Website URL */}
-    <div style={{ position: 'absolute', bottom: '2%', left: '6%', right: '11%', display: 'flex', justifyContent: 'center', fontWeight: 500, fontSize: '1cqw', letterSpacing: '0.35em', color: PALETTE.primary }}>
-      WWW.ERGOMINAS.COM.BR
+      <span style={{ fontWeight: 500, fontSize: '0.85cqw', letterSpacing: '0.35em', color: PALETTE.primary }}>
+        WWW.ERGOMINAS.COM.BR
+      </span>
     </div>
   </section>
 );
@@ -321,17 +318,17 @@ export const PageFooter: React.FC<PageFooterProps> = ({ consultoriaLogoDataUrl }
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '3mm 0 2mm',
+      padding: '5mm 0 2mm',
       gap: '2px',
       width: '100%',
     }}
   >
     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
       {consultoriaLogoDataUrl
-        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '20px', objectFit: 'contain', display: 'block' }} />
+        ? <img src={consultoriaLogoDataUrl} alt="Logo consultoria" style={{ maxHeight: '16px', objectFit: 'contain', display: 'block' }} />
         : (
           <>
-            <img src={logo3} alt="Ergominas" style={{ height: '18px', objectFit: 'contain', display: 'block' }} />
+            <img src={logo3} alt="Ergominas" style={{ height: '14px', objectFit: 'contain', display: 'block' }} />
             <span style={{ fontWeight: 900, fontSize: '8pt', letterSpacing: '0.1em', color: PALETTE.primary }}>ERGOMINAS</span>
           </>
         )
