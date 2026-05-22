@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, AETImprovement, AETEquipmentItem, AETEPIItem, ErgonomicRisk } from '../../types';
 import { DEFAULT_AET_INTRO_ERGONOMIA, DEFAULT_AET_INTRO_OBJETIVO, DEFAULT_AET_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages } from './components/ReportCommon';
+import { Field, TocLine, PieChart, riskColor, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, noBreakHyphen } from './components/ReportCommon';
 import { auditoriaApi } from '../../services/api';
 
 // ── AET Function Section ─────────────────────────────────────────────────────
@@ -550,7 +550,7 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                   <section id="aet-intro" className="pdf-page px-12 py-8 print:break-after-page">
                     <h2>1. Introdução</h2>
                     <h3>1.1 Ergonomia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introErgonomia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introErgonomia) }} />
                     <h3>1.2 Análise Global da Empresa</h3>
                     <div className="grid grid-cols-2 gap-x-8 mt-2">
                       <Field label="Razão Social" value={project.companyName} />
@@ -563,9 +563,9 @@ export const AETPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       <Field label="Local de Produção" value={project.location} />
                     </div>
                     <h3>1.3 Objetivo</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introObjetivo }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introObjetivo) }} />
                     <h3>1.4 Metodologia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introMetodologia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introMetodologia) }} />
                   </section>
 
                   {/* ── Funções ── */}

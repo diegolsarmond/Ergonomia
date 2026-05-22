@@ -73,14 +73,26 @@ export function useSectionPages(
   return pages;
 }
 
+// ── noBreakHyphen ────────────────────────────────────────────────────────────
+// Replaces word-hyphens (e.g. "trata-se") with non-breaking hyphen (U+2011)
+// so the browser never breaks a line at that hyphen.
+// Handles HTML strings safely: skips content inside tags to preserve class names.
+export function noBreakHyphen(html: string): string {
+  return html.replace(/(<[^>]*>)|(\w)-(\w)/g, (match, tag, pre, post) => {
+    if (tag !== undefined) return tag;
+    return `${pre}‑${post}`;
+  });
+}
+
 // ── Shared sub-components ────────────────────────────────────────────────────
 
 export const Field = ({ label, value }: { label: string; value: string | number | undefined | null }) => {
   if (value === undefined || value === null || value === '') return null;
+  const display = typeof value === 'string' ? value.replace(/(\w)-(\w)/g, '$1‑$2') : value;
   return (
     <div className="field">
       {label && <div className="field-label">{label}</div>}
-      <div className="field-value">{value}</div>
+      <div className="field-value">{display}</div>
     </div>
   );
 };

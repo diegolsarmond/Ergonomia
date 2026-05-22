@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem, IlluminanceMeasurement } from '../../types';
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, PALETTE } from './components/ReportCommon';
+import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, PALETTE, noBreakHyphen } from './components/ReportCommon';
 import { useAET } from '../../context/AETContext';
 import { auditoriaApi } from '../../services/api';
 
@@ -699,13 +699,13 @@ const AEPFunctionSection: React.FC<{
             {aep.finalGuidance && (
               <div className="field" style={{ marginTop: '12px' }}>
                 <div className="field-label">Orientação Final</div>
-                <div className="field-value" dangerouslySetInnerHTML={{ __html: aep.finalGuidance }} />
+                <div className="field-value" dangerouslySetInnerHTML={{ __html: noBreakHyphen(aep.finalGuidance) }} />
               </div>
             )}
             {aep.decisionJustification && (
               <div className="field">
                 <div className="field-label">Justificativa da Decisão</div>
-                <div className="field-value" dangerouslySetInnerHTML={{ __html: aep.decisionJustification }} />
+                <div className="field-value" dangerouslySetInnerHTML={{ __html: noBreakHyphen(aep.decisionJustification) }} />
               </div>
             )}
           </>
@@ -1020,7 +1020,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                     <h2>1. Introdução</h2>
 
                     <h3>1.1 Ergonomia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introErgonomia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introErgonomia) }} />
 
                     <h3>1.2 Análise Global da Empresa</h3>
                     <div className="grid grid-cols-2 gap-x-8 mt-2">
@@ -1035,10 +1035,10 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                     </div>
 
                     <h3>1.3 Objetivo</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introObjetivo }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introObjetivo) }} />
 
                     <h3>1.4 Metodologia</h3>
-                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: introMetodologia }} />
+                    <div className="field-value text-slate-700" dangerouslySetInnerHTML={{ __html: noBreakHyphen(introMetodologia) }} />
                   </section>
 
                   {/* ── 2. Funções ── */}
