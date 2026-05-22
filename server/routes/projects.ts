@@ -11,6 +11,61 @@ import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
+// ─── Helpers de diff para auditoria de edição ─────────────────────────────────
+
+const CAMPOS_HEADER: Array<[string, string, string]> = [
+  ['Empresa',        'nome_empresa',   'companyName'],
+  ['Nome Fantasia',  'nome_fantasia',  'fantasyName'],
+  ['CNPJ',           'cnpj',           'cnpj'],
+  ['Endereço',       'endereco',       'address'],
+  ['Unidade',        'unidade',        'unit'],
+  ['Produto',        'produto',        'product'],
+  ['Grau de Risco',  'grau_risco',     'riskDegree'],
+  ['Avaliador',      'nome_avaliador', 'evaluatorName'],
+  ['Data',           'data',           'date'],
+];
+
+async function descricaoEdicao(client: PoolClient, project: any): Promise<string> {
+  const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
+  const tabelaFuncoes = project?.reportType === 'AET' ? 'aet_funcoes' : 'aep_funcoes';
+  const empresa = project.companyName ?? project.nomeEmpresa ?? '';
+
+  const [{ rows: headerRows }, { rows: funcRows }] = await Promise.all([
+    client.query(
+      `SELECT nome_empresa, nome_fantasia, cnpj, endereco, unidade, produto,
+              grau_risco, nome_avaliador, data
+       FROM ${tabela} WHERE id=$1`,
+      [project.id]
+    ),
+    client.query(
+      `SELECT COUNT(*)::int AS total FROM ${tabelaFuncoes} WHERE projeto_id=$1`,
+      [project.id]
+    ),
+  ]);
+
+  if (!headerRows.length) return `Projeto criado: ${empresa}`;
+
+  const antigo = headerRows[0];
+  const alteracoes: string[] = [];
+
+  for (const [label, dbField, jsField] of CAMPOS_HEADER) {
+    const valAntigo = antigo[dbField] != null ? String(antigo[dbField]).split('T')[0] : '';
+    const valNovo   = project[jsField]  != null ? String(project[jsField]).split('T')[0] : '';
+    if (valAntigo !== valNovo) {
+      alteracoes.push(`${label}: "${valAntigo}" → "${valNovo}"`);
+    }
+  }
+
+  const qtdFuncoesAntigas: number = funcRows[0]?.total ?? 0;
+  const qtdFuncoesNovas: number   = (project.functions ?? []).length;
+  if (qtdFuncoesAntigas !== qtdFuncoesNovas) {
+    alteracoes.push(`Funções: ${qtdFuncoesAntigas} → ${qtdFuncoesNovas}`);
+  }
+
+  if (!alteracoes.length) return `Projeto editado: ${empresa}`;
+  return `Projeto editado: ${empresa}. Alterações — ${alteracoes.join('; ')}`;
+}
+
 // ─── GET /api/projects — AEP + AET combinados ────────────────────────────────
 
 router.get('/', async (_req, res) => {
@@ -67,13 +122,14 @@ router.put('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const descricao = await descricaoEdicao(client, project);
     if (project?.reportType === 'AET') {
       await saveAET(client, project);
     } else {
       await saveAEP(client, project);
     }
     const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
-    await registrarAuditoria(req, 'EDIÇÃO', tabela, req.params.id, `Projeto editado: ${project.companyName ?? project.nomeEmpresa ?? ''}`, client);
+    await registrarAuditoria(req, 'EDIÇÃO', tabela, req.params.id, descricao, client);
     await client.query('COMMIT');
     res.json(project);
   } catch (err) {
