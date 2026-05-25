@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Search, RefreshCw, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 import { auditoriaApi, type AuditoriaRow } from '../services/api';
 
@@ -47,6 +47,44 @@ function formatDataHora(iso: string) {
 
 const PAGE_SIZE = 50;
 
+// ── Modal de descrição completa ───────────────────────────────────────────────
+
+function DescricaoModal({ texto, onClose }: { texto: string; onClose: () => void }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(2px)' }}
+      onClick={e => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <span className="text-sm font-semibold text-slate-700">Descrição completa</span>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-5 py-4">
+          <p className="text-sm text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
+            {texto}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export const AuditoriaAdmin: React.FC = () => {
@@ -55,6 +93,7 @@ export const AuditoriaAdmin: React.FC = () => {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [page, setPage]         = useState(0);
+  const [descModal, setDescModal] = useState<string | null>(null);
 
   // Filtros
   const [filtroAcao,       setFiltroAcao]       = useState('');
@@ -278,7 +317,11 @@ export const AuditoriaAdmin: React.FC = () => {
                   <td className="px-4 py-3">
                     <AcaoBadge acao={row.acao} />
                   </td>
-                  <td className="px-4 py-3 text-slate-600 max-w-xs truncate" title={row.descricao ?? ''}>
+                  <td
+                    className={`px-4 py-3 text-slate-600 max-w-xs truncate ${row.descricao ? 'cursor-pointer hover:text-teal-700 hover:underline' : ''}`}
+                    title={row.descricao ? 'Clique para ver completo' : ''}
+                    onClick={() => row.descricao && setDescModal(row.descricao)}
+                  >
                     {row.descricao || <span className="text-slate-300 italic">—</span>}
                   </td>
                 </tr>
@@ -337,6 +380,10 @@ export const AuditoriaAdmin: React.FC = () => {
           </div>
         )}
       </div>
+
+      {descModal !== null && (
+        <DescricaoModal texto={descModal} onClose={() => setDescModal(null)} />
+      )}
     </div>
   );
 };

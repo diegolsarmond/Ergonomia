@@ -11,6 +11,95 @@ import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
 
+// ─── Helpers de diff para auditoria de edição ─────────────────────────────────
+
+const CAMPOS_HEADER: Array<[string, string, string]> = [
+  ['Empresa',        'nome_empresa',   'companyName'],
+  ['Nome Fantasia',  'nome_fantasia',  'fantasyName'],
+  ['CNPJ',           'cnpj',           'cnpj'],
+  ['Endereço',       'endereco',       'address'],
+  ['Unidade',        'unidade',        'unit'],
+  ['Produto',        'produto',        'product'],
+  ['Grau de Risco',  'grau_risco',     'riskDegree'],
+  ['Avaliador',      'nome_avaliador', 'evaluatorName'],
+  ['Data',           'data',           'date'],
+];
+
+function normalizarValor(v: any): string {
+  if (v == null) return '';
+  if (v instanceof Date) return v.toISOString().split('T')[0];
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+  if (s.includes('T')) return s.split('T')[0];
+  return s;
+}
+
+const CAMPOS_FUNCAO: Array<[string, string, string]> = [
+  ['Nº de Colaboradores', 'num_funcionarios', 'numEmployees'],
+  ['Nome da Função',       'nome_funcao',      'name'],
+];
+
+async function listarAlteracoes(client: PoolClient, project: any): Promise<string[]> {
+  const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
+  const tabelaFuncoes = project?.reportType === 'AET' ? 'aet_funcoes' : 'aep_funcoes';
+  const empresa = project.companyName ?? project.nomeEmpresa ?? '';
+
+  const [{ rows: headerRows }, { rows: funcDetailsRows }] = await Promise.all([
+    client.query(
+      `SELECT nome_empresa, nome_fantasia, cnpj, endereco, unidade, produto,
+              grau_risco, nome_avaliador, data
+       FROM ${tabela} WHERE id=$1`,
+      [project.id]
+    ),
+    client.query(
+      `SELECT id, ${CAMPOS_FUNCAO.map(([, db]) => db).join(', ')} FROM ${tabelaFuncoes} WHERE projeto_id=$1`,
+      [project.id]
+    ),
+  ]);
+
+  if (!headerRows.length) return [`Projeto criado: ${empresa}`];
+
+  const antigo = headerRows[0];
+  const alteracoes: string[] = [];
+
+  // Campos do cabeçalho do projeto
+  for (const [label, dbField, jsField] of CAMPOS_HEADER) {
+    const valAntigo = normalizarValor(antigo[dbField]);
+    const valNovo   = normalizarValor(project[jsField]);
+    if (valAntigo !== valNovo) {
+      alteracoes.push(`Campo "${label}" alterado de "${valAntigo}" para "${valNovo}"`);
+    }
+  }
+
+  // Quantidade de funções
+  const qtdFuncoesAntigas: number = funcDetailsRows.length;
+  const qtdFuncoesNovas: number   = (project.functions ?? []).length;
+  if (qtdFuncoesAntigas !== qtdFuncoesNovas) {
+    alteracoes.push(`Campo "Funções" alterado de "${qtdFuncoesAntigas}" para "${qtdFuncoesNovas}"`);
+  }
+
+  // Campos por função (apenas funções já existentes no banco)
+  const funcMap = new Map<string, any>();
+  for (const f of funcDetailsRows) funcMap.set(f.id, f);
+
+  for (const f of (project.functions ?? [])) {
+    const existing = funcMap.get(f.id);
+    if (!existing) continue;
+    const funcLabel = f.name || existing.nome_funcao || f.id;
+
+    for (const [label, dbField, jsField] of CAMPOS_FUNCAO) {
+      const valAntigo = normalizarValor(existing[dbField]);
+      const valNovo   = normalizarValor(f[jsField]);
+      if (valAntigo !== valNovo) {
+        alteracoes.push(`Campo "${label}" na função "${funcLabel}" alterado de "${valAntigo}" para "${valNovo}"`);
+      }
+    }
+  }
+
+  if (!alteracoes.length) return [`Projeto editado sem alterações nos campos: ${empresa}`];
+  return alteracoes;
+}
+
 // ─── GET /api/projects — AEP + AET combinados ────────────────────────────────
 
 router.get('/', async (_req, res) => {
@@ -67,13 +156,16 @@ router.put('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const alteracoes = await listarAlteracoes(client, project);
     if (project?.reportType === 'AET') {
       await saveAET(client, project);
     } else {
       await saveAEP(client, project);
     }
     const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
-    await registrarAuditoria(req, 'EDIÇÃO', tabela, req.params.id, `Projeto editado: ${project.companyName ?? project.nomeEmpresa ?? ''}`, client);
+    for (const descricao of alteracoes) {
+      await registrarAuditoria(req, 'EDIÇÃO', tabela, req.params.id, descricao, client);
+    }
     await client.query('COMMIT');
     res.json(project);
   } catch (err) {

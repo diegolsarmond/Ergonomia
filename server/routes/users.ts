@@ -9,13 +9,14 @@ const router = Router();
 // Todas as rotas exigem autenticação
 router.use(requireAuth);
 
-function rowToUser(r: any, permissions: string[] = []) {
+function rowToUser(r: any, permissions: string[] = [], perfilRotulo?: string | null) {
   return {
     id: r.id,
     nome: r.nome,
     email: r.email,
     nomeUsuario: r.nome_usuario,
     perfil: r.perfil,
+    perfilRotulo: perfilRotulo ?? r.perfil_rotulo ?? null,
     status: r.status,
     alterarSenha: r.alterar_senha,
     formacao: r.formacao ?? '',
@@ -53,11 +54,46 @@ async function getUserPermissions(userId: string, perfil: string): Promise<strin
  *     security:
  *       - bearerAuth: []
  */
-router.get('/', requireAdmin, async (_req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT * FROM usuarios ORDER BY nome`
+    // Busca primeiro perfil ativo como fallback para perfis órfãos
+    const { rows: fallbackRows } = await pool.query(
+      `SELECT id, rotulo FROM perfis_customizados WHERE ativo = TRUE ORDER BY criado_em LIMIT 1`
     );
+    const fallback = fallbackRows[0] ?? null;
+
+    // Usuários com nome do perfil via LEFT JOIN
+    const { rows } = await pool.query(
+      `SELECT u.*, pc.rotulo AS perfil_rotulo
+       FROM usuarios u
+       LEFT JOIN perfis_customizados pc ON pc.id::text = u.perfil
+       ORDER BY u.nome`
+    );
+
+    // Corrige usuários cujo perfil UUID não existe mais em perfis_customizados
+    if (fallback) {
+      const orphanIds = rows
+        .filter(r => r.perfil !== 'ADMIN' && r.perfil_rotulo === null)
+        .map(r => r.id);
+
+      if (orphanIds.length > 0) {
+        await pool.query(
+          `UPDATE usuarios SET perfil = $1, atualizado_em = NOW() WHERE id = ANY($2::uuid[])`,
+          [fallback.id, orphanIds]
+        );
+        await registrarAuditoria(
+          req, 'EDIÇÃO', 'usuarios', orphanIds.join(','),
+          `Perfil inválido corrigido automaticamente para "${fallback.rotulo}" (${orphanIds.length} usuário(s))`
+        );
+        for (const r of rows) {
+          if (orphanIds.includes(r.id)) {
+            r.perfil = fallback.id;
+            r.perfil_rotulo = fallback.rotulo;
+          }
+        }
+      }
+    }
+
     const users = await Promise.all(
       rows.map(async (r) => rowToUser(r, await getUserPermissions(r.id, r.perfil)))
     );

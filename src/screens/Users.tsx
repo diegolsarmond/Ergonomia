@@ -344,7 +344,7 @@ export function Users() {
                   <td className="px-4 py-3 text-slate-500 font-mono text-xs">{user.username}</td>
                   <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{user.email}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {FIXED_ROLE_LABELS[user.role] ?? profiles.find(p => p.id === user.role)?.label ?? user.role}
+                    {FIXED_ROLE_LABELS[user.role] ?? user.roleName ?? profiles.find(p => p.id === user.role)?.label ?? '—'}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[user.status]}`}>
