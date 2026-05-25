@@ -25,12 +25,26 @@ const CAMPOS_HEADER: Array<[string, string, string]> = [
   ['Data',           'data',           'date'],
 ];
 
-async function descricaoEdicao(client: PoolClient, project: any): Promise<string> {
+function normalizarValor(v: any): string {
+  if (v == null) return '';
+  if (v instanceof Date) return v.toISOString().split('T')[0];
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+  if (s.includes('T')) return s.split('T')[0];
+  return s;
+}
+
+const CAMPOS_FUNCAO: Array<[string, string, string]> = [
+  ['Nº de Colaboradores', 'num_funcionarios', 'numEmployees'],
+  ['Nome da Função',       'nome_funcao',      'name'],
+];
+
+async function listarAlteracoes(client: PoolClient, project: any): Promise<string[]> {
   const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
   const tabelaFuncoes = project?.reportType === 'AET' ? 'aet_funcoes' : 'aep_funcoes';
   const empresa = project.companyName ?? project.nomeEmpresa ?? '';
 
-  const [{ rows: headerRows }, { rows: funcRows }] = await Promise.all([
+  const [{ rows: headerRows }, { rows: funcDetailsRows }] = await Promise.all([
     client.query(
       `SELECT nome_empresa, nome_fantasia, cnpj, endereco, unidade, produto,
               grau_risco, nome_avaliador, data
@@ -38,32 +52,52 @@ async function descricaoEdicao(client: PoolClient, project: any): Promise<string
       [project.id]
     ),
     client.query(
-      `SELECT COUNT(*)::int AS total FROM ${tabelaFuncoes} WHERE projeto_id=$1`,
+      `SELECT id, ${CAMPOS_FUNCAO.map(([, db]) => db).join(', ')} FROM ${tabelaFuncoes} WHERE projeto_id=$1`,
       [project.id]
     ),
   ]);
 
-  if (!headerRows.length) return `Projeto criado: ${empresa}`;
+  if (!headerRows.length) return [`Projeto criado: ${empresa}`];
 
   const antigo = headerRows[0];
   const alteracoes: string[] = [];
 
+  // Campos do cabeçalho do projeto
   for (const [label, dbField, jsField] of CAMPOS_HEADER) {
-    const valAntigo = antigo[dbField] != null ? String(antigo[dbField]).split('T')[0] : '';
-    const valNovo   = project[jsField]  != null ? String(project[jsField]).split('T')[0] : '';
+    const valAntigo = normalizarValor(antigo[dbField]);
+    const valNovo   = normalizarValor(project[jsField]);
     if (valAntigo !== valNovo) {
-      alteracoes.push(`${label}: "${valAntigo}" → "${valNovo}"`);
+      alteracoes.push(`Campo "${label}" alterado de "${valAntigo}" para "${valNovo}"`);
     }
   }
 
-  const qtdFuncoesAntigas: number = funcRows[0]?.total ?? 0;
+  // Quantidade de funções
+  const qtdFuncoesAntigas: number = funcDetailsRows.length;
   const qtdFuncoesNovas: number   = (project.functions ?? []).length;
   if (qtdFuncoesAntigas !== qtdFuncoesNovas) {
-    alteracoes.push(`Funções: ${qtdFuncoesAntigas} → ${qtdFuncoesNovas}`);
+    alteracoes.push(`Campo "Funções" alterado de "${qtdFuncoesAntigas}" para "${qtdFuncoesNovas}"`);
   }
 
-  if (!alteracoes.length) return `Projeto editado: ${empresa}`;
-  return `Projeto editado: ${empresa}. Alterações — ${alteracoes.join('; ')}`;
+  // Campos por função (apenas funções já existentes no banco)
+  const funcMap = new Map<string, any>();
+  for (const f of funcDetailsRows) funcMap.set(f.id, f);
+
+  for (const f of (project.functions ?? [])) {
+    const existing = funcMap.get(f.id);
+    if (!existing) continue;
+    const funcLabel = f.name || existing.nome_funcao || f.id;
+
+    for (const [label, dbField, jsField] of CAMPOS_FUNCAO) {
+      const valAntigo = normalizarValor(existing[dbField]);
+      const valNovo   = normalizarValor(f[jsField]);
+      if (valAntigo !== valNovo) {
+        alteracoes.push(`Campo "${label}" na função "${funcLabel}" alterado de "${valAntigo}" para "${valNovo}"`);
+      }
+    }
+  }
+
+  if (!alteracoes.length) return [`Projeto editado sem alterações nos campos: ${empresa}`];
+  return alteracoes;
 }
 
 // ─── GET /api/projects — AEP + AET combinados ────────────────────────────────
@@ -122,14 +156,16 @@ router.put('/:id', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const descricao = await descricaoEdicao(client, project);
+    const alteracoes = await listarAlteracoes(client, project);
     if (project?.reportType === 'AET') {
       await saveAET(client, project);
     } else {
       await saveAEP(client, project);
     }
     const tabela = project?.reportType === 'AET' ? 'aet_projetos' : 'aep_projetos';
-    await registrarAuditoria(req, 'EDIÇÃO', tabela, req.params.id, descricao, client);
+    for (const descricao of alteracoes) {
+      await registrarAuditoria(req, 'EDIÇÃO', tabela, req.params.id, descricao, client);
+    }
     await client.query('COMMIT');
     res.json(project);
   } catch (err) {
