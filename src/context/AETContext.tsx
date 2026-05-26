@@ -165,7 +165,35 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Normaliza projetos (garante campos obrigatórios e arrays)
         const { projects: normalized } = normalizeProjectsOnLoad(rawProjects as AETProject[]);
-        setProjects(normalized as AETProject[]);
+        setProjects(prev => {
+          return (normalized as AETProject[]).map(newProj => {
+            const existing = prev.find(p => p.id === newProj.id);
+            if (!existing) return newProj;
+
+            // Merge functions to keep detailed field values (like 'aep', 'illumination', 'demandOrigin', etc.)
+            const mergedFunctions = newProj.functions.map(newFunc => {
+              const existingFunc = existing.functions.find(f => f.id === newFunc.id);
+              if (!existingFunc) return newFunc;
+
+              // newFunc from list only has a subset of fields. Preserve everything from existingFunc
+              // but update the fields that can be modified/updated in list projections.
+              return {
+                ...existingFunc,
+                name: newFunc.name,
+                unit: newFunc.unit,
+                sector: newFunc.sector,
+                analysisDate: newFunc.analysisDate,
+                numEmployees: newFunc.numEmployees,
+              };
+            });
+
+            return {
+              ...existing,
+              ...newProj,
+              functions: mergedFunctions,
+            };
+          });
+        });
 
         setClients(rawClients as Client[]);
         setChecklistQuestions(rawChecklist as ChecklistQuestion[]);
