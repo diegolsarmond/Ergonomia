@@ -96,15 +96,21 @@ export function noBreakHyphen(html: string): string {
 
 export const Field = ({ label, value }: { label: string; value: string | number | undefined | null }) => {
   if (value === undefined || value === null || value === '') return null;
-  const content = typeof value === 'string'
-    ? value.replace(/(\w)-(\w)/g, '$1‑$2').split('\n').map((line, i, arr) => (
-        <React.Fragment key={i}>{line}{i < arr.length - 1 && <br />}</React.Fragment>
-      ))
-    : value;
+  const isHtml = typeof value === 'string' && /<\/?(p|span|strong|em|br|ul|ol|li|div|h[1-6]|table|thead|tbody|tr|td|th)\b/i.test(value);
   return (
     <div className="field">
       {label && <div className="field-label">{label}</div>}
-      <div className="field-value">{content}</div>
+      {isHtml ? (
+        <div className="field-value" dangerouslySetInnerHTML={{ __html: noBreakHyphen(value as string) }} />
+      ) : (
+        <div className="field-value">
+          {typeof value === 'string'
+            ? value.replace(/(\w)-(\w)/g, '$1‑$2').split('\n').map((line, i, arr) => (
+                <React.Fragment key={i}>{line}{i < arr.length - 1 && <br />}</React.Fragment>
+              ))
+            : value}
+        </div>
+      )}
     </div>
   );
 };
