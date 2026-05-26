@@ -969,6 +969,13 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                         if (u) {
                           setIdent('unitBranch', u.name);
                           setIdent('unitId', u.id);
+                          setIdent('sectorArea', '');
+                          setIdent('sectorId', '');
+                        } else {
+                          setIdent('unitBranch', '');
+                          setIdent('unitId', '');
+                          setIdent('sectorArea', '');
+                          setIdent('sectorId', '');
                         }
                       }
                     }}
@@ -982,28 +989,39 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   </Select>
                 </FormGroup>
                 <FormGroup label="Setor / Área">
-                  <Select
-                    className="w-full"
-                    value={companySectors.find(s => s.name === aep.identification.sectorArea)?.id || (aep.identification.sectorArea ? 'custom' : '')}
-                    onChange={e => {
-                      if (e.target.value === '__NEW__') {
-                        handleOpenCreateModal('sector');
-                      } else if (e.target.value !== 'custom') {
-                        const s = companySectors.find(x => x.id === e.target.value);
-                        if (s) {
-                          setIdent('sectorArea', s.name);
-                          setIdent('sectorId', s.id);
-                        }
-                      }
-                    }}
-                  >
-                    <option value="">Selecione o setor...</option>
-                    {companySectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    {aep.identification.sectorArea && !companySectors.find(s => s.name === aep.identification.sectorArea) && (
-                      <option value="custom">{aep.identification.sectorArea}</option>
-                    )}
-                    <option value="__NEW__" className="font-semibold text-teal-600">+ Criar novo...</option>
-                  </Select>
+                  {(() => {
+                    const selectedUnitId = aep.identification.unitId || companyUnits.find(u => u.name === aep.identification.unitBranch)?.id;
+                    const unitSectors = selectedUnitId
+                      ? companySectors.filter(s => s.unitId === selectedUnitId)
+                      : companySectors;
+                    return (
+                      <Select
+                        className="w-full"
+                        value={unitSectors.find(s => s.name === aep.identification.sectorArea)?.id || (aep.identification.sectorArea ? 'custom' : '')}
+                        onChange={e => {
+                          if (e.target.value === '__NEW__') {
+                            handleOpenCreateModal('sector');
+                          } else if (e.target.value !== 'custom') {
+                            const s = unitSectors.find(x => x.id === e.target.value);
+                            if (s) {
+                              setIdent('sectorArea', s.name);
+                              setIdent('sectorId', s.id);
+                            } else {
+                              setIdent('sectorArea', '');
+                              setIdent('sectorId', '');
+                            }
+                          }
+                        }}
+                      >
+                        <option value="">Selecione o setor...</option>
+                        {unitSectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        {aep.identification.sectorArea && !unitSectors.find(s => s.name === aep.identification.sectorArea) && (
+                          <option value="custom">{aep.identification.sectorArea}</option>
+                        )}
+                        <option value="__NEW__" className="font-semibold text-teal-600">+ Criar novo...</option>
+                      </Select>
+                    );
+                  })()}
                 </FormGroup>
               </div>
               <FormGroup label="Funções Contempladas">
