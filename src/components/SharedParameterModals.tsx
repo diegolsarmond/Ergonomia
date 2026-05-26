@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Modal } from './ui/Modal';
 import { FormGroup, Input, Textarea, Select } from './ui/Forms';
+import { OcupacaoAutocomplete } from './OcupacaoAutocomplete';
 import { Company, Unit, Sector, StandardJobRole } from '../types';
 
 export const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -303,7 +304,16 @@ export const JobRoleModalForm: React.FC<{
     <Modal open={open} onClose={onClose} title={title}>
       <div className="space-y-2">
         <FormGroup label="Nome da Função" required>
-          <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Ex: Operador de Produção" />
+          <OcupacaoAutocomplete
+            value={form.name}
+            onChange={val => set('name', val)}
+            onSelectOcupacao={o => {
+              set('name', o.descricao);
+              set('cbo', o.codigo);
+            }}
+            className="flex w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-slate-300"
+            placeholder="Ex: Operador de Produção"
+          />
         </FormGroup>
         <FormGroup label="CBO">
           <Input value={form.cbo} onChange={e => set('cbo', e.target.value)} placeholder="Código CBO (opcional)" />

@@ -341,11 +341,12 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
 async function loadAllAEP(client: PoolClient): Promise<any[]> {
   const { rows: projects } = await client.query(`
     SELECT p.id, p.empresa_id, p.unidade_id, p.data, p.localizacao, p.criado_em,
-      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)  AS nome_empresa,
+      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)   AS nome_empresa,
       COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
       COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
       COALESCE(NULLIF(p.grau_risco,''), e.grau_risco)      AS grau_risco,
-      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade
+      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade,
+      COALESCE(e.logo_url, NULLIF(p.logo_empresa,''))      AS logo_empresa_resolved
     FROM aep_projetos p
     LEFT JOIN empresas e ON e.id = p.empresa_id
     LEFT JOIN unidades u ON u.id = p.unidade_id
@@ -374,12 +375,13 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       reportType: 'AEP',
       empresaId: p.empresa_id ?? null,
       unidadeId: p.unidade_id ?? null,
-      companyName:  p.nome_empresa ?? '',
-      fantasyName:  p.nome_fantasia ?? '',
-      cnpj:         p.cnpj ?? '',
-      unit:         p.unidade ?? '',
-      riskDegree:   p.grau_risco ?? '',
-      location:     p.localizacao ?? '',
+      companyName:          p.nome_empresa ?? '',
+      fantasyName:          p.nome_fantasia ?? '',
+      cnpj:                 p.cnpj ?? '',
+      unit:                 p.unidade ?? '',
+      riskDegree:           p.grau_risco ?? '',
+      location:             p.localizacao ?? '',
+      companyLogoDataUrl:   p.logo_empresa_resolved ?? '',
       date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
       functions,
     });
@@ -396,7 +398,7 @@ async function loadSingleAEP(client: PoolClient, id: string): Promise<any | null
       COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
       COALESCE(NULLIF(p.grau_risco,''), e.grau_risco)      AS grau_risco,
       COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade,
-      COALESCE(NULLIF(p.logo_empresa,''), e.logo_url)      AS logo_empresa_resolved
+      COALESCE(e.logo_url, NULLIF(p.logo_empresa,''))      AS logo_empresa_resolved
     FROM aep_projetos p
     LEFT JOIN empresas e ON e.id = p.empresa_id
     LEFT JOIN unidades u ON u.id = p.unidade_id

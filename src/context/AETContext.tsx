@@ -191,7 +191,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ── Projetos ───────────────────────────────────────────────────────────────
 
-  const fetchProjectDetails = async (id: string) => {
+  const fetchProjectDetails = useCallback(async (id: string) => {
     const rawProject = await projectsApi.get(id);
     const normalized = normalizeProject(rawProject as AETProject);
     setProjects(prev => {
@@ -203,7 +203,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
     return normalized;
-  };
+  }, []);
 
   const saveProject = async (project: AETProject) => {
     await projectsApi.update(project.id, project);

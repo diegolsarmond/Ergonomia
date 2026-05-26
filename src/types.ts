@@ -691,6 +691,7 @@ export interface AETProject {
   functions: AETFunction[];
   // Medições de iluminância agrupadas por setor (AEP)
   sectorIlluminance?: SectorIlluminance[];
+  createdAt?: string;
 }
 
 // ── Default values ──────────────────────────────────────────────────────────

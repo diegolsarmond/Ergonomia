@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAET } from '../context/AETContext';
 import { Card, CardContent } from '../components/ui/Card';
 import { FormGroup, Input, Textarea, Select, Checkbox, Combobox } from '../components/ui/Forms';
+import { OcupacaoAutocomplete } from '../components/OcupacaoAutocomplete';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, AlertCircle, Plus, Trash2, ChevronRight, Lock, CheckCircle, XCircle, Shield, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -87,6 +88,8 @@ export const FunctionForm = () => {
     shifts, addShift, pauses, companies, units, sectors, jobRoles
   } = useAET();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sectorParam = searchParams.get('sector');
 
   const [loadingProject, setLoadingProject] = useState(true);
   const [isDataInitialized, setIsDataInitialized] = useState(false);
@@ -109,13 +112,59 @@ export const FunctionForm = () => {
 
   React.useEffect(() => {
     if (!loadingProject && project && !isDataInitialized) {
-      const initialData = isNew 
+      let initialData = isNew 
         ? { ...EMPTY_FUNCTION } 
         : project.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+
+      if (isNew) {
+        const matchedCompany = project
+          ? companies.find(c => 
+              (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g, '') === project.cnpj.replace(/\D/g, '')) || 
+              c.razaoSocial === project.companyName || 
+              c.nomeFantasia === project.companyName
+            )
+          : undefined;
+          
+        const companySectors = matchedCompany ? sectors.filter(s => s.companyId === matchedCompany.id) : [];
+        const matchedSector = sectorParam ? companySectors.find(s => s.name.trim().toLowerCase() === sectorParam.trim().toLowerCase()) : null;
+        
+        let unitName = '';
+        let unitId = '';
+        if (matchedSector && matchedSector.unitId) {
+          const u = units.find(x => x.id === matchedSector.unitId);
+          if (u) {
+            unitName = u.name;
+            unitId = u.id;
+          }
+        }
+        
+        initialData = {
+          ...initialData,
+          id: uuidv4(),
+          sector: sectorParam || '',
+          setorId: matchedSector ? matchedSector.id : '',
+          unit: unitName,
+          unidadeId: unitId,
+        };
+        
+        if (project.reportType === 'AEP' && initialData.aep) {
+          initialData.aep = {
+            ...initialData.aep,
+            identification: {
+              ...initialData.aep.identification,
+              sectorArea: sectorParam || '',
+              sectorId: matchedSector ? matchedSector.id : '',
+              unitBranch: unitName,
+              unitId: unitId,
+            }
+          };
+        }
+      }
+
       setFormData(initialData);
       setIsDataInitialized(true);
     }
-  }, [loadingProject, project, isNew, funcId, isDataInitialized]);
+  }, [loadingProject, project, isNew, funcId, isDataInitialized, sectorParam, companies, sectors, units]);
 
   if (loadingProject || !isDataInitialized) return (
     <div className="flex items-center justify-center h-full min-h-[50vh] p-8">
@@ -495,16 +544,19 @@ export const FunctionForm = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormGroup label="Nome da Função" required>
-                    <Combobox
-                      listId="jobRolesList"
-                      options={companyJobRoles}
+                    <OcupacaoAutocomplete
                       value={formData.name}
-                      onChange={(e) => {
-                        const val = e.target.value;
+                      onChange={(val) => {
                         set('name', val);
                         const role = companyJobRoles.find(r => r.name === val);
                         if (role) handleApplyJobRole(role.id);
                       }}
+                      onSelectOcupacao={o => {
+                        set('name', o.descricao);
+                        const role = companyJobRoles.find(r => r.name === o.descricao);
+                        if (role) handleApplyJobRole(role.id);
+                      }}
+                      className="flex w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 hover:border-slate-300"
                       placeholder="Digite ou selecione a função..."
                     />
                   </FormGroup>

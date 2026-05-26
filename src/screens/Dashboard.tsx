@@ -6,7 +6,7 @@ import { useAET } from '../context/AETContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea } from '../components/ui/Forms';
-import { Plus, Trash2, Building2, FolderOpen, Calendar, MapPin, Hash, Search } from 'lucide-react';
+import { Plus, Trash2, Building2, FolderOpen, Calendar, MapPin, Hash, Search, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
 import {
@@ -146,9 +146,17 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
     >
       <td className="py-4 pl-4 pr-3 text-sm font-medium text-slate-900 max-w-[200px] truncate">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm shadow-teal-500/10">
-            {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
-          </div>
+          {project.companyLogoDataUrl ? (
+            <img
+              src={project.companyLogoDataUrl}
+              alt="Logo"
+              className="w-8 h-8 rounded-lg object-contain shrink-0 border border-slate-100 bg-white p-0.5"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm shadow-teal-500/10">
+              {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
+            </div>
+          )}
           <div>
             <div className="font-semibold text-slate-800 text-[14px] truncate">{project.companyName}</div>
             {project.fantasyName && <div className="text-[11px] text-teal-600 font-medium truncate">{project.fantasyName}</div>}
@@ -175,15 +183,27 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
       </td>
       <td className="py-4 pl-3 pr-4 text-right text-sm font-medium">
         <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="!p-1.5 hover:!bg-amber-50"
+            title="Imprimir AEP"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              navigate(`/project/${project.id}/preview`);
+            }}
+          >
+            <Printer className="w-4 h-4 text-amber-500 hover:text-amber-700" />
+          </Button>
           <PermissionGuard permission="PROJECTS_DELETE">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="opacity-0 group-hover:opacity-100 transition-opacity !p-1.5 hover:!bg-red-50" 
-              onClick={(e) => { 
-                e.stopPropagation(); 
+            <Button
+              variant="ghost"
+              size="sm"
+              className="!p-1.5 hover:!bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation();
                 if (confirm('Deseja realmente excluir este projeto?')) {
-                  deleteProject(project.id); 
+                  deleteProject(project.id);
                 }
               }}
             >

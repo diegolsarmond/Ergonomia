@@ -43,6 +43,10 @@ export const ProjectView = () => {
       )
     : undefined;
 
+  const companySectors = matchedCompany
+    ? sectors.filter(s => s.companyId === matchedCompany.id && s.active)
+    : [];
+
 
   const [validationModal, setValidationModal] = useState<{
     result: ReportValidationResult;
@@ -260,6 +264,19 @@ export const ProjectView = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Group functions by sector name
+  const functionsBySector: Record<string, AETFunction[]> = {};
+  const matchedFuncIds = new Set<string>();
+
+  companySectors.forEach(sector => {
+    const sNameLower = sector.name.trim().toLowerCase();
+    const funcs = project.functions.filter(f => (f.sector || '').trim().toLowerCase() === sNameLower);
+    functionsBySector[sector.id] = funcs;
+    funcs.forEach(f => matchedFuncIds.add(f.id));
+  });
+
+  const remainingFuncs = project.functions.filter(f => !matchedFuncIds.has(f.id));
+
   return (
     <div className="p-6 lg:p-8 xl:p-10">
       {/* â"€â"€ Breadcrumb â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
@@ -273,9 +290,17 @@ export const ProjectView = () => {
       <div className="page-header mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center relative z-10 gap-4">
           <div className="flex items-center gap-4 w-full sm:w-auto">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold shrink-0">
-              {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
-            </div>
+            {(project.companyLogoDataUrl || matchedCompany?.logoDataUrl) ? (
+              <img
+                src={project.companyLogoDataUrl || matchedCompany?.logoDataUrl}
+                alt="Logo"
+                className="w-14 h-14 rounded-2xl object-contain shrink-0 bg-white p-1 border border-white/20"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold shrink-0">
+                {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5 truncate">{project.companyName}</h1>
               {project.fantasyName && <p className="text-teal-200 text-sm font-medium truncate">{project.fantasyName}</p>}
@@ -296,22 +321,6 @@ export const ProjectView = () => {
             <PermissionGuard permission="PROJECTS_EDIT">
               <Button onClick={() => setIsEditIntroModalOpen(true)} variant="outline" className="!bg-white/10 !border-white/20 !text-white hover:!bg-white/20 flex-1 sm:flex-none" size="sm">
                 <AlignLeft className="w-4 h-4" /> Textos
-              </Button>
-            </PermissionGuard>
-            {project.reportType === 'AEP' && (
-              <PermissionGuard permission="PROJECTS_EDIT">
-                <Button
-                  size="sm"
-                  onClick={() => setSectorModalOpen(true)}
-                  className="!bg-indigo-500 hover:!bg-indigo-600 !text-white !border-none flex-1 sm:flex-none shadow-md shadow-indigo-500/20 transition-all"
-                >
-                  <Layers className="w-4 h-4" />Setores
-                </Button>
-              </PermissionGuard>
-            )}
-            <PermissionGuard permission="PROJECTS_EDIT">
-              <Button onClick={handleAddFunction} size="sm" className="!bg-amber-500 hover:!bg-amber-600 !text-white !border-none flex-1 sm:flex-none shadow-md shadow-amber-500/20 transition-all font-semibold tracking-wide">
-                <Plus className="w-4 h-4" />Função
               </Button>
             </PermissionGuard>
           </div>
@@ -368,75 +377,222 @@ export const ProjectView = () => {
         </Card>
       </div>
 
-      {/* â"€â"€ Functions â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+                {/* ── Highlighted Action Panel ───────────────────────────────────────── */}
+      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-800 mb-1">Estrutura do Projeto</h2>
+          <p className="text-xs text-slate-500">Cadastre os setores da empresa e adicione funções para a análise ergonômica.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <PermissionGuard permission="PROJECTS_EDIT">
+            <Button
+              variant="outline"
+              onClick={() => handleOpenNewSectorModal(project.empresaId || matchedCompany?.id || '')}
+              disabled={!matchedCompany && !project.empresaId}
+              className="!bg-white hover:!bg-slate-50 !text-slate-700 border border-slate-200 px-5 py-2.5 h-auto text-sm font-semibold shadow-sm transition-all flex items-center gap-2 rounded-xl"
+            >
+              <Plus className="w-4 h-4 text-indigo-600" /> Novo Setor
+            </Button>
+          </PermissionGuard>
+
+          {project.reportType === 'AEP' && (
+            <PermissionGuard permission="PROJECTS_EDIT">
+              <Button
+                variant="outline"
+                onClick={() => setSectorModalOpen(true)}
+                className="!bg-white hover:!bg-slate-50 !text-slate-700 border border-slate-200 px-5 py-2.5 h-auto text-sm font-semibold transition-all flex items-center gap-2 rounded-xl"
+              >
+                <Layers className="w-4 h-4 text-indigo-600" /> Iluminância por Setor
+              </Button>
+            </PermissionGuard>
+          )}
+
+          <PermissionGuard permission="PROJECTS_EDIT">
+            <Button
+              variant="outline"
+              onClick={handleAddFunction}
+              className="!bg-white hover:!bg-slate-50 !text-slate-700 border border-slate-200 px-5 py-2.5 h-auto text-sm font-semibold shadow-sm transition-all flex items-center gap-2 rounded-xl"
+            >
+              <Plus className="w-4 h-4 text-teal-600" /> Nova Função
+            </Button>
+          </PermissionGuard>
+        </div>
+      </div>
+
+      {/* ── Functions & Sectors ──────────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Funções Analisadas
-            <span className="ml-2 stat-badge">{project.functions.length}</span>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            Funções e Setores Analisados
+            <span className="stat-badge">{project.functions.length}</span>
           </h2>
         </div>
 
-        {project.functions.length === 0 ? (
+        {companySectors.length === 0 && project.functions.length === 0 ? (
           <div className="empty-state">
-            <p className="text-slate-500 text-lg font-medium mb-2">Nenhuma função cadastrada</p>
-            <p className="text-slate-400 text-sm mb-6">Adicione funções para iniciar a análise ergonÃ´mica</p>
-            <PermissionGuard permission="PROJECTS_EDIT">
-              <Button onClick={handleAddFunction} variant="outline">
-                <Plus className="w-4 h-4" /> Cadastrar Função
-              </Button>
-            </PermissionGuard>
+            <p className="text-slate-500 text-lg font-medium mb-2">Nenhum setor ou função cadastrada</p>
+            <p className="text-slate-400 text-sm mb-6">Cadastre os setores da empresa ou adicione funções para iniciar a análise.</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <PermissionGuard permission="PROJECTS_EDIT">
+                <Button onClick={() => handleOpenNewSectorModal(project.empresaId || matchedCompany?.id || '')} variant="outline" className="flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" /> Cadastrar Setor
+                </Button>
+              </PermissionGuard>
+              <PermissionGuard permission="PROJECTS_EDIT">
+                <Button onClick={handleAddFunction} variant="outline" className="flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" /> Cadastrar Função
+                </Button>
+              </PermissionGuard>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
-            {(Object.entries(
-              project.functions.reduce((acc, func) => {
-                const sector = func.sector || 'Sem Setor';
-                if (!acc[sector]) acc[sector] = [];
-                acc[sector].push(func);
-                return acc;
-              }, {} as Record<string, AETFunction[]>)
-            ) as [string, AETFunction[]][])
-            .sort(([sectorA], [sectorB]) => {
-              if (sectorA === 'Sem Setor') return 1;
-              if (sectorB === 'Sem Setor') return -1;
-              return sectorA.localeCompare(sectorB);
-            })
-            .map(([sector, funcs]) => (
-              <div key={sector} className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2 border-b border-slate-100 pb-2 flex items-center">
-                  {sector}
-                  <span className="ml-2 text-xs font-medium text-slate-400 normal-case bg-slate-100 px-2 py-0.5 rounded-full">{funcs.length} {funcs.length === 1 ? 'função' : 'funções'}</span>
-                </h3>
-                <div className="space-y-2">
-                  {funcs.map((func) => {
+            {companySectors.map((sector) => {
+              const funcs = functionsBySector[sector.id] || [];
+              return (
+                <div key={sector.id} className="bg-white/60 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <Layers className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-[15px] font-bold text-slate-800 tracking-wide uppercase truncate">
+                          {sector.name}
+                        </h3>
+                        {sector.description && (
+                          <p className="text-xs text-slate-400 font-normal normal-case mt-0.5 truncate">{sector.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full shrink-0">
+                      {funcs.length} {funcs.length === 1 ? 'função' : 'funções'}
+                    </span>
+                  </div>
+
+                  {funcs.length === 0 ? (
+                    <div className="py-8 text-center border border-dashed border-slate-200/60 rounded-xl bg-slate-50/50">
+                      <p className="text-sm text-slate-400">Nenhuma função cadastrada neste setor.</p>
+                      <PermissionGuard permission="PROJECTS_EDIT">
+                        <button
+                          onClick={() => {
+                            navigate(`/project/${project.id}/function/new?sector=${encodeURIComponent(sector.name)}`);
+                          }}
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-bold transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Cadastrar Função no Setor
+                        </button>
+                      </PermissionGuard>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {funcs.map((func) => {
+                        const globalIdx = project.functions.findIndex(f => f.id === func.id);
+                        return (
+                          <Card key={func.id} className="function-row !rounded-xl border border-slate-100 hover:border-teal-200 hover:shadow-md hover:shadow-slate-100/50 transition-all bg-white">
+                            <div className="flex justify-between items-center px-4 py-3">
+                              <div className="cursor-pointer flex-1 flex items-center gap-4 min-w-0" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
+                                <div className="w-8.5 h-8.5 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-teal-600 shrink-0">
+                                  {String(globalIdx + 1).padStart(2, '0')}
+                                </div>
+                                <div className="min-w-0">
+                                  <h3 className="font-semibold text-slate-800 text-sm truncate">{func.name || 'Sem nome'}</h3>
+                                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                    <span>{func.numEmployees} colaboradores</span>
+                                    {func.improvements?.length > 0 && (
+                                      <>
+                                        <span className="text-slate-300">•</span>
+                                        <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] font-medium">{func.improvements.length} riscos</span>
+                                      </>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1 shrink-0 ml-3">
+                                <PermissionGuard permission="PROJECTS_EDIT">
+                                  <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg !p-1.5">
+                                    <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg !p-1.5">
+                                    <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
+                                  </Button>
+                                </PermissionGuard>
+                                <PermissionGuard permission="PROJECTS_DELETE">
+                                  <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg !p-1.5">
+                                    <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                                  </Button>
+                                </PermissionGuard>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {remainingFuncs.length > 0 && (
+              <div className="bg-white/60 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 shrink-0">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-[15px] font-bold text-slate-700 tracking-wide uppercase truncate">
+                        Outros / Sem Setor
+                      </h3>
+                      <p className="text-xs text-slate-400 font-normal normal-case mt-0.5">Funções não vinculadas a setores cadastrados no catálogo</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200/60 px-3 py-1 rounded-full shrink-0">
+                    {remainingFuncs.length} {remainingFuncs.length === 1 ? 'função' : 'funções'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {remainingFuncs.map((func) => {
                     const globalIdx = project.functions.findIndex(f => f.id === func.id);
                     return (
-                      <Card key={func.id} className="function-row !rounded-xl">
-                        <div className="flex justify-between items-center px-5 py-4">
-                          <div className="cursor-pointer flex-1 flex items-center gap-4" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
-                            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-sm font-bold text-teal-600 shrink-0">
+                      <Card key={func.id} className="function-row !rounded-xl border border-slate-100 hover:border-teal-200 hover:shadow-md hover:shadow-slate-100/50 transition-all bg-white">
+                        <div className="flex justify-between items-center px-4 py-3">
+                          <div className="cursor-pointer flex-1 flex items-center gap-4 min-w-0" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
+                            <div className="w-8.5 h-8.5 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-teal-600 shrink-0">
                               {String(globalIdx + 1).padStart(2, '0')}
                             </div>
                             <div className="min-w-0">
-                              <h3 className="font-semibold text-slate-800 text-[15px]">{func.name || 'Sem nome'}</h3>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                {func.numEmployees} colaboradores
-                                {func.improvements?.length > 0 && ` â€¢ ${func.improvements.length} riscos`}
+                              <h3 className="font-semibold text-slate-800 text-sm truncate">
+                                {func.name || 'Sem nome'}
+                                {func.sector && (
+                                  <span className="ml-2 text-xs font-semibold text-slate-400 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-md">
+                                    {func.sector}
+                                  </span>
+                                )}
+                              </h3>
+                              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                <span>{func.numEmployees} colaboradores</span>
+                                {func.improvements?.length > 0 && (
+                                  <>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] font-medium">{func.improvements.length} riscos</span>
+                                  </>
+                                )}
                               </p>
                             </div>
                           </div>
-                          <div className="flex gap-1 shrink-0">
+                          <div className="flex gap-1 shrink-0 ml-3">
                             <PermissionGuard permission="PROJECTS_EDIT">
-                              <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg">
+                              <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg !p-1.5">
                                 <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg">
+                              <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg !p-1.5">
                                 <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
                               </Button>
                             </PermissionGuard>
                             <PermissionGuard permission="PROJECTS_DELETE">
-                              <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg">
+                              <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg !p-1.5">
                                 <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
                               </Button>
                             </PermissionGuard>
@@ -447,7 +603,7 @@ export const ProjectView = () => {
                   })}
                 </div>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -455,10 +611,6 @@ export const ProjectView = () => {
 
       {/* ── Modal de Setores / Iluminância ─────────────────────────────────── */}
       {sectorModalOpen && (() => {
-        const companySectors = matchedCompany
-          ? sectors.filter(s => s.companyId === matchedCompany.id && s.active)
-          : [];
-
         const selectedSector = companySectors.find(s => s.id === selectedSectorId);
 
         const getMeasurements = (sectorId: string) =>
@@ -483,7 +635,7 @@ export const ProjectView = () => {
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[90vh]">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl flex flex-col h-[95vh] md:h-[90vh] max-h-[95vh]">
               {/* Header */}
               <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
                 <Layers className="w-5 h-5 text-teal-600 shrink-0" />
@@ -496,37 +648,37 @@ export const ProjectView = () => {
                 </button>
               </div>
 
-              <div className="flex flex-1 overflow-hidden">
+              <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                 {/* Lista de setores */}
-                <div className="w-56 shrink-0 border-r border-slate-100 flex flex-col p-3">
-                  {matchedCompany && hasPermission('PROJECTS_EDIT') && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full mb-2 !border-teal-200 !text-teal-700 hover:!bg-teal-50/50 flex items-center justify-center gap-1.5 shrink-0"
-                      onClick={() => handleOpenNewSectorModal(matchedCompany.id)}
-                    >
-                      <Plus className="w-3.5 h-3.5 text-teal-600" /> Novo Setor
-                    </Button>
-                  )}
-                  <div className="flex-1 overflow-y-auto space-y-1">
+                <div className="w-full md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col p-3 overflow-hidden">
+                  <div className="flex flex-row md:flex-col overflow-x-auto md:overflow-x-hidden md:overflow-y-auto gap-2 md:gap-1 pb-2 md:pb-0 flex-1 scrollbar-thin items-center md:items-stretch">
+                    {matchedCompany && hasPermission('PROJECTS_EDIT') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-none md:w-full md:mb-2 !border-teal-200 !text-teal-700 hover:!bg-teal-50/50 flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap"
+                        onClick={() => handleOpenNewSectorModal(matchedCompany.id)}
+                      >
+                        <Plus className="w-3.5 h-3.5 text-teal-600" /> Novo Setor
+                      </Button>
+                    )}
                     {companySectors.length === 0 ? (
-                      <p className="text-xs text-slate-400 p-2 text-center">Nenhum setor cadastrado para esta empresa.</p>
+                      <p className="text-xs text-slate-400 p-2 text-center w-full">Nenhum setor cadastrado.</p>
                     ) : (
                       companySectors.map(s => (
                         <button
                           key={s.id}
                           onClick={() => setSelectedSectorId(s.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all ${
+                          className={`flex-none md:w-full text-left px-3 py-2 md:py-2.5 rounded-xl text-sm transition-all whitespace-nowrap md:whitespace-normal ${
                             selectedSectorId === s.id
-                              ? 'bg-teal-600 text-white font-medium'
-                              : 'text-slate-700 hover:bg-slate-50'
+                              ? 'bg-teal-600 text-white font-medium shadow-md shadow-teal-600/10'
+                              : 'text-slate-700 hover:bg-slate-50 border border-slate-100 md:border-0'
                           }`}
                         >
-                          <span className="block truncate">{s.name}</span>
+                          <span className="block truncate max-w-[120px] md:max-w-none">{s.name}</span>
                           {getMeasurements(s.id).length > 0 && (
-                            <span className={`text-[10px] ${selectedSectorId === s.id ? 'text-teal-200' : 'text-teal-500'}`}>
-                              {getMeasurements(s.id).length} medição(ões)
+                            <span className={`block text-[10px] mt-0.5 ${selectedSectorId === s.id ? 'text-teal-200' : 'text-teal-500'}`}>
+                              {getMeasurements(s.id).length} med.
                             </span>
                           )}
                         </button>
@@ -536,7 +688,7 @@ export const ProjectView = () => {
                 </div>
 
                 {/* Painel de iluminância do setor selecionado */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                   {!selectedSector ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
                       <Layers className="w-10 h-10 opacity-30" />

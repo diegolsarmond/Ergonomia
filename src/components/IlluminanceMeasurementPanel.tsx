@@ -107,13 +107,13 @@ export const IlluminanceMeasurementPanel: React.FC<Props> = ({ measurements, onC
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Sun className="w-5 h-5 text-amber-500" />
           <h3 className="text-sm font-semibold text-slate-700">Medições de Iluminância</h3>
           <span className="text-xs text-slate-400">({measurements.length})</span>
         </div>
-        <Button variant="ghost" onClick={addMeasurement} className="border border-dashed border-amber-400 text-amber-600 hover:bg-amber-50">
+        <Button variant="ghost" onClick={addMeasurement} className="border border-dashed border-amber-400 text-amber-600 hover:bg-amber-50 w-full sm:w-auto">
           <Plus className="w-4 h-4" /> Nova Medição
         </Button>
       </div>
@@ -312,14 +312,14 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-50 to-amber-50/30 hover:from-slate-100 hover:to-amber-50/50 transition-all cursor-pointer"
+        className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3 bg-gradient-to-r from-slate-50 to-amber-50/30 hover:from-slate-100 hover:to-amber-50/50 transition-all cursor-pointer"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-left w-full sm:w-auto">
+          <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
             <Sun className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-slate-700">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-700 truncate">
               Medição {index + 1}{m.environment ? ` — ${m.environment}` : ''}
             </p>
             <p className="text-[11px] text-slate-400">
@@ -327,7 +327,7 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           {statusLabel && <StatusBadge status={statusLabel} />}
           {expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
         </div>
@@ -373,7 +373,7 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
           </FormGroup>
 
           {m.gridParameters.geometryType === 'A6' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormGroup label="W — Pontos na largura (> 8)">
                 <Input type="number" min={9} value={m.gridParameters.W || ''} onChange={e => onUpdate({ gridParameters: { ...m.gridParameters, W: Number(e.target.value) || 0 } })} placeholder="Ex: 16" />
               </FormGroup>
@@ -383,7 +383,7 @@ const MeasurementCard: React.FC<MeasurementCardProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <FormGroup label="Lux Mínimo Recomendado" required>
               <Input type="number" min={0} value={m.recommendedMinLux || ''} onChange={e => onUpdate({ recommendedMinLux: Number(e.target.value) || 0 })} placeholder="Ex: 500" />
             </FormGroup>
