@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AETProject, AETFunction, ChecklistQuestion, ScientificMethodTemplate,
@@ -19,6 +19,8 @@ import {
 interface AETContextType {
   projects: AETProject[];
   loading: boolean;
+  refetch: (silent?: boolean) => Promise<void>;
+  fetchProjectDetails: (id: string) => Promise<AETProject>;
   addProject: (project: Omit<AETProject, 'id' | 'functions'>) => Promise<string>;
   updateProject: (id: string, project: Partial<AETProject>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
@@ -118,8 +120,22 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [biomechanicalRiskFactors, setBiomechanicalRiskFactors] = useState<BiomechanicalRiskFactor[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
+  const lastRefetchTimeRef = React.useRef<number>(0);
+  const refetchPromiseRef = React.useRef<Promise<void> | null>(null);
+
+  const refetch = useCallback(async (silent = false) => {
+    if (refetchPromiseRef.current) {
+      return refetchPromiseRef.current;
+    }
+
+    const now = Date.now();
+    if (silent && now - lastRefetchTimeRef.current < 10000) {
+      return;
+    }
+
+    if (!silent) setLoading(true);
+
+    const promise = (async () => {
       try {
         const [
           rawProjects, rawClients, rawChecklist, rawMethods,
@@ -167,16 +183,48 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setReportTexts(rawTexts as ReportTextTemplate[]);
         setBiomechanicalRiskFactors(rawBiomech as BiomechanicalRiskFactor[]);
         setIlluminanceNormativeParams(rawIllum as IlluminanceNormativeParameter[]);
+        
+        lastRefetchTimeRef.current = Date.now();
       } catch (err) {
-        console.error('Erro ao carregar dados do servidor:', err);
+        console.error('Erro ao recarregar dados do servidor:', err);
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
+        refetchPromiseRef.current = null;
       }
+    })();
+
+    refetchPromiseRef.current = promise;
+    return promise;
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      // Recarrega silenciosamente quando a aba do navegador ganha foco
+      refetch(true);
     };
-    loadData();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // ── Projetos ───────────────────────────────────────────────────────────────
+
+  const fetchProjectDetails = useCallback(async (id: string) => {
+    const rawProject = await projectsApi.get(id);
+    const normalized = normalizeProject(rawProject as AETProject);
+    setProjects(prev => {
+      const exists = prev.some(p => p.id === id);
+      if (exists) {
+        return prev.map(p => p.id === id ? normalized : p);
+      } else {
+        return [...prev, normalized];
+      }
+    });
+    return normalized;
+  }, []);
 
   const saveProject = async (project: AETProject) => {
     await projectsApi.update(project.id, project);
@@ -184,7 +232,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addProject = async (projectData: Omit<AETProject, 'id' | 'functions'>) => {
-    const newProject = normalizeProject({ ...projectData, id: uuidv4(), functions: [] });
+    const newProject = normalizeProject({ ...projectData, id: uuidv4(), functions: [], createdAt: new Date().toISOString() });
     await projectsApi.save(newProject);
     setProjects(prev => [...prev, newProject]);
     return newProject.id;
@@ -392,7 +440,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AETContext.Provider value={{
-      projects, loading, addProject, updateProject, deleteProject, getProject,
+      projects, loading, refetch, fetchProjectDetails, addProject, updateProject, deleteProject, getProject,
       addFunction, updateFunction, deleteFunction, duplicateFunction,
       exportProjectJSON, importProjectJSON, resetDevelopmentData,
       clients, addClient, updateClient, deleteClient,

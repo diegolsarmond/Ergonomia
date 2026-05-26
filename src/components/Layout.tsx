@@ -6,6 +6,7 @@ import {
   HardHat, Wrench, MessageSquare, Coffee, AlertTriangle, Menu, X, Clock, LogOut, Users, ShieldCheck, ClipboardList, UserCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAET } from '../context/AETContext';
 import logoImg from '../assets/images/logo_3.png';
 
 const PARAM_GROUPS = [
@@ -48,6 +49,7 @@ export const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, hasPermission } = useAuth();
+  const { refetch } = useAET();
   const isParametros = location.pathname.startsWith('/parameters') && !location.pathname.startsWith('/parameters/companies');
   const isProjects = location.pathname === '/aep' || location.pathname === '/aet';
   const [parametrosOpen, setParametrosOpen] = useState(isParametros);
@@ -62,6 +64,11 @@ export const Layout = () => {
   React.useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Silently refetch database data on route change
+  React.useEffect(() => {
+    refetch(true);
+  }, [location.pathname, refetch]);
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[var(--color-surface)] print:block print:h-auto print:bg-white overflow-hidden">

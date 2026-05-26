@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -6,25 +6,108 @@ import { useAET } from '../context/AETContext';
 import { auditoriaApi } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X, AlignLeft } from 'lucide-react';
+import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X, AlignLeft, Layers } from 'lucide-react';
 import { FormGroup, Input, Select, Textarea } from '../components/ui/Forms';
 import { validateReport } from '../domain/reports/reportValidation';
 import type { ReportValidationResult } from '../domain/reports/reportValidationTypes';
 import { useAuth } from '../context/AuthContext';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
+import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
+import type { SectorIlluminance, IlluminanceMeasurement, Sector, AETFunction } from '../types';
+import { SectorModalForm, EMPTY_SECTOR } from '../components/SharedParameterModals';
 
 export const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProject, updateProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON, companies, units } = useAET();
+  const { getProject, fetchProjectDetails, updateProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON, companies, units, sectors, addSector, refetch } = useAET();
   const { hasPermission } = useAuth();
+  const [loadingProject, setLoadingProject] = useState(true);
+  
+  React.useEffect(() => {
+    if (id) {
+      setLoadingProject(true);
+      fetchProjectDetails(id)
+        .catch(err => console.error(err))
+        .finally(() => setLoadingProject(false));
+    }
+  }, [id, fetchProjectDetails]);
+
   const project = getProject(id!);
+
+  // Empresa vinculada ao projeto — prioriza o ID salvo no projeto
+  const matchedCompany = project
+    ? companies.find(c => c.id === (project as any).empresaId) ??
+      companies.find(c =>
+        (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g, '') === project.cnpj.replace(/\D/g, '')) ||
+        c.razaoSocial === project.companyName ||
+        c.nomeFantasia === project.companyName
+      )
+    : undefined;
+
+  const companySectors = matchedCompany
+    ? sectors.filter(s => s.companyId === matchedCompany.id && s.active)
+    : [];
 
 
   const [validationModal, setValidationModal] = useState<{
     result: ReportValidationResult;
     mode: 'errors' | 'warnings';
   } | null>(null);
+
+  // ── Modal de setores / iluminância ─────────────────────────────────────────
+  const [sectorModalOpen, setSectorModalOpen] = useState(false);
+  const [selectedSectorId, setSelectedSectorId] = useState<string>('');
+  const [sectorIlluminance, setSectorIlluminance] = useState<SectorIlluminance[]>([]);
+
+  React.useEffect(() => {
+    if (sectorModalOpen) {
+      refetch(true);
+    }
+  }, [sectorModalOpen, refetch]);
+
+  // Cadastrar novo setor
+  const [isNewSectorModalOpen, setIsNewSectorModalOpen] = useState(false);
+  const [newSectorForm, setNewSectorForm] = useState<Omit<Sector, 'id'>>({
+    companyId: '',
+    unitId: '',
+    name: '',
+    description: '',
+    active: true,
+  });
+  const [isSectorSaving, setIsSectorSaving] = useState(false);
+  const [pendingSelectSectorName, setPendingSelectSectorName] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (pendingSelectSectorName && matchedCompany) {
+      const found = sectors.find(s => s.name === pendingSelectSectorName && s.companyId === matchedCompany.id);
+      if (found) {
+        setSelectedSectorId(found.id);
+        setPendingSelectSectorName(null);
+      }
+    }
+  }, [sectors, pendingSelectSectorName, matchedCompany]);
+
+  const handleOpenNewSectorModal = (companyId: string) => {
+    setNewSectorForm({
+      ...EMPTY_SECTOR,
+      companyId,
+    });
+    setIsNewSectorModalOpen(true);
+  };
+
+  const handleSaveSector = async () => {
+    if (!newSectorForm.name.trim() || isSectorSaving) return;
+    setIsSectorSaving(true);
+    try {
+      await addSector(newSectorForm);
+      setPendingSelectSectorName(newSectorForm.name);
+      setIsNewSectorModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao cadastrar setor:', err);
+    } finally {
+      setIsSectorSaving(false);
+    }
+  };
 
   const [funcSelectionModal, setFuncSelectionModal] = useState(false);
   const [selectedFuncIds, setSelectedFuncIds] = useState<string[]>([]);
@@ -72,13 +155,19 @@ export const ProjectView = () => {
 
   React.useEffect(() => {
     if (project) {
+      setSectorIlluminance(project.sectorIlluminance ?? []);
+    }
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  React.useEffect(() => {
+    if (project) {
       setIntroData({
         introErgonomia: project.introErgonomia || '',
         introObjetivo: project.introObjetivo || '',
         introMetodologia: project.introMetodologia || '',
       });
       setCompanyData({
-        empresaId: project.empresaId || '',
+        empresaId: project.empresaId || matchedCompany?.id || '',
         unidadeId: project.unidadeId || '',
         companyName: project.companyName || '',
         fantasyName: project.fantasyName || '',
@@ -97,7 +186,7 @@ export const ProjectView = () => {
         date: project.date || '',
       });
     }
-  }, [project]);
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveIntro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,9 +206,12 @@ export const ProjectView = () => {
     setIsEditEvaluatorModalOpen(false);
   };
 
-  if (!project) return (
-    <div className="flex items-center justify-center h-full">
-      <p className="text-slate-400 text-lg">Projeto não encontrado</p>
+  if (loadingProject || !project) return (
+    <div className="flex items-center justify-center h-full min-h-[50vh]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-3 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+        <p className="text-slate-400 text-sm font-medium">Carregando detalhes do projeto...</p>
+      </div>
     </div>
   );
 
@@ -173,6 +265,23 @@ export const ProjectView = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Group functions by sector — prefer setorId match, fall back to sector name
+  const functionsBySector: Record<string, AETFunction[]> = {};
+  const matchedFuncIds = new Set<string>();
+
+  companySectors.forEach(sector => {
+    const sNameLower = sector.name.trim().toLowerCase();
+    const funcs = project.functions.filter(f => {
+      const fSetorId = (f as any).setorId || f.aep?.identification?.sectorId;
+      if (fSetorId) return fSetorId === sector.id;
+      return (f.sector || '').trim().toLowerCase() === sNameLower;
+    });
+    functionsBySector[sector.id] = funcs;
+    funcs.forEach(f => matchedFuncIds.add(f.id));
+  });
+
+  const remainingFuncs = project.functions.filter(f => !matchedFuncIds.has(f.id));
+
   return (
     <div className="p-6 lg:p-8 xl:p-10">
       {/* â"€â"€ Breadcrumb â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
@@ -186,9 +295,17 @@ export const ProjectView = () => {
       <div className="page-header mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center relative z-10 gap-4">
           <div className="flex items-center gap-4 w-full sm:w-auto">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold shrink-0">
-              {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
-            </div>
+            {(project.companyLogoDataUrl || matchedCompany?.logoDataUrl) ? (
+              <img
+                src={project.companyLogoDataUrl || matchedCompany?.logoDataUrl}
+                alt="Logo"
+                className="w-14 h-14 rounded-2xl object-contain shrink-0 bg-white p-1 border border-white/20"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center text-2xl font-bold shrink-0">
+                {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5 truncate">{project.companyName}</h1>
               {project.fantasyName && <p className="text-teal-200 text-sm font-medium truncate">{project.fantasyName}</p>}
@@ -209,11 +326,6 @@ export const ProjectView = () => {
             <PermissionGuard permission="PROJECTS_EDIT">
               <Button onClick={() => setIsEditIntroModalOpen(true)} variant="outline" className="!bg-white/10 !border-white/20 !text-white hover:!bg-white/20 flex-1 sm:flex-none" size="sm">
                 <AlignLeft className="w-4 h-4" /> Textos
-              </Button>
-            </PermissionGuard>
-            <PermissionGuard permission="PROJECTS_EDIT">
-              <Button onClick={handleAddFunction} size="sm" className="flex-1 sm:flex-none">
-                <Plus className="w-4 h-4" />Função
               </Button>
             </PermissionGuard>
           </div>
@@ -270,65 +382,355 @@ export const ProjectView = () => {
         </Card>
       </div>
 
-      {/* â"€â"€ Functions â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+                {/* ── Highlighted Action Panel ───────────────────────────────────────── */}
+      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-6 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-800 mb-1">Estrutura do Projeto</h2>
+          <p className="text-xs text-slate-500">Cadastre os setores da empresa e adicione funções para a análise ergonômica.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <PermissionGuard permission="PROJECTS_EDIT">
+            <Button
+              variant="outline"
+              onClick={() => handleOpenNewSectorModal(project.empresaId || matchedCompany?.id || '')}
+              disabled={!matchedCompany && !project.empresaId}
+              className="!bg-white hover:!bg-slate-50 !text-slate-700 border border-slate-200 px-5 py-2.5 h-auto text-sm font-semibold shadow-sm transition-all flex items-center gap-2 rounded-xl"
+            >
+              <Plus className="w-4 h-4 text-indigo-600" /> Novo Setor
+            </Button>
+          </PermissionGuard>
+
+          {project.reportType === 'AEP' && (
+            <PermissionGuard permission="PROJECTS_EDIT">
+              <Button
+                variant="outline"
+                onClick={() => setSectorModalOpen(true)}
+                className="!bg-white hover:!bg-slate-50 !text-slate-700 border border-slate-200 px-5 py-2.5 h-auto text-sm font-semibold transition-all flex items-center gap-2 rounded-xl"
+              >
+                <Layers className="w-4 h-4 text-indigo-600" /> Iluminância por Setor
+              </Button>
+            </PermissionGuard>
+          )}
+
+          <PermissionGuard permission="PROJECTS_EDIT">
+            <Button
+              variant="outline"
+              onClick={handleAddFunction}
+              className="!bg-white hover:!bg-slate-50 !text-slate-700 border border-slate-200 px-5 py-2.5 h-auto text-sm font-semibold shadow-sm transition-all flex items-center gap-2 rounded-xl"
+            >
+              <Plus className="w-4 h-4 text-teal-600" /> Nova Função
+            </Button>
+          </PermissionGuard>
+        </div>
+      </div>
+
+      {/* ── Functions & Sectors ──────────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Funções Analisadas
-            <span className="ml-2 stat-badge">{project.functions.length}</span>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            Funções e Setores Analisados
+            <span className="stat-badge">{project.functions.length}</span>
           </h2>
         </div>
 
-        {project.functions.length === 0 ? (
+        {companySectors.length === 0 && project.functions.length === 0 ? (
           <div className="empty-state">
-            <p className="text-slate-500 text-lg font-medium mb-2">Nenhuma função cadastrada</p>
-            <p className="text-slate-400 text-sm mb-6">Adicione funções para iniciar a análise ergonÃ´mica</p>
-            <PermissionGuard permission="PROJECTS_EDIT">
-              <Button onClick={handleAddFunction} variant="outline">
-                <Plus className="w-4 h-4" /> Cadastrar Função
-              </Button>
-            </PermissionGuard>
+            <p className="text-slate-500 text-lg font-medium mb-2">Nenhum setor ou função cadastrada</p>
+            <p className="text-slate-400 text-sm mb-6">Cadastre os setores da empresa ou adicione funções para iniciar a análise.</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <PermissionGuard permission="PROJECTS_EDIT">
+                <Button onClick={() => handleOpenNewSectorModal(project.empresaId || matchedCompany?.id || '')} variant="outline" className="flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" /> Cadastrar Setor
+                </Button>
+              </PermissionGuard>
+              <PermissionGuard permission="PROJECTS_EDIT">
+                <Button onClick={handleAddFunction} variant="outline" className="flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" /> Cadastrar Função
+                </Button>
+              </PermissionGuard>
+            </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            {project.functions.map((func, idx) => (
-              <Card key={func.id} className="function-row !rounded-xl">
-                <div className="flex justify-between items-center px-5 py-4">
-                  <div className="cursor-pointer flex-1 flex items-center gap-4" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-sm font-bold text-teal-600 shrink-0">
-                      {String(idx + 1).padStart(2, '0')}
+          <div className="space-y-6">
+            {companySectors.map((sector) => {
+              const funcs = functionsBySector[sector.id] || [];
+              return (
+                <div key={sector.id} className="bg-white/60 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <Layers className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-[15px] font-bold text-slate-800 tracking-wide uppercase truncate">
+                          {sector.name}
+                        </h3>
+                        {sector.description && (
+                          <p className="text-xs text-slate-400 font-normal normal-case mt-0.5 truncate">{sector.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full shrink-0">
+                      {funcs.length} {funcs.length === 1 ? 'função' : 'funções'}
+                    </span>
+                  </div>
+
+                  {funcs.length === 0 ? (
+                    <div className="py-8 text-center border border-dashed border-slate-200/60 rounded-xl bg-slate-50/50">
+                      <p className="text-sm text-slate-400">Nenhuma função cadastrada neste setor.</p>
+                      <PermissionGuard permission="PROJECTS_EDIT">
+                        <button
+                          onClick={() => {
+                            navigate(`/project/${project.id}/function/new?sector=${encodeURIComponent(sector.name)}`);
+                          }}
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-bold transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Cadastrar Função no Setor
+                        </button>
+                      </PermissionGuard>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {funcs.map((func) => {
+                        const globalIdx = project.functions.findIndex(f => f.id === func.id);
+                        return (
+                          <Card key={func.id} className="function-row !rounded-xl border border-slate-100 hover:border-teal-200 hover:shadow-md hover:shadow-slate-100/50 transition-all bg-white">
+                            <div className="flex justify-between items-center px-4 py-3">
+                              <div className="cursor-pointer flex-1 flex items-center gap-4 min-w-0" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
+                                <div className="w-8.5 h-8.5 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-teal-600 shrink-0">
+                                  {String(globalIdx + 1).padStart(2, '0')}
+                                </div>
+                                <div className="min-w-0">
+                                  <h3 className="font-semibold text-slate-800 text-sm truncate">{func.name || 'Sem nome'}</h3>
+                                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                    <span>{func.numEmployees} colaboradores</span>
+                                    {func.improvements?.length > 0 && (
+                                      <>
+                                        <span className="text-slate-300">•</span>
+                                        <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] font-medium">{func.improvements.length} riscos</span>
+                                      </>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1 shrink-0 ml-3">
+                                <PermissionGuard permission="PROJECTS_EDIT">
+                                  <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg !p-1.5">
+                                    <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg !p-1.5">
+                                    <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
+                                  </Button>
+                                </PermissionGuard>
+                                <PermissionGuard permission="PROJECTS_DELETE">
+                                  <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg !p-1.5">
+                                    <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                                  </Button>
+                                </PermissionGuard>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {remainingFuncs.length > 0 && (
+              <div className="bg-white/60 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 shrink-0">
+                      <Layers className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-slate-800 text-[15px]">{func.name || 'Sem nome'}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {func.sector && `Setor: ${func.sector} â€¢ `}
-                        {func.numEmployees} colaboradores
-                        {func.improvements?.length > 0 && ` â€¢ ${func.improvements.length} riscos`}
-                      </p>
+                      <h3 className="text-[15px] font-bold text-slate-700 tracking-wide uppercase truncate">
+                        Outros / Sem Setor
+                      </h3>
+                      <p className="text-xs text-slate-400 font-normal normal-case mt-0.5">Funções não vinculadas a setores cadastrados no catálogo</p>
                     </div>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <PermissionGuard permission="PROJECTS_EDIT">
-                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg">
-                        <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg">
-                        <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
-                      </Button>
-                    </PermissionGuard>
-                    <PermissionGuard permission="PROJECTS_DELETE">
-                      <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg">
-                        <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
-                      </Button>
-                    </PermissionGuard>
-                  </div>
+                  <span className="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200/60 px-3 py-1 rounded-full shrink-0">
+                    {remainingFuncs.length} {remainingFuncs.length === 1 ? 'função' : 'funções'}
+                  </span>
                 </div>
-              </Card>
-            ))}
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {remainingFuncs.map((func) => {
+                    const globalIdx = project.functions.findIndex(f => f.id === func.id);
+                    return (
+                      <Card key={func.id} className="function-row !rounded-xl border border-slate-100 hover:border-teal-200 hover:shadow-md hover:shadow-slate-100/50 transition-all bg-white">
+                        <div className="flex justify-between items-center px-4 py-3">
+                          <div className="cursor-pointer flex-1 flex items-center gap-4 min-w-0" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)}>
+                            <div className="w-8.5 h-8.5 rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-xs font-bold text-teal-600 shrink-0">
+                              {String(globalIdx + 1).padStart(2, '0')}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-slate-800 text-sm truncate">
+                                {func.name || 'Sem nome'}
+                                {func.sector && (
+                                  <span className="ml-2 text-xs font-semibold text-slate-400 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-md">
+                                    {func.sector}
+                                  </span>
+                                )}
+                              </h3>
+                              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                <span>{func.numEmployees} colaboradores</span>
+                                {func.improvements?.length > 0 && (
+                                  <>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] font-medium">{func.improvements.length} riscos</span>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0 ml-3">
+                            <PermissionGuard permission="PROJECTS_EDIT">
+                              <Button variant="ghost" size="sm" onClick={() => handleDuplicate(func.id)} title="Duplicar" className="!rounded-lg !p-1.5">
+                                <Copy className="w-4 h-4 text-slate-400 hover:text-blue-500" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => navigate(`/project/${project.id}/function/${func.id}`)} className="!rounded-lg !p-1.5">
+                                <Edit2 className="w-4 h-4 text-slate-400 hover:text-teal-600" />
+                              </Button>
+                            </PermissionGuard>
+                            <PermissionGuard permission="PROJECTS_DELETE">
+                              <Button variant="ghost" size="sm" onClick={() => deleteFunction(project.id, func.id)} className="!rounded-lg !p-1.5">
+                                <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                              </Button>
+                            </PermissionGuard>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
+
+      {/* ── Modal de Setores / Iluminância ─────────────────────────────────── */}
+      {sectorModalOpen && (() => {
+        const selectedSector = companySectors.find(s => s.id === selectedSectorId);
+
+        const getMeasurements = (sectorId: string) =>
+          sectorIlluminance.find(si => si.sectorId === sectorId)?.measurements ?? [];
+
+        const setMeasurements = (sectorId: string, sectorName: string, measurements: IlluminanceMeasurement[]) => {
+          setSectorIlluminance(prev => {
+            const idx = prev.findIndex(si => si.sectorId === sectorId);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = { sectorId, sectorName, measurements };
+              return updated;
+            }
+            return [...prev, { sectorId, sectorName, measurements }];
+          });
+        };
+
+        const handleSave = async () => {
+          await updateProject(project!.id, { sectorIlluminance });
+          setSectorModalOpen(false);
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl flex flex-col h-[95vh] md:h-[90vh] max-h-[95vh]">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
+                <Layers className="w-5 h-5 text-teal-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-800">Setores — Medições de Iluminância</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Selecione um setor para registrar as medições de iluminância</p>
+                </div>
+                <button onClick={() => setSectorModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                {/* Lista de setores */}
+                <div className="w-full md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-slate-100 flex flex-col p-3 overflow-hidden">
+                  <div className="flex flex-row md:flex-col overflow-x-auto md:overflow-x-hidden md:overflow-y-auto gap-2 md:gap-1 pb-2 md:pb-0 flex-1 scrollbar-thin items-center md:items-stretch">
+                    {matchedCompany && hasPermission('PROJECTS_EDIT') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-none md:w-full md:mb-2 !border-teal-200 !text-teal-700 hover:!bg-teal-50/50 flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap"
+                        onClick={() => handleOpenNewSectorModal(matchedCompany.id)}
+                      >
+                        <Plus className="w-3.5 h-3.5 text-teal-600" /> Novo Setor
+                      </Button>
+                    )}
+                    {companySectors.length === 0 ? (
+                      <p className="text-xs text-slate-400 p-2 text-center w-full">Nenhum setor cadastrado.</p>
+                    ) : (
+                      companySectors.map(s => (
+                        <button
+                          key={s.id}
+                          onClick={() => setSelectedSectorId(s.id)}
+                          className={`flex-none md:w-full text-left px-3 py-2 md:py-2.5 rounded-xl text-sm transition-all whitespace-nowrap md:whitespace-normal ${
+                            selectedSectorId === s.id
+                              ? 'bg-teal-600 text-white font-medium shadow-md shadow-teal-600/10'
+                              : 'text-slate-700 hover:bg-slate-50 border border-slate-100 md:border-0'
+                          }`}
+                        >
+                          <span className="block truncate max-w-[120px] md:max-w-none">{s.name}</span>
+                          {getMeasurements(s.id).length > 0 && (
+                            <span className={`block text-[10px] mt-0.5 ${selectedSectorId === s.id ? 'text-teal-200' : 'text-teal-500'}`}>
+                              {getMeasurements(s.id).length} med.
+                            </span>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Painel de iluminância do setor selecionado */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                  {!selectedSector ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                      <Layers className="w-10 h-10 opacity-30" />
+                      <p className="text-sm">Selecione um setor à esquerda</p>
+                    </div>
+                  ) : getMeasurements(selectedSector.id).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <div className="flex flex-col items-center gap-3 p-6 bg-amber-50 border border-amber-200 rounded-2xl max-w-sm text-center">
+                        <AlertTriangle className="w-8 h-8 text-amber-500" />
+                        <p className="text-sm font-semibold text-amber-800">Nenhuma medição de iluminância cadastrada</p>
+                        <p className="text-xs text-amber-700">
+                          O setor <strong>{selectedSector.name}</strong> ainda não possui medições de iluminância registradas.
+                        </p>
+                      </div>
+                      <IlluminanceMeasurementPanel
+                        measurements={[]}
+                        onChange={measurements => setMeasurements(selectedSector.id, selectedSector.name, measurements)}
+                      />
+                    </div>
+                  ) : (
+                    <IlluminanceMeasurementPanel
+                      measurements={getMeasurements(selectedSector.id)}
+                      onChange={measurements => setMeasurements(selectedSector.id, selectedSector.name, measurements)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+                <Button variant="outline" onClick={() => setSectorModalOpen(false)}>Cancelar</Button>
+                <Button onClick={handleSave}>Salvar Iluminância</Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Seleção de funções para impressão ───────────────────────────────── */}
       {funcSelectionModal && (
@@ -463,58 +865,17 @@ export const ProjectView = () => {
             <CardContent>
               <form onSubmit={handleSaveCompany} className="space-y-4">
                 <FormGroup label="Empresa cadastrada">
-                  <Select
-                    value={companyData.empresaId}
-                    onChange={e => {
-                      const co = companies.find(c => c.id === e.target.value);
-                      if (co) {
-                        const addr = [co.logradouro, co.numero, co.bairro, co.municipio, co.uf].filter(Boolean).join(', ');
-                        setCompanyData(p => ({
-                          ...p,
-                          empresaId: co.id,
-                          unidadeId: '',
-                          companyName: co.razaoSocial,
-                          fantasyName: co.nomeFantasia,
-                          cnpj: co.cnpj,
-                          address: addr,
-                          product: co.product || p.product,
-                          riskDegree: co.riskDegree || p.riskDegree,
-                          location: co.productionLocation || p.location,
-                        }));
-                      } else {
-                        setCompanyData(p => ({ ...p, empresaId: '', unidadeId: '' }));
-                      }
-                    }}
-                  >
-                    <option value="">— digitar manualmente —</option>
-                    {companies.filter(c => c.active).map(c => (
-                      <option key={c.id} value={c.id}>{c.razaoSocial}{c.nomeFantasia ? ` (${c.nomeFantasia})` : ''}</option>
-                    ))}
-                  </Select>
+                  {companyData.empresaId ? (
+                    <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium">
+                      {companies.find(c => c.id === companyData.empresaId)?.razaoSocial || companyData.companyName}
+                    </div>
+                  ) : (
+                    <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-400 italic">
+                      Nenhuma empresa vinculada
+                    </div>
+                  )}
                 </FormGroup>
 
-                {companyData.empresaId && (
-                  <FormGroup label="Unidade">
-                    <Select
-                      value={companyData.unidadeId}
-                      onChange={e => {
-                        const un = units.find(u => u.id === e.target.value);
-                        setCompanyData(p => ({
-                          ...p,
-                          unidadeId: e.target.value,
-                          unit: un?.name || p.unit,
-                          address: un?.address || p.address,
-                          location: un?.productionLocation || p.location,
-                        }));
-                      }}
-                    >
-                      <option value="">— sem unidade específica —</option>
-                      {units.filter(u => u.companyId === companyData.empresaId).map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </Select>
-                  </FormGroup>
-                )}
 
                 <div className="border-t border-slate-100 pt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -544,7 +905,31 @@ export const ProjectView = () => {
                   </FormGroup>
                   <div className="grid grid-cols-2 gap-4">
                     <FormGroup label="Unidade / Filial">
-                      <Input value={companyData.unit} onChange={e => setCompanyData(p => ({ ...p, unit: e.target.value }))} />
+                      {units.filter(u => u.companyId === companyData.empresaId).length > 0 ? (
+                        <Select
+                          value={companyData.unidadeId || ''}
+                          onChange={e => {
+                            const un = units.find(u => u.id === e.target.value);
+                            const builtAddr = un
+                              ? (un.address || [un.logradouro, un.numero, un.bairro, un.city, un.uf].filter(Boolean).join(', '))
+                              : '';
+                            setCompanyData(p => ({
+                              ...p,
+                              unidadeId: e.target.value,
+                              unit: un?.name || p.unit,
+                              address: builtAddr || p.address,
+                              location: un?.productionLocation || p.location,
+                            }));
+                          }}
+                        >
+                          <option value="">— sem unidade específica —</option>
+                          {units.filter(u => u.companyId === companyData.empresaId).map(u => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </Select>
+                      ) : (
+                        <Input value={companyData.unit} onChange={e => setCompanyData(p => ({ ...p, unit: e.target.value }))} />
+                      )}
                     </FormGroup>
                     <FormGroup label="Localização">
                       <Input value={companyData.location} onChange={e => setCompanyData(p => ({ ...p, location: e.target.value }))} />
@@ -652,6 +1037,19 @@ export const ProjectView = () => {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {matchedCompany && (
+        <SectorModalForm
+          open={isNewSectorModalOpen}
+          onClose={() => setIsNewSectorModalOpen(false)}
+          title="Cadastrar Novo Setor"
+          form={newSectorForm}
+          setForm={setNewSectorForm}
+          onSave={handleSaveSector}
+          isSaving={isSectorSaving}
+          companyUnits={units.filter(u => u.companyId === matchedCompany.id)}
+        />
       )}
     </div>
   );

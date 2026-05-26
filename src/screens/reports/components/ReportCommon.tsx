@@ -220,8 +220,8 @@ export const getPdfStyles = (footerLogoUrl?: string) => `
   }
 `;
 
-/** @deprecated use getPdfStyles() */
-export const PDF_STYLES = getPdfStyles() + `
+// Estilos de classe do PDF (independentes de logo/URL)
+export const PDF_CLASS_STYLES = `
   .pdf-preview { font-family: 'Inter', 'Segoe UI', sans-serif; color: #1E3530; line-height: 1.6; font-size: 1rem; hyphens: none; -webkit-hyphens: none; }
   .pdf-preview img { max-width: 100%; height: auto; }
   .pdf-preview :not(.pdf-cover) > h2 { font-size: 1.25rem; font-weight: 700; color: ${PALETTE.primary}; border-bottom: 2px solid ${PALETTE.border}; padding-bottom: .5rem; margin-top: 2rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: .06em; }
@@ -243,6 +243,9 @@ export const PDF_STYLES = getPdfStyles() + `
   .pdf-cover { container-type: inline-size; width: 100%; aspect-ratio: 210 / 297; }
   @media print { .pdf-cover { width: 100% !important; height: 100vh !important; aspect-ratio: auto !important; page-break-after: always; } }
 `;
+
+/** @deprecated use getPdfStyles(logoUrl) + PDF_CLASS_STYLES */
+export const PDF_STYLES = getPdfStyles() + PDF_CLASS_STYLES;
 
 // ── CoverPage ────────────────────────────────────────────────────────────────
 

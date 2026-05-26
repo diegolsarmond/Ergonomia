@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
@@ -43,15 +44,16 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
         intro_ergonomia, intro_objetivo, intro_metodologia,
         nome_avaliador, formacao_avaliador, crefito_avaliador, empresa_avaliador, assinatura_avaliador,
         data, logo_consultoria, logo_empresa, logo_responsavel,
-        empresa_id, unidade_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::date,$19,$20,$21,$22,$23)
+        empresa_id, unidade_id, setor_iluminancia_json)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::date,$19,$20,$21,$22,$23,$24)
      ON CONFLICT (id) DO UPDATE SET
        nome_empresa=$2, nome_fantasia=$3, cnpj=$4, endereco=$5, unidade=$6, produto=$7,
        grau_risco=$8, localizacao=$9,
        intro_ergonomia=$10, intro_objetivo=$11, intro_metodologia=$12,
        nome_avaliador=$13, formacao_avaliador=$14, crefito_avaliador=$15, empresa_avaliador=$16,
        assinatura_avaliador=$17, data=$18::date, logo_consultoria=$19, logo_empresa=$20,
-       logo_responsavel=$21, empresa_id=$22, unidade_id=$23, atualizado_em=NOW()`,
+       logo_responsavel=$21, empresa_id=$22, unidade_id=$23, setor_iluminancia_json=$24,
+       atualizado_em=NOW()`,
     [
       uuid(project.id),
       str(project.companyName), str(project.fantasyName), str(project.cnpj),
@@ -63,6 +65,7 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
       dt(project.date), str(project.consultoriaLogoDataUrl), str(project.companyLogoDataUrl),
       str(project.responsibleLogoDataUrl),
       uuid(project.empresaId), uuid(project.unidadeId),
+      JSON.stringify(project.sectorIlluminance ?? []),
     ]
   );
 
@@ -131,7 +134,7 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
          resp_nome=$45, resp_registro=$46, resp_formacao=$47, resp_empresa=$48,
          resp_assinatura=$49, unidade_id=$50, setor_id=$51, atualizado_em=NOW()`,
       [
-        uuid(f.id), uuid(project.id), i,
+        uuid(f.id) ?? randomUUID(), uuid(project.id), i,
         str(f.name) || str(ident.unitBranch),
         str(ident.code),
         str(ident.unitBranch),
@@ -337,13 +340,18 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
 
 async function loadAllAEP(client: PoolClient): Promise<any[]> {
   const { rows: projects } = await client.query(`
-    SELECT p.*,
-      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)  AS nome_empresa,
+    SELECT p.id, p.empresa_id, p.unidade_id, p.data, p.localizacao, p.criado_em, p.nome_avaliador,
+      p.endereco, p.produto,
+      p.formacao_avaliador, p.crefito_avaliador, p.empresa_avaliador, p.assinatura_avaliador,
+      p.intro_ergonomia, p.intro_objetivo, p.intro_metodologia,
+      p.logo_consultoria, p.logo_responsavel,
+      p.setor_iluminancia_json,
+      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)   AS nome_empresa,
       COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
       COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
       COALESCE(NULLIF(p.grau_risco,''), e.grau_risco)      AS grau_risco,
       COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade,
-      COALESCE(NULLIF(p.logo_empresa,''), e.logo_url)      AS logo_empresa_resolved
+      COALESCE(e.logo_url, NULLIF(p.logo_empresa,''))      AS logo_empresa_resolved
     FROM aep_projetos p
     LEFT JOIN empresas e ON e.id = p.empresa_id
     LEFT JOIN unidades u ON u.id = p.unidade_id
@@ -352,281 +360,34 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
   `);
   const result: any[] = [];
 
-  for (const p of projects) {
-    const { rows: funcoes } = await client.query(
-      'SELECT * FROM aep_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
-    );
+  const projectIds = projects.map(p => p.id);
+  const { rows: allFuncoes } = projectIds.length > 0 ? await client.query(
+    'SELECT id, projeto_id, nome_funcao, unidade_filial, setor_area, data_analise, num_funcionarios FROM aep_funcoes WHERE projeto_id = ANY($1::uuid[]) ORDER BY ordem',
+    [projectIds]
+  ) : { rows: [] };
 
-    const functions: any[] = [];
-    for (const f of funcoes) {
-      const [
-        { rows: fotos },
-        { rows: biomecanica },
-        { rows: ferramentas },
-        { rows: iluminancias },
-        { rows: psicossocial },
-        { rows: gatilhos },
-        { rows: raci },
-      ] = await Promise.all([
-        client.query('SELECT * FROM aep_funcao_fotos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aep_funcao_biomecanica WHERE funcao_id=$1 ORDER BY categoria,ordem', [f.id]),
-        client.query('SELECT * FROM aep_funcao_ferramentas_cientificas WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aep_funcao_iluminancia WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aep_funcao_psicossocial WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aep_funcao_gatilhos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aep_funcao_acoes_raci WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      ]);
-
-      // Reassemble illuminance measurements
-      const illuminanceMeasurements: any[] = [];
-      for (const ilum of iluminancias) {
-        const [
-          { rows: linhas },
-          { rows: pontos },
-          { rows: verificacao },
-          { rows: inconsistencias },
-        ] = await Promise.all([
-          client.query('SELECT * FROM aep_funcao_iluminancia_linhas WHERE iluminancia_id=$1 ORDER BY ordem', [ilum.id]),
-          client.query('SELECT * FROM aep_funcao_iluminancia_pontos WHERE iluminancia_id=$1 ORDER BY linha,coluna', [ilum.id]),
-          client.query('SELECT * FROM aep_funcao_iluminancia_verificacao WHERE iluminancia_id=$1 ORDER BY ordem', [ilum.id]),
-          client.query('SELECT * FROM aep_funcao_iluminancia_inconsistencias WHERE iluminancia_id=$1 ORDER BY ordem', [ilum.id]),
-        ]);
-
-        illuminanceMeasurements.push({
-          id: ilum.id,
-          posto: ilum.posto ?? '',
-          environment: ilum.ambiente ?? '',
-          environmentType: ilum.tipo_ambiente ?? '',
-          recommendedMinLux: parseFloat(ilum.lux_minimo_recomendado) || 0,
-          ircRa: ilum.irc_ra ?? '',
-          scale: ilum.escala ?? 'lux',
-          normativeParameterId: ilum.parametro_normativo_id ?? '',
-          gridParameters: {
-            geometryType: ilum.tipo_geometria ?? 'A1',
-            N: ilum.grade_n ?? 4,
-            M: ilum.grade_m ?? 2,
-            W: parseFloat(ilum.grade_largura) || 0,
-            L: parseFloat(ilum.grade_comprimento) || 0,
-            maxCols: ilum.grade_max_colunas ?? 8,
-          },
-          measurementRows: linhas.map((l: any) => ({
-            id: l.id,
-            rowType: l.tipo_linha,
-            index: l.indice_linha,
-            values: l.valores ?? [],
-            activeCols: l.colunas_ativas ?? 0,
-            naFlags: l.flags_na ?? [],
-          })),
-          gridConfig: { rows: ilum.grid_linhas ?? 4, cols: ilum.grid_colunas ?? 8 },
-          gridPoints: pontos.map((pt: any) => ({
-            row: pt.linha,
-            col: pt.coluna,
-            lux: pt.lux !== null ? parseFloat(pt.lux) : null,
-            notApplicable: pt.nao_aplicavel ?? false,
-          })),
-          gridSchemaImageDataUrl: ilum.grade_schema_imagem ?? '',
-          calculationResult: ilum.calc_media_lux !== null ? {
-            measuredPointsCount: ilum.calc_qtd_pontos ?? 0,
-            averageLux: parseFloat(ilum.calc_media_lux) || 0,
-            minLux: parseFloat(ilum.calc_lux_minimo) || 0,
-            maxLux: parseFloat(ilum.calc_lux_maximo) || 0,
-            toleranceMinLux: parseFloat(ilum.calc_lux_tolerancia) || 0,
-            seventyPercentAverage: parseFloat(ilum.calc_media_setenta_pct) || 0,
-            uniformityRatio: parseFloat(ilum.calc_razao_uniformidade) || 0,
-            taskAreaValue: parseFloat(ilum.calc_valor_area_tarefa) || 0,
-            rowAverages: [],
-          } : null,
-          evaluationResult: ilum.aval_status ? {
-            status: ilum.aval_status ?? '',
-            averageIsAdequate: ilum.aval_media_adequada ?? false,
-            toleranceCheck: ilum.aval_tolerancia_ok ?? false,
-            seventyPercentCheck: false,
-            uniformityCheck: false,
-            taskAreaCheck: false,
-            interpretationText: '',
-            issues: [],
-          } : null,
-          verificationItems: verificacao.map((v: any) => ({
-            id: v.item_id,
-            question: v.pergunta ?? '',
-            answer: v.resposta ?? '',
-            observations: v.observacoes ?? '',
-          })),
-          inconsistencyItems: inconsistencias.map((inc: any) => ({
-            id: inc.item_id,
-            title: inc.titulo ?? '',
-            description: inc.descricao ?? '',
-            found: inc.encontrado ?? false,
-            observations: inc.observacoes ?? '',
-          })),
-          equipmentData: {
-            deviceName: ilum.equip_nome ?? '',
-            certificate: ilum.equip_certificado ?? '',
-            calibrationDate: ilum.equip_data_calibracao ?? '',
-            certificateImageDataUrl: ilum.equip_cert_imagem ?? '',
-            observations: ilum.equip_observacoes ?? '',
-          },
-          observations: ilum.observacoes ?? '',
-          measurementDate: ilum.data_medicao ?? '',
-          responsibleUser: ilum.usuario_responsavel ?? '',
-          formStatus: ilum.status_formulario ?? 'rascunho',
-          createdAt: ilum.criado_em?.toISOString() ?? '',
-          updatedAt: ilum.atualizado_em?.toISOString() ?? '',
-        });
-      }
-
-      const mapBio = (b: any) => ({
-        riskFactorId: b.fator_risco_texto ?? b.fator_risco_id ?? '',
-        assessment: b.avaliacao ?? '',
-        description: b.observacoes ?? '',
-      });
-
-      const aep: any = {
-        identification: {
-          unitBranch: f.unidade_filial ?? '',
-          sectorArea: f.setor_area ?? '',
-          contemplatedFunctions: f.funcoes_contempladas ?? '',
-          evaluatedActivity: f.atividade_avaliada ?? '',
-          code: f.codigo_posto ?? '',
-          unitId: f.unidade_id ?? null,
-          sectorId: f.setor_id ?? null,
-        },
-        workCharacterization: {
-          processDescription: f.descricao_processo ?? '',
-          workCycleDescription: f.descricao_ciclo_trabalho ?? '',
-          workOrganization: {
-            workday: f.jornada_trabalho ?? '',
-            scale: f.escala ?? '',
-            overtime: f.horas_extras ?? '',
-            lunchBreak: f.intervalo_almoco ?? '',
-            otherBreaks: f.outras_pausas ?? '',
-            taskRotation: f.rodizio_tarefas ?? '',
-            safetyDialogues: f.dialogos_seguranca ?? '',
-          },
-          toolsAndMaterials: {
-            description: f.descricao_equipamentos ?? '',
-            epis: f.epis_utilizados ?? '',
-            others: f.outros_materiais ?? '',
-          },
-        },
-        photographicRecords: fotos.map((ph: any) => ({
-          id: ph.id,
-          imageDataUrl: ph.imagem_url ?? '',
-          description: ph.descricao ?? '',
-        })),
-        lgpdNote: f.nota_lgpd ?? '',
-        biomechanics: {
-          postureAndReach:         biomecanica.filter((b: any) => b.categoria === 'postura_e_alcance').map(mapBio),
-          repetitivenessAndRhythm: biomecanica.filter((b: any) => b.categoria === 'repetitividade_e_ritmo').map(mapBio),
-          forceAndPhysicalDemand:  biomecanica.filter((b: any) => b.categoria === 'forca_e_demanda_fisica').map(mapBio),
-          manualMaterialHandling:  biomecanica.filter((b: any) => b.categoria === 'manuseio_manual_materiais').map(mapBio),
-          furnitureAndWorkstation: biomecanica.filter((b: any) => b.categoria === 'moveis_e_posto').map(mapBio),
-          environmentalComfort: {
-            lightingComplaint:    f.reclamacao_iluminacao ?? '',
-            lightingValue:        f.valor_iluminacao ?? '',
-            lightingDescription:  f.descricao_iluminacao ?? '',
-            noiseComplaint:       f.reclamacao_ruido ?? '',
-            noiseValue:           f.valor_ruido ?? '',
-            noiseDescription:     f.descricao_ruido ?? '',
-            temperatureComplaint: f.reclamacao_temperatura ?? '',
-            temperatureValue:     f.valor_temperatura ?? '',
-            temperatureDescription: f.descricao_temperatura ?? '',
-          },
-        },
-        scientificTools: ferramentas.map((t: any) => ({
-          id: t.id,
-          toolName: t.nome_ferramenta ?? '',
-          result: t.resultado ?? '',
-          interpretation: t.interpretacao ?? '',
-          recommendation: t.recomendacao ?? '',
-          imageDataUrl: t.imagem_url ?? '',
-        })),
-        illuminanceMeasurements,
-        psychosocialAnswers: psicossocial.map((q: any) => ({
-          id: q.chave_pergunta,
-          group: q.grupo ?? '',
-          question: q.pergunta ?? '',
-          score: q.pontuacao !== null ? Number(q.pontuacao) : '',
-          scaleLabel: q.rotulo_escala ?? '',
-          inverted: q.invertida ?? false,
-          comments: q.comentarios ?? '',
-        })),
-        psychosocialAverages: {
-          demandRhythm:                     parseFloat(f.psi_media_demanda_ritmo) || 0,
-          autonomyControl:                  parseFloat(f.psi_media_autonomia_controle) || 0,
-          roleClarityConflict:              parseFloat(f.psi_media_clareza_papel) || 0,
-          socialSupportLeadership:          parseFloat(f.psi_media_apoio_social) || 0,
-          recognitionJusticePsychSafety:    parseFloat(f.psi_media_reconhecimento) || 0,
-          overall:                          parseFloat(f.psi_media_geral) || 0,
-        },
-        psychosocialClassification: f.psi_classificacao ?? '',
-        psychosocialInterpretation: f.psi_interpretacao ?? '',
-        aetTriggers: gatilhos.map((t: any) => ({
-          id: t.chave_gatilho,
-          answer: t.resposta ?? '',
-          description: t.descricao ?? '',
-        })),
-        finalGuidance:       f.orientacao_final ?? '',
-        decisionJustification: f.justificativa_decisao ?? '',
-        raciActionPlan: raci.map((a: any) => ({
-          id: a.id,
-          riskFactor: a.fator_risco ?? '',
-          action:     a.acao ?? '',
-          responsible: a.responsavel ?? '',
-          accountable: a.aprovador ?? '',
-          consulted:   a.consultado ?? '',
-          informed:    a.informado ?? '',
-          deadline:    a.prazo ?? '',
-          priority:    a.prioridade ?? '',
-          status:      a.status ?? '',
-        })),
-        technicalResponsible: {
-          name:             f.resp_nome ?? '',
-          registration:     f.resp_registro ?? '',
-          formation:        f.resp_formacao ?? '',
-          company:          f.resp_empresa ?? '',
-          signatureDataUrl: f.resp_assinatura ?? '',
-        },
-      };
-
-      functions.push({
-        id: f.id,
-        name: f.nome_funcao ?? '',
-        unit: f.unidade_filial ?? '',
-        sector: f.setor_area ?? '',
-        analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
-        numEmployees: f.num_funcionarios ?? '',
-        // AET scalar fields (empty for AEP functions)
-        demandOrigin: '', objective: '', demandFound: '', marketSituation: '', product: '',
-        productionLocation: '', productionDimension: '', productionGoals: '', qualityAnalysis: '',
-        qualityEvaluator: '', shifts: '', shiftStart: '', shiftEnd: '', workDays: '',
-        overtime: '', pauses: '', taskRotation: '', bathroomDistance: '', bathroomCondition: '',
-        hierarchyOrganogram: '', workspaceDescription: '', collabFormation: '', collabTurn: '',
-        opinionGender: '', opinionAge: '', opinionTime: '', opinionObjective: '', opinionThermal: '',
-        opinionVentilation: '', opinionVentilationDesc: '', opinionLightingSens: '',
-        opinionLightingDesc: '', opinionAcoustics: '', opinionEPI: '', opinionEquip: '',
-        opinionCycle: '', opinionLayout: '', opinionDifficulties: '', opinionPressure: '',
-        opinionRelationship: '', opinionLeadership: '', opinionMaintenanceInfluence: '',
-        opinionMaintenanceDelay: '', opinionIntercurrences: '', effortDynamic: '', effortStatic: '',
-        timeAnalysis: '', loadCarrying: '', displacement: '', maintenanceDesc: '',
-        maintenanceCausesDelay: '', logisticsInfluence: '', logisticsDelay: '', reworkDesc: '',
-        reworkWeek: '', reworkNotApplicable: false, usesEquipment: false, usesEPI: false,
-        equipmentList: [], epiList: [], equipProblems: '', cyclePrescribed: '', cycleReal: '',
-        postureSittingPct: 0, postureStandingPct: 0, postureWalkingPct: 0,
-        postureCrouchingPct: 0, postureOtherPct: 0, postureOtherDescription: '', meioAmbiente: '',
-        illumination: {
-          location: '', date: '', lightingType: '', introduction: '', objective: '',
-          justification: '', environmentDescription: '', lightingSystem: '', activities: '',
-          criteria: '', measuredValues: '', referenceValue: '', formula: '', resultLux: '',
-          interpretation: '', normativeReference: '', modelType: 'SIMPLE_AVERAGE',
-          conclusion: '', conclusionText: '', checklist: [], measurementPoints: [], referenceLux: 0,
-        },
-        scientificMethods: [], images: [], diagnosis: '', riskLevel: '',
-        improvements: [], checklistAnswers: [], rulaScore: '', risks: [],
-        // AEP structured assessment
-        aep,
-      });
+  const funcoesByProjectMap = new Map<string, any[]>();
+  for (const f of allFuncoes) {
+    let list = funcoesByProjectMap.get(f.projeto_id);
+    if (!list) {
+      list = [];
+      funcoesByProjectMap.set(f.projeto_id, list);
     }
+    list.push(f);
+  }
+
+  for (const p of projects) {
+    const funcoes = funcoesByProjectMap.get(p.id) ?? [];
+
+    const functions: any[] = funcoes.map((f: any) => ({
+      id: f.id,
+      name: f.nome_funcao ?? '',
+      unit: f.unidade_filial ?? '',
+      sector: f.setor_area ?? '',
+      analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
+      numEmployees: f.num_funcionarios ?? '',
+      improvements: [],
+    }));
 
     result.push({
       id: p.id,
@@ -647,17 +408,411 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       introErgonomia:   p.intro_ergonomia ?? '',
       introObjetivo:    p.intro_objetivo ?? '',
       introMetodologia: p.intro_metodologia ?? '',
-      evaluatorName:            p.nome_avaliador ?? '',
-      evaluatorFormation:       p.formacao_avaliador ?? '',
-      evaluatorCrefito:         p.crefito_avaliador ?? '',
-      evaluatorCompany:         p.empresa_avaliador ?? '',
+      evaluatorName:             p.nome_avaliador ?? '',
+      evaluatorFormation:        p.formacao_avaliador ?? '',
+      evaluatorCrefito:          p.crefito_avaliador ?? '',
+      evaluatorCompany:          p.empresa_avaliador ?? '',
       evaluatorSignatureDataUrl: p.assinatura_avaliador ?? '',
       date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
+      createdAt: p.criado_em ? (p.criado_em instanceof Date ? p.criado_em.toISOString() : String(p.criado_em)) : '',
       functions,
+      sectorIlluminance: (() => {
+        try {
+          const raw = p.setor_iluminancia_json;
+          if (!raw) return [];
+          return typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch { return []; }
+      })(),
     });
   }
 
   return result;
+}
+
+async function loadSingleAEP(client: PoolClient, id: string): Promise<any | null> {
+  const { rows: projects } = await client.query(`
+    SELECT p.*,
+      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)  AS nome_empresa,
+      COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
+      COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
+      COALESCE(NULLIF(p.grau_risco,''), e.grau_risco)      AS grau_risco,
+      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade,
+      COALESCE(e.logo_url, NULLIF(p.logo_empresa,''))      AS logo_empresa_resolved
+    FROM aep_projetos p
+    LEFT JOIN empresas e ON e.id = p.empresa_id
+    LEFT JOIN unidades u ON u.id = p.unidade_id
+    WHERE p.id = $1 AND p.ativo
+  `, [id]);
+  
+  if (projects.length === 0) return null;
+  const p = projects[0];
+
+  const { rows: funcoes } = await client.query(
+    'SELECT * FROM aep_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
+  );
+
+  const funcIds = funcoes.map(f => f.id);
+
+  let allFotos: any[] = [];
+  let allBiomecanica: any[] = [];
+  let allFerramentas: any[] = [];
+  let allIluminancias: any[] = [];
+  let allPsicossocial: any[] = [];
+  let allGatilhos: any[] = [];
+  let allRaci: any[] = [];
+
+  if (funcIds.length > 0) {
+    allFotos = (await client.query('SELECT * FROM aep_funcao_fotos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allBiomecanica = (await client.query('SELECT * FROM aep_funcao_biomecanica WHERE funcao_id = ANY($1::uuid[]) ORDER BY categoria, ordem', [funcIds])).rows;
+    allFerramentas = (await client.query('SELECT * FROM aep_funcao_ferramentas_cientificas WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allIluminancias = (await client.query('SELECT * FROM aep_funcao_iluminancia WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allPsicossocial = (await client.query('SELECT * FROM aep_funcao_psicossocial WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allGatilhos = (await client.query('SELECT * FROM aep_funcao_gatilhos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allRaci = (await client.query('SELECT * FROM aep_funcao_acoes_raci WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+  }
+
+  const groupByFuncao = <T extends { funcao_id: string }>(rows: T[]): Map<string, T[]> => {
+    const map = new Map<string, T[]>();
+    for (const row of rows) {
+      let list = map.get(row.funcao_id);
+      if (!list) {
+        list = [];
+        map.set(row.funcao_id, list);
+      }
+      list.push(row);
+    }
+    return map;
+  };
+
+  const fotosMap = groupByFuncao(allFotos);
+  const biomecanicaMap = groupByFuncao(allBiomecanica);
+  const ferramentasMap = groupByFuncao(allFerramentas);
+  const iluminanciasMap = groupByFuncao(allIluminancias);
+  const psicossocialMap = groupByFuncao(allPsicossocial);
+  const gatilhosMap = groupByFuncao(allGatilhos);
+  const raciMap = groupByFuncao(allRaci);
+
+  const ilumIds = allIluminancias.map((ilum: any) => ilum.id);
+  let allLinhas: any[] = [];
+  let allPontos: any[] = [];
+  let allVerificacao: any[] = [];
+  let allInconsistencias: any[] = [];
+
+  if (ilumIds.length > 0) {
+    allLinhas = (await client.query('SELECT * FROM aep_funcao_iluminancia_linhas WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY ordem', [ilumIds])).rows;
+    allPontos = (await client.query('SELECT * FROM aep_funcao_iluminancia_pontos WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY linha, coluna', [ilumIds])).rows;
+    allVerificacao = (await client.query('SELECT * FROM aep_funcao_iluminancia_verificacao WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY ordem', [ilumIds])).rows;
+    allInconsistencias = (await client.query('SELECT * FROM aep_funcao_iluminancia_inconsistencias WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY ordem', [ilumIds])).rows;
+  }
+
+  const groupByIluminancia = <T extends { iluminancia_id: string }>(rows: T[]): Map<string, T[]> => {
+    const map = new Map<string, T[]>();
+    for (const row of rows) {
+      let list = map.get(row.iluminancia_id);
+      if (!list) {
+        list = [];
+        map.set(row.iluminancia_id, list);
+      }
+      list.push(row);
+    }
+    return map;
+  };
+
+  const linhasMap = groupByIluminancia(allLinhas);
+  const pontosMap = groupByIluminancia(allPontos);
+  const verificacaoMap = groupByIluminancia(allVerificacao);
+  const inconsistenciasMap = groupByIluminancia(allInconsistencias);
+
+  const functions: any[] = [];
+  for (const f of funcoes) {
+    const fotos = fotosMap.get(f.id) ?? [];
+    const biomecanica = biomecanicaMap.get(f.id) ?? [];
+    const ferramentas = ferramentasMap.get(f.id) ?? [];
+    const iluminancias = iluminanciasMap.get(f.id) ?? [];
+    const psicossocial = psicossocialMap.get(f.id) ?? [];
+    const gatilhos = gatilhosMap.get(f.id) ?? [];
+    const raci = raciMap.get(f.id) ?? [];
+
+    // Reassemble illuminance measurements
+    const illuminanceMeasurements: any[] = [];
+    for (const ilum of iluminancias) {
+      const linhas = linhasMap.get(ilum.id) ?? [];
+      const pontos = pontosMap.get(ilum.id) ?? [];
+      const verificacao = verificacaoMap.get(ilum.id) ?? [];
+      const inconsistencias = inconsistenciasMap.get(ilum.id) ?? [];
+
+      illuminanceMeasurements.push({
+        id: ilum.id,
+        posto: ilum.posto ?? '',
+        environment: ilum.ambiente ?? '',
+        environmentType: ilum.tipo_ambiente ?? '',
+        recommendedMinLux: parseFloat(ilum.lux_minimo_recomendado) || 0,
+        ircRa: ilum.irc_ra ?? '',
+        scale: ilum.escala ?? 'lux',
+        normativeParameterId: ilum.parametro_normativo_id ?? '',
+        gridParameters: {
+          geometryType: ilum.tipo_geometria ?? 'A1',
+          N: ilum.grade_n ?? 4,
+          M: ilum.grade_m ?? 2,
+          W: parseFloat(ilum.grade_largura) || 0,
+          L: parseFloat(ilum.grade_comprimento) || 0,
+          maxCols: ilum.grade_max_colunas ?? 8,
+        },
+        measurementRows: linhas.map((l: any) => ({
+          id: l.id,
+          rowType: l.tipo_linha,
+          index: l.indice_linha,
+          values: l.valores ?? [],
+          activeCols: l.colunas_ativas ?? 0,
+          naFlags: l.flags_na ?? [],
+        })),
+        gridConfig: { rows: ilum.grid_linhas ?? 4, cols: ilum.grid_colunas ?? 8 },
+        gridPoints: pontos.map((pt: any) => ({
+          row: pt.linha,
+          col: pt.coluna,
+          lux: pt.lux !== null ? parseFloat(pt.lux) : null,
+          notApplicable: pt.nao_aplicavel ?? false,
+        })),
+        gridSchemaImageDataUrl: ilum.grade_schema_imagem ?? '',
+        calculationResult: ilum.calc_media_lux !== null ? {
+          measuredPointsCount: ilum.calc_qtd_pontos ?? 0,
+          averageLux: parseFloat(ilum.calc_media_lux) || 0,
+          minLux: parseFloat(ilum.calc_lux_minimo) || 0,
+          maxLux: parseFloat(ilum.calc_lux_maximo) || 0,
+          toleranceMinLux: parseFloat(ilum.calc_lux_tolerancia) || 0,
+          seventyPercentAverage: parseFloat(ilum.calc_media_setenta_pct) || 0,
+          uniformityRatio: parseFloat(ilum.calc_razao_uniformidade) || 0,
+          taskAreaValue: parseFloat(ilum.calc_valor_area_tarefa) || 0,
+          rowAverages: [],
+        } : null,
+        evaluationResult: ilum.aval_status ? {
+          status: ilum.aval_status ?? '',
+          averageIsAdequate: ilum.aval_media_adequada ?? false,
+          toleranceCheck: ilum.aval_tolerancia_ok ?? false,
+          seventyPercentCheck: false,
+          uniformityCheck: false,
+          taskAreaCheck: false,
+          interpretationText: '',
+          issues: [],
+        } : null,
+        verificationItems: verificacao.map((v: any) => ({
+          id: v.item_id,
+          question: v.pergunta ?? '',
+          answer: v.resposta ?? '',
+          observations: v.observacoes ?? '',
+        })),
+        inconsistencyItems: inconsistencias.map((inc: any) => ({
+          id: inc.item_id,
+          title: inc.titulo ?? '',
+          description: inc.descricao ?? '',
+          found: inc.encontrado ?? false,
+          observations: inc.observacoes ?? '',
+        })),
+        equipmentData: {
+          deviceName: ilum.equip_nome ?? '',
+          certificate: ilum.equip_certificado ?? '',
+          calibrationDate: ilum.equip_data_calibracao ?? '',
+          certificateImageDataUrl: ilum.equip_cert_imagem ?? '',
+          observations: ilum.equip_observacoes ?? '',
+        },
+        observations: ilum.observacoes ?? '',
+        measurementDate: ilum.data_medicao ?? '',
+        responsibleUser: ilum.usuario_responsavel ?? '',
+        formStatus: ilum.status_formulario ?? 'rascunho',
+        createdAt: ilum.criado_em?.toISOString() ?? '',
+        updatedAt: ilum.atualizado_em?.toISOString() ?? '',
+      });
+    }
+
+    const mapBio = (b: any) => ({
+      riskFactorId: b.fator_risco_texto ?? b.fator_risco_id ?? '',
+      assessment: b.avaliacao ?? '',
+      description: b.observacoes ?? '',
+    });
+
+    const aep: any = {
+      identification: {
+        unitBranch: f.unidade_filial ?? '',
+        sectorArea: f.setor_area ?? '',
+        contemplatedFunctions: f.funcoes_contempladas ?? '',
+        evaluatedActivity: f.atividade_avaliada ?? '',
+        code: f.codigo_posto ?? '',
+        unitId: f.unidade_id ?? null,
+        sectorId: f.setor_id ?? null,
+      },
+      workCharacterization: {
+        processDescription: f.descricao_processo ?? '',
+        workCycleDescription: f.descricao_ciclo_trabalho ?? '',
+        workOrganization: {
+          workday: f.jornada_trabalho ?? '',
+          scale: f.escala ?? '',
+          overtime: f.horas_extras ?? '',
+          lunchBreak: f.intervalo_almoco ?? '',
+          otherBreaks: f.outras_pausas ?? '',
+          taskRotation: f.rodizio_tarefas ?? '',
+          safetyDialogues: f.dialogos_seguranca ?? '',
+        },
+        toolsAndMaterials: {
+          description: f.descricao_equipamentos ?? '',
+          epis: f.epis_utilizados ?? '',
+          others: f.outros_materiais ?? '',
+        },
+      },
+      photographicRecords: fotos.map((ph: any) => ({
+        id: ph.id,
+        imageDataUrl: ph.imagem_url ?? '',
+        description: ph.descricao ?? '',
+      })),
+      lgpdNote: f.nota_lgpd ?? '',
+      biomechanics: {
+        postureAndReach:         biomecanica.filter((b: any) => b.categoria === 'postura_e_alcance').map(mapBio),
+        repetitivenessAndRhythm: biomecanica.filter((b: any) => b.categoria === 'repetitividade_e_ritmo').map(mapBio),
+        forceAndPhysicalDemand:  biomecanica.filter((b: any) => b.categoria === 'forca_e_demanda_fisica').map(mapBio),
+        manualMaterialHandling:  biomecanica.filter((b: any) => b.categoria === 'manuseio_manual_materiais').map(mapBio),
+        furnitureAndWorkstation: biomecanica.filter((b: any) => b.categoria === 'moveis_e_posto').map(mapBio),
+        environmentalComfort: {
+          lightingComplaint:    f.reclamacao_iluminacao ?? '',
+          lightingValue:        f.valor_iluminacao ?? '',
+          lightingDescription:  f.descricao_iluminacao ?? '',
+          noiseComplaint:       f.reclamacao_ruido ?? '',
+          noiseValue:           f.valor_ruido ?? '',
+          noiseDescription:     f.descricao_ruido ?? '',
+          temperatureComplaint: f.reclamacao_temperatura ?? '',
+          temperatureValue:     f.valor_temperatura ?? '',
+          temperatureDescription: f.descricao_temperatura ?? '',
+        },
+      },
+      scientificTools: ferramentas.map((t: any) => ({
+        id: t.id,
+        toolName: t.nome_ferramenta ?? '',
+        result: t.resultado ?? '',
+        interpretation: t.interpretacao ?? '',
+        recommendation: t.recomendacao ?? '',
+        imageDataUrl: t.imagem_url ?? '',
+      })),
+      illuminanceMeasurements,
+      psychosocialAnswers: psicossocial.map((q: any) => ({
+        id: q.chave_pergunta,
+        group: q.grupo ?? '',
+        question: q.pergunta ?? '',
+        score: q.pontuacao !== null ? Number(q.pontuacao) : '',
+        scaleLabel: q.rotulo_escala ?? '',
+        inverted: q.invertida ?? false,
+        comments: q.comentarios ?? '',
+      })),
+      psychosocialAverages: {
+        demandRhythm:                     parseFloat(f.psi_media_demanda_ritmo) || 0,
+        autonomyControl:                  parseFloat(f.psi_media_autonomia_controle) || 0,
+        roleClarityConflict:              parseFloat(f.psi_media_clareza_papel) || 0,
+        socialSupportLeadership:          parseFloat(f.psi_media_apoio_social) || 0,
+        recognitionJusticePsychSafety:    parseFloat(f.psi_media_reconhecimento) || 0,
+        overall:                          parseFloat(f.psi_media_geral) || 0,
+      },
+      psychosocialClassification: f.psi_classificacao ?? '',
+      psychosocialInterpretation: f.psi_interpretacao ?? '',
+      aetTriggers: gatilhos.map((t: any) => ({
+        id: t.chave_gatilho,
+        answer: t.resposta ?? '',
+        description: t.descricao ?? '',
+      })),
+      finalGuidance:       f.orientacao_final ?? '',
+      decisionJustification: f.justificativa_decisao ?? '',
+      raciActionPlan: raci.map((a: any) => ({
+        id: a.id,
+        riskFactor: a.fator_risco ?? '',
+        action:     a.acao ?? '',
+        responsible: a.responsavel ?? '',
+        accountable: a.aprovador ?? '',
+        consulted:   a.consultado ?? '',
+        informed:    a.informado ?? '',
+        deadline:    a.prazo ?? '',
+        priority:    a.prioridade ?? '',
+        status:      a.status ?? '',
+      })),
+      technicalResponsible: {
+        name:             f.resp_nome ?? '',
+        registration:     f.resp_registro ?? '',
+        formation:        f.resp_formacao ?? '',
+        company:          f.resp_empresa ?? '',
+        signatureDataUrl: f.resp_assinatura ?? '',
+      },
+    };
+
+    functions.push({
+      id: f.id,
+      name: f.nome_funcao ?? '',
+      unit: f.unidade_filial ?? '',
+      sector: f.setor_area ?? '',
+      setorId: f.setor_id ?? null,
+      unidadeId: f.unidade_id ?? null,
+      analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
+      numEmployees: f.num_funcionarios ?? '',
+      // AET scalar fields (empty for AEP functions)
+      demandOrigin: '', objective: '', demandFound: '', marketSituation: '', product: '',
+      productionLocation: '', productionDimension: '', productionGoals: '', qualityAnalysis: '',
+      qualityEvaluator: '', shifts: '', shiftStart: '', shiftEnd: '', workDays: '',
+      overtime: '', pauses: '', taskRotation: '', bathroomDistance: '', bathroomCondition: '',
+      hierarchyOrganogram: '', workspaceDescription: '', collabFormation: '', collabTurn: '',
+      opinionGender: '', opinionAge: '', opinionTime: '', opinionObjective: '', opinionThermal: '',
+      opinionVentilation: '', opinionVentilationDesc: '', opinionLightingSens: '',
+      opinionLightingDesc: '', opinionAcoustics: '', opinionEPI: '', opinionEquip: '',
+      opinionCycle: '', opinionLayout: '', opinionDifficulties: '', opinionPressure: '',
+      opinionRelationship: '', opinionLeadership: '', opinionMaintenanceInfluence: '',
+      opinionMaintenanceDelay: '', opinionIntercurrences: '', effortDynamic: '', effortStatic: '',
+      timeAnalysis: '', loadCarrying: '', displacement: '', maintenanceDesc: '',
+      maintenanceCausesDelay: '', logisticsInfluence: '', logisticsDelay: '', reworkDesc: '',
+      reworkWeek: '', reworkNotApplicable: false, usesEquipment: false, usesEPI: false,
+      equipmentList: [], epiList: [], equipProblems: '', cyclePrescribed: '', cycleReal: '',
+      postureSittingPct: 0, postureStandingPct: 0, postureWalkingPct: 0,
+      postureCrouchingPct: 0, postureOtherPct: 0, postureOtherDescription: '', meioAmbiente: '',
+      illumination: {
+        location: '', date: '', lightingType: '', introduction: '', objective: '',
+        justification: '', environmentDescription: '', lightingSystem: '', activities: '',
+        criteria: '', measuredValues: '', referenceValue: '', formula: '', resultLux: '',
+        interpretation: '', normativeReference: '', modelType: 'SIMPLE_AVERAGE',
+        conclusion: '', conclusionText: '', checklist: [], measurementPoints: [], referenceLux: 0,
+      },
+      scientificMethods: [], images: [], diagnosis: '', riskLevel: '',
+      improvements: [], checklistAnswers: [], rulaScore: '', risks: [],
+      // AEP structured assessment
+      aep,
+    });
+  }
+
+  return {
+    id: p.id,
+    reportType: 'AEP',
+    empresaId: p.empresa_id ?? null,
+    unidadeId: p.unidade_id ?? null,
+    consultoriaLogoDataUrl: p.logo_consultoria ?? '',
+    companyLogoDataUrl:     p.logo_empresa_resolved ?? '',
+    responsibleLogoDataUrl: p.logo_responsavel ?? '',
+    companyName:  p.nome_empresa ?? '',
+    fantasyName:  p.nome_fantasia ?? '',
+    cnpj:         p.cnpj ?? '',
+    address:      p.endereco ?? '',
+    unit:         p.unidade ?? '',
+    product:      p.produto ?? '',
+    riskDegree:   p.grau_risco ?? '',
+    location:     p.localizacao ?? '',
+    introErgonomia:   p.intro_ergonomia ?? '',
+    introObjetivo:    p.intro_objetivo ?? '',
+    introMetodologia: p.intro_metodologia ?? '',
+    evaluatorName:            p.nome_avaliador ?? '',
+    evaluatorFormation:       p.formacao_avaliador ?? '',
+    evaluatorCrefito:         p.crefito_avaliador ?? '',
+    evaluatorCompany:         p.empresa_avaliador ?? '',
+    evaluatorSignatureDataUrl: p.assinatura_avaliador ?? '',
+    date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
+    functions,
+    sectorIlluminance: (() => {
+      try {
+        const raw = p.setor_iluminancia_json;
+        if (!raw) return [];
+        return typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch { return []; }
+    })(),
+  };
 }
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
@@ -722,5 +877,5 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-export { saveAEP, loadAllAEP };
+export { saveAEP, loadAllAEP, loadSingleAEP };
 export default router;

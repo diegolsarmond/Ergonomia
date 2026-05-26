@@ -6,21 +6,24 @@ import { AEPPreview } from './reports/AEPPreview';
 
 export const PDFPreview = () => {
   const { id } = useParams<{ id: string }>();
-  const { getProject, loading } = useAET();
+  const { getProject, fetchProjectDetails } = useAET();
+  const [loadingProject, setLoadingProject] = React.useState(true);
+
+  React.useEffect(() => {
+    if (id) {
+      setLoadingProject(true);
+      fetchProjectDetails(id)
+        .catch(err => console.error(err))
+        .finally(() => setLoadingProject(false));
+    }
+  }, [id, fetchProjectDetails]);
+
   const project = getProject(id!);
 
-  if (loading) {
+  if (loadingProject || !project) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-500 text-lg">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-500 text-lg">Projeto não encontrado.</p>
+        <p className="text-gray-500 text-lg">Carregando detalhes do projeto...</p>
       </div>
     );
   }

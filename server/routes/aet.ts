@@ -309,12 +309,17 @@ async function saveAET(client: PoolClient, project: any): Promise<void> {
 
 async function loadAllAET(client: PoolClient): Promise<any[]> {
   const { rows: projects } = await client.query(`
-    SELECT p.*,
-      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)  AS nome_empresa,
+    SELECT p.id, p.empresa_id, p.unidade_id, p.data, p.localizacao, p.criado_em, p.nome_avaliador,
+      p.endereco, p.produto,
+      p.formacao_avaliador, p.crefito_avaliador, p.empresa_avaliador, p.assinatura_avaliador,
+      p.intro_ergonomia, p.intro_objetivo, p.intro_metodologia,
+      p.logo_consultoria, p.logo_responsavel,
+      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)   AS nome_empresa,
       COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
       COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
       COALESCE(NULLIF(p.grau_risco,''), e.grau_risco)      AS grau_risco,
-      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade
+      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade,
+      COALESCE(e.logo_url, NULLIF(p.logo_empresa,''))      AS logo_empresa_resolved
     FROM aet_projetos p
     LEFT JOIN empresas e ON e.id = p.empresa_id
     LEFT JOIN unidades u ON u.id = p.unidade_id
@@ -323,224 +328,34 @@ async function loadAllAET(client: PoolClient): Promise<any[]> {
   `);
   const result: any[] = [];
 
-  for (const p of projects) {
-    const { rows: funcoes } = await client.query(
-      'SELECT * FROM aet_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
-    );
+  const projectIds = projects.map(p => p.id);
+  const { rows: allFuncoes } = projectIds.length > 0 ? await client.query(
+    'SELECT id, projeto_id, nome_funcao, unidade, setor, data_analise, num_funcionarios FROM aet_funcoes WHERE projeto_id = ANY($1::uuid[]) ORDER BY ordem',
+    [projectIds]
+  ) : { rows: [] };
 
-    const functions: any[] = [];
-    for (const f of funcoes) {
-      const [
-        { rows: equipamentos },
-        { rows: epis },
-        { rows: metodos },
-        { rows: ilumPontos },
-        { rows: ilumChecklist },
-        { rows: imagens },
-        { rows: riscos },
-        { rows: melhorias },
-        { rows: checklistResp },
-      ] = await Promise.all([
-        client.query('SELECT * FROM aet_funcao_equipamentos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_epis WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_metodos_cientificos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_iluminancia_pontos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_iluminancia_checklist WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_imagens WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_riscos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_melhorias WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-        client.query('SELECT * FROM aet_funcao_checklist WHERE funcao_id=$1', [f.id]),
-      ]);
-
-      functions.push({
-        id: f.id,
-        unidadeId: f.unidade_id ?? null,
-        setorId: f.setor_id ?? null,
-        name: f.nome_funcao ?? '',
-        unit: f.unidade ?? '',
-        sector: f.setor ?? '',
-        analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
-        numEmployees: f.num_funcionarios ?? '',
-        demandOrigin: f.origem_demanda ?? '',
-        objective: f.objetivo ?? '',
-        demandFound: f.demanda_encontrada ?? '',
-        marketSituation: f.situacao_mercado ?? '',
-        product: f.produto ?? '',
-        productionLocation: f.local_producao ?? '',
-        productionDimension: f.dimensao_producao ?? '',
-        productionGoals: f.metas_producao ?? '',
-        qualityAnalysis: f.analise_qualidade ?? '',
-        qualityEvaluator: f.avaliador_qualidade ?? '',
-        shifts: f.turnos ?? '',
-        shiftStart: f.inicio_turno ?? '',
-        shiftEnd: f.fim_turno ?? '',
-        workDays: f.dias_trabalho ?? '',
-        overtime: f.horas_extras ?? '',
-        pauses: f.pausas ?? '',
-        taskRotation: f.rodizio_tarefas ?? '',
-        bathroomDistance: f.distancia_banheiro ?? '',
-        bathroomCondition: f.condicao_banheiro ?? '',
-        hierarchyOrganogram: f.organograma_hierarquia ?? '',
-        workspaceDescription: f.descricao_posto ?? '',
-        collabFormation: f.formacao_colaborador ?? '',
-        collabTurn: f.turno_colaborador ?? '',
-        opinionGender: f.opiniao_genero ?? '',
-        opinionAge: f.opiniao_idade ?? '',
-        opinionTime: f.opiniao_tempo ?? '',
-        opinionObjective: f.opiniao_objetivo ?? '',
-        opinionThermal: f.opiniao_termico ?? '',
-        opinionVentilation: f.opiniao_ventilacao ?? '',
-        opinionVentilationDesc: f.opiniao_ventilacao_desc ?? '',
-        opinionLightingSens: f.opiniao_iluminacao_sens ?? '',
-        opinionLightingDesc: f.opiniao_iluminacao_desc ?? '',
-        opinionAcoustics: f.opiniao_acustica ?? '',
-        opinionEPI: f.opiniao_epi ?? '',
-        opinionEquip: f.opiniao_equipamento ?? '',
-        opinionCycle: f.opiniao_ciclo ?? '',
-        opinionLayout: f.opiniao_layout ?? '',
-        opinionDifficulties: f.opiniao_dificuldades ?? '',
-        opinionPressure: f.opiniao_pressao ?? '',
-        opinionRelationship: f.opiniao_relacionamento ?? '',
-        opinionLeadership: f.opiniao_lideranca ?? '',
-        opinionMaintenanceInfluence: f.opiniao_manutencao_influencia ?? '',
-        opinionMaintenanceDelay: f.opiniao_manutencao_atraso ?? '',
-        opinionIntercurrences: f.opiniao_intercorrencias ?? '',
-        effortDynamic: f.esforco_dinamico ?? '',
-        effortStatic: f.esforco_estatico ?? '',
-        timeAnalysis: f.cronoanalise ?? '',
-        loadCarrying: f.carregamento_carga ?? '',
-        displacement: f.deslocamento ?? '',
-        maintenanceDesc: f.manutencao_desc ?? '',
-        maintenanceCausesDelay: f.manutencao_causa_atraso ?? '',
-        logisticsInfluence: f.logistica_influencia ?? '',
-        logisticsDelay: f.logistica_atraso ?? '',
-        reworkDesc: f.retrabalho_desc ?? '',
-        reworkWeek: f.retrabalho_semana ?? '',
-        reworkNotApplicable: f.retrabalho_nao_aplicavel ?? false,
-        usesEquipment: f.usa_equipamento ?? false,
-        usesEPI: f.usa_epi ?? false,
-        equipmentList: equipamentos.map((e: any) => ({
-          id: e.id,
-          name: e.nome ?? '',
-          quantity: e.quantidade ?? '',
-          dimensions: e.dimensoes ?? '',
-          principle: e.principio ?? '',
-          condition: e.condicao ?? '',
-          observations: e.observacoes ?? '',
-        })),
-        epiList: epis.map((e: any) => ({
-          id: e.id,
-          name: e.nome ?? '',
-          mandatory: e.obrigatorio ?? false,
-          occasional: e.eventual ?? false,
-          location: e.local ?? '',
-          observations: e.observacoes ?? '',
-        })),
-        equipProblems: f.problemas_equipamento ?? '',
-        cyclePrescribed: f.ciclo_prescrito ?? '',
-        cycleReal: f.ciclo_real ?? '',
-        postureSittingPct:    parseFloat(f.postura_sentado_pct) || 0,
-        postureStandingPct:   parseFloat(f.postura_em_pe_pct) || 0,
-        postureWalkingPct:    parseFloat(f.postura_caminhando_pct) || 0,
-        postureCrouchingPct:  parseFloat(f.postura_agachado_pct) || 0,
-        postureOtherPct:      parseFloat(f.postura_outro_pct) || 0,
-        postureOtherDescription: f.postura_outro_descricao ?? '',
-        meioAmbiente: f.meio_ambiente ?? '',
-        illumination: {
-          location:             f.ilum_local ?? '',
-          date:                 f.ilum_data ?? '',
-          lightingType:         f.ilum_tipo_iluminacao ?? '',
-          introduction:         f.ilum_introducao ?? '',
-          objective:            f.ilum_objetivo ?? '',
-          justification:        f.ilum_justificativa ?? '',
-          environmentDescription: f.ilum_descricao_ambiente ?? '',
-          lightingSystem:       f.ilum_sistema_iluminacao ?? '',
-          activities:           f.ilum_atividades ?? '',
-          criteria:             f.ilum_criterios ?? '',
-          measuredValues:       f.ilum_valores_medidos ?? '',
-          referenceValue:       f.ilum_valor_referencia ?? '',
-          formula:              f.ilum_formula ?? '',
-          resultLux:            f.ilum_resultado_lux ?? '',
-          interpretation:       f.ilum_interpretacao ?? '',
-          normativeReference:   f.ilum_referencia_normativa ?? '',
-          modelType:            f.ilum_tipo_modelo ?? 'SIMPLE_AVERAGE',
-          conclusion:           f.ilum_conclusao ?? '',
-          conclusionText:       f.ilum_texto_conclusao ?? '',
-          checklist: ilumChecklist.map((c: any) => ({
-            id: c.id,
-            description: c.descricao ?? '',
-            compliant: c.conforme ?? '',
-            recommendedAction: c.acao_recomendada ?? '',
-            deadline: c.prazo ?? '',
-            responsible: c.responsavel ?? '',
-            observations: c.observacoes ?? '',
-          })),
-          measurementPoints: ilumPontos.map((pt: any) => ({
-            id: pt.id,
-            label: pt.rotulo ?? '',
-            lux: pt.lux !== null ? parseFloat(pt.lux) : null,
-          })),
-          referenceLux: parseFloat(f.ilum_lux_referencia) || 0,
-        },
-        scientificMethods: metodos.map((m: any) => ({
-          id: m.id,
-          methodName: m.nome_metodo ?? '',
-          description: m.descricao ?? '',
-          result: m.resultado ?? '',
-          riskClassification: m.classificacao_risco ?? '',
-          interpretation: m.interpretacao ?? '',
-          imageDataUrl: m.imagem_url ?? '',
-          recommendations: m.recomendacoes ?? '',
-        })),
-        images: imagens.map((img: any) => ({
-          id: img.id,
-          dataUrl: img.imagem_url ?? '',
-          caption: img.legenda ?? '',
-          category: img.categoria ?? 'other',
-        })),
-        diagnosis: f.diagnostico ?? '',
-        riskLevel: f.nivel_risco ?? '',
-        improvements: melhorias.map((m: any) => ({
-          id: m.id,
-          photoDataUrl: m.foto_url ?? '',
-          hazard: m.perigo ?? '',
-          probability: m.probabilidade ?? '',
-          severity: m.gravidade ?? '',
-          grossRiskLevel: m.nivel_risco_bruto ?? '',
-          riskClassification: m.classificacao_risco ?? '',
-          riskEvaluation: m.avaliacao_risco ?? '',
-          actions: m.acoes ?? '',
-          attenuationProbability: m.probabilidade_atenuacao ?? '',
-          deadline: m.prazo ?? '',
-          responsible: m.responsavel ?? '',
-          observations: m.observacoes ?? '',
-        })),
-        checklistAnswers: checklistResp.map((ca: any) => ({
-          questionId: ca.pergunta_id_str ?? ca.pergunta_id ?? '',
-          answer: ca.resposta ?? '',
-        })),
-        rulaScore: f.pontuacao_rula ?? '',
-        risks: riscos.map((r: any) => ({
-          id: r.id,
-          agent: r.agente ?? '',
-          riskFactor: r.fator_risco ?? '',
-          possibleHealthEffect: r.efeito_saude ?? '',
-          foundSituation: r.situacao_encontrada ?? '',
-          existingControl: r.controle_existente ?? '',
-          improvementProposal: r.proposta_melhoria ?? '',
-          probability: r.probabilidade ?? 1,
-          severity: r.gravidade ?? 1,
-          score: r.pontuacao ?? 1,
-          riskLevel: r.nivel_risco ?? '',
-          normativeReference: r.referencia_normativa ?? '',
-          evidenceImageDataUrl: r.imagem_evidencia_url ?? '',
-          responsible: r.responsavel ?? '',
-          deadline: r.prazo ?? '',
-          status: r.status ?? '',
-        })),
-        aep: null,
-      });
+  const funcoesByProjectMap = new Map<string, any[]>();
+  for (const f of allFuncoes) {
+    let list = funcoesByProjectMap.get(f.projeto_id);
+    if (!list) {
+      list = [];
+      funcoesByProjectMap.set(f.projeto_id, list);
     }
+    list.push(f);
+  }
+
+  for (const p of projects) {
+    const funcoes = funcoesByProjectMap.get(p.id) ?? [];
+
+    const functions: any[] = funcoes.map((f: any) => ({
+      id: f.id,
+      name: f.nome_funcao ?? '',
+      unit: f.unidade ?? '',
+      sector: f.setor ?? '',
+      analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
+      numEmployees: f.num_funcionarios ?? '',
+      improvements: [],
+    }));
 
     result.push({
       id: p.id,
@@ -548,7 +363,7 @@ async function loadAllAET(client: PoolClient): Promise<any[]> {
       empresaId: p.empresa_id ?? null,
       unidadeId: p.unidade_id ?? null,
       consultoriaLogoDataUrl: p.logo_consultoria ?? '',
-      companyLogoDataUrl:     p.logo_empresa ?? '',
+      companyLogoDataUrl:     p.logo_empresa_resolved ?? '',
       responsibleLogoDataUrl: p.logo_responsavel ?? '',
       companyName:  p.nome_empresa ?? '',
       fantasyName:  p.nome_fantasia ?? '',
@@ -567,11 +382,312 @@ async function loadAllAET(client: PoolClient): Promise<any[]> {
       evaluatorCompany:          p.empresa_avaliador ?? '',
       evaluatorSignatureDataUrl: p.assinatura_avaliador ?? '',
       date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
+      createdAt: p.criado_em ? (p.criado_em instanceof Date ? p.criado_em.toISOString() : String(p.criado_em)) : '',
       functions,
     });
   }
 
   return result;
+}
+
+async function loadSingleAET(client: PoolClient, id: string): Promise<any | null> {
+  const { rows: projects } = await client.query(`
+    SELECT p.*,
+      COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)  AS nome_empresa,
+      COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
+      COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
+      COALESCE(NULLIF(p.grau_risco,''), e.grau_risco)      AS grau_risco,
+      COALESCE(NULLIF(p.unidade,''), u.nome)               AS unidade,
+      COALESCE(e.logo_url, NULLIF(p.logo_empresa,''))      AS logo_empresa_resolved
+    FROM aet_projetos p
+    LEFT JOIN empresas e ON e.id = p.empresa_id
+    LEFT JOIN unidades u ON u.id = p.unidade_id
+    WHERE p.id = $1 AND p.ativo
+  `, [id]);
+
+  if (projects.length === 0) return null;
+  const p = projects[0];
+
+  const { rows: funcoes } = await client.query(
+    'SELECT * FROM aet_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
+  );
+
+  const funcIds = funcoes.map(f => f.id);
+
+  let allEquipamentos: any[] = [];
+  let allEpis: any[] = [];
+  let allMetodos: any[] = [];
+  let allIlumPontos: any[] = [];
+  let allIlumChecklist: any[] = [];
+  let allImagens: any[] = [];
+  let allRisks: any[] = [];
+  let allMelhorias: any[] = [];
+  let allChecklistResp: any[] = [];
+
+  if (funcIds.length > 0) {
+    allEquipamentos = (await client.query('SELECT * FROM aet_funcao_equipamentos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allEpis = (await client.query('SELECT * FROM aet_funcao_epis WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allMetodos = (await client.query('SELECT * FROM aet_funcao_metodos_cientificos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allIlumPontos = (await client.query('SELECT * FROM aet_funcao_iluminancia_pontos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allIlumChecklist = (await client.query('SELECT * FROM aet_funcao_iluminancia_checklist WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allImagens = (await client.query('SELECT * FROM aet_funcao_imagens WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allRisks = (await client.query('SELECT * FROM aet_funcao_riscos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allMelhorias = (await client.query('SELECT * FROM aet_funcao_melhorias WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allChecklistResp = (await client.query('SELECT * FROM aet_funcao_checklist WHERE funcao_id = ANY($1::uuid[])', [funcIds])).rows;
+  }
+
+  const groupByFuncao = <T extends { funcao_id: string }>(rows: T[]): Map<string, T[]> => {
+    const map = new Map<string, T[]>();
+    for (const row of rows) {
+      let list = map.get(row.funcao_id);
+      if (!list) {
+        list = [];
+        map.set(row.funcao_id, list);
+      }
+      list.push(row);
+    }
+    return map;
+  };
+
+  const equipamentosMap = groupByFuncao(allEquipamentos);
+  const episMap = groupByFuncao(allEpis);
+  const metodosMap = groupByFuncao(allMetodos);
+  const ilumPontosMap = groupByFuncao(allIlumPontos);
+  const ilumChecklistMap = groupByFuncao(allIlumChecklist);
+  const imagensMap = groupByFuncao(allImagens);
+  const risksMap = groupByFuncao(allRisks);
+  const melhoriasMap = groupByFuncao(allMelhorias);
+  const checklistRespMap = groupByFuncao(allChecklistResp);
+
+  const functions: any[] = [];
+  for (const f of funcoes) {
+    const equipamentos = equipamentosMap.get(f.id) ?? [];
+    const epis = episMap.get(f.id) ?? [];
+    const metodos = metodosMap.get(f.id) ?? [];
+    const ilumPontos = ilumPontosMap.get(f.id) ?? [];
+    const ilumChecklist = ilumChecklistMap.get(f.id) ?? [];
+    const imagens = imagensMap.get(f.id) ?? [];
+    const risks = risksMap.get(f.id) ?? [];
+    const melhorias = melhoriasMap.get(f.id) ?? [];
+    const checklistResp = checklistRespMap.get(f.id) ?? [];
+
+    functions.push({
+      id: f.id,
+      name: f.nome_funcao ?? '',
+      unit: f.unidade ?? '',
+      sector: f.setor ?? '',
+      setorId: f.setor_id ?? null,
+      unidadeId: f.unidade_id ?? null,
+      analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
+      numEmployees: f.num_funcionarios ?? '',
+      demandOrigin: f.origem_demanda ?? '',
+      objective: f.objetivo ?? '',
+      demandFound: f.demanda_encontrada ?? '',
+      marketSituation: f.situacao_mercado ?? '',
+      product: f.produto ?? '',
+      productionLocation: f.local_producao ?? '',
+      productionDimension: f.dimensao_producao ?? '',
+      productionGoals: f.metas_producao ?? '',
+      qualityAnalysis: f.analise_qualidade ?? '',
+      qualityEvaluator: f.avaliador_qualidade ?? '',
+      shifts: f.turnos ?? '',
+      shiftStart: f.inicio_turno ?? '',
+      shiftEnd: f.fim_turno ?? '',
+      workDays: f.dias_trabalho ?? '',
+      overtime: f.horas_extras ?? '',
+      pauses: f.pausas ?? '',
+      taskRotation: f.rodizio_tarefas ?? '',
+      bathroomDistance: f.distancia_banheiro ?? '',
+      bathroomCondition: f.condicao_banheiro ?? '',
+      hierarchyOrganogram: f.organograma_hierarquia ?? '',
+      workspaceDescription: f.descricao_posto ?? '',
+      collabFormation: f.formacao_colaborador ?? '',
+      collabTurn: f.turno_colaborador ?? '',
+      opinionGender: f.opiniao_genero ?? '',
+      opinionAge: f.opiniao_idade ?? '',
+      opinionTime: f.opiniao_tempo ?? '',
+      opinionObjective: f.opiniao_objetivo ?? '',
+      opinionThermal: f.opiniao_termico ?? '',
+      opinionVentilation: f.opiniao_ventilacao ?? '',
+      opinionVentilationDesc: f.opiniao_ventilacao_desc ?? '',
+      opinionLightingSens: f.opiniao_iluminacao_sens ?? '',
+      opinionLightingDesc: f.opiniao_iluminacao_desc ?? '',
+      opinionAcoustics: f.opiniao_acustica ?? '',
+      opinionEPI: f.opiniao_epi ?? '',
+      opinionEquip: f.opiniao_equipamento ?? '',
+      opinionCycle: f.opiniao_ciclo ?? '',
+      opinionLayout: f.opiniao_layout ?? '',
+      opinionDifficulties: f.opiniao_dificuldades ?? '',
+      opinionPressure: f.opiniao_pressao ?? '',
+      opinionRelationship: f.opiniao_relacionamento ?? '',
+      opinionLeadership: f.opiniao_lideranca ?? '',
+      opinionMaintenanceInfluence: f.opiniao_manutencao_influencia ?? '',
+      opinionMaintenanceDelay: f.opiniao_manutencao_atraso ?? '',
+      opinionIntercurrences: f.opiniao_intercorrencias ?? '',
+      effortDynamic: f.esforco_dinamico ?? '',
+      effortStatic: f.esforco_estatico ?? '',
+      timeAnalysis: f.cronoanalise ?? '',
+      loadCarrying: f.carregamento_carga ?? '',
+      displacement: f.deslocamento ?? '',
+      maintenanceDesc: f.manutencao_desc ?? '',
+      maintenanceCausesDelay: f.manutencao_causa_atraso ?? '',
+      logisticsInfluence: f.logistica_influencia ?? '',
+      logisticsDelay: f.logistica_atraso ?? '',
+      reworkDesc: f.retrabalho_desc ?? '',
+      reworkWeek: f.retrabalho_semana ?? '',
+      reworkNotApplicable: f.retrabalho_nao_aplicavel ?? false,
+      usesEquipment: f.usa_equipamento ?? false,
+      usesEPI: f.usa_epi ?? false,
+      equipmentList: equipamentos.map((e: any) => ({
+        id: e.id,
+        name: e.nome ?? '',
+        quantity: e.quantidade ?? '',
+        dimensions: e.dimensoes ?? '',
+        principle: e.principio ?? '',
+        condition: e.condicao ?? '',
+        observations: e.observacoes ?? '',
+      })),
+      epiList: epis.map((e: any) => ({
+        id: e.id,
+        name: e.nome ?? '',
+        mandatory: e.obrigatorio ?? false,
+        occasional: e.eventual ?? false,
+        location: e.local ?? '',
+        observations: e.observacoes ?? '',
+      })),
+      equipProblems: f.problemas_equipamento ?? '',
+      cyclePrescribed: f.ciclo_prescrito ?? '',
+      cycleReal: f.ciclo_real ?? '',
+      postureSittingPct:    parseFloat(f.postura_sentado_pct) || 0,
+      postureStandingPct:   parseFloat(f.postura_em_pe_pct) || 0,
+      postureWalkingPct:    parseFloat(f.postura_caminhando_pct) || 0,
+      postureCrouchingPct:  parseFloat(f.postura_agachado_pct) || 0,
+      postureOtherPct:      parseFloat(f.postura_outro_pct) || 0,
+      postureOtherDescription: f.posture_outro_descricao ?? '',
+      meioAmbiente: f.meio_ambiente ?? '',
+      illumination: {
+        location:             f.ilum_local ?? '',
+        date:                 f.ilum_data ?? '',
+        lightingType:         f.ilum_tipo_iluminacao ?? '',
+        introduction:         f.ilum_introducao ?? '',
+        objective:            f.ilum_objetivo ?? '',
+        justification:        f.ilum_justificativa ?? '',
+        environmentDescription: f.ilum_descricao_ambiente ?? '',
+        lightingSystem:       f.ilum_sistema_iluminacao ?? '',
+        activities:           f.ilum_atividades ?? '',
+        criteria:             f.ilum_criterios ?? '',
+        measuredValues:       f.ilum_valores_medidos ?? '',
+        referenceValue:       f.ilum_valor_referencia ?? '',
+        formula:              f.ilum_formula ?? '',
+        resultLux:            f.ilum_resultado_lux ?? '',
+        interpretation:       f.ilum_interpretacao ?? '',
+        normativeReference:   f.ilum_referencia_normativa ?? '',
+        modelType:            f.ilum_tipo_modelo ?? 'SIMPLE_AVERAGE',
+        conclusion:           f.ilum_conclusao ?? '',
+        conclusionText:       f.ilum_texto_conclusao ?? '',
+        checklist: ilumChecklist.map((c: any) => ({
+          id: c.id,
+          description: c.descricao ?? '',
+          compliant: c.conforme ?? '',
+          recommendedAction: c.acao_recomendada ?? '',
+          deadline: c.prazo ?? '',
+          responsible: c.responsavel ?? '',
+          observations: c.observacoes ?? '',
+        })),
+        measurementPoints: ilumPontos.map((pt: any) => ({
+          id: pt.id,
+          label: pt.rotulo ?? '',
+          lux: pt.lux !== null ? parseFloat(pt.lux) : null,
+        })),
+        referenceLux: parseFloat(f.ilum_lux_referencia) || 0,
+      },
+      scientificMethods: metodos.map((m: any) => ({
+        id: m.id,
+        methodName: m.nome_metodo ?? '',
+        description: m.descricao ?? '',
+        result: m.resultado ?? '',
+        riskClassification: m.classificacao_risco ?? '',
+        interpretation: m.interpretacao ?? '',
+        imageDataUrl: m.imagem_url ?? '',
+        recommendations: m.recomendacoes ?? '',
+      })),
+      images: imagens.map((img: any) => ({
+        id: img.id,
+        dataUrl: img.imagem_url ?? '',
+        caption: img.legenda ?? '',
+        category: img.categoria ?? 'other',
+      })),
+      diagnosis: f.diagnostico ?? '',
+      riskLevel: f.nivel_risco ?? '',
+      improvements: melhorias.map((m: any) => ({
+        id: m.id,
+        photoDataUrl: m.foto_url ?? '',
+        hazard: m.perigo ?? '',
+        probability: m.probabilidade ?? '',
+        severity: m.gravidade ?? '',
+        grossRiskLevel: m.nivel_risco_bruto ?? '',
+        riskClassification: m.classificacao_risco ?? '',
+        riskEvaluation: m.avaliacao_risco ?? '',
+        actions: m.acoes ?? '',
+        attenuationProbability: m.probabilidade_atenuacao ?? '',
+        deadline: m.prazo ?? '',
+        responsible: m.responsavel ?? '',
+        observations: m.observacoes ?? '',
+      })),
+      checklistAnswers: checklistResp.map((ca: any) => ({
+        questionId: ca.pergunta_id_str ?? ca.pergunta_id ?? '',
+        answer: ca.resposta ?? '',
+      })),
+      rulaScore: f.pontuacao_rula ?? '',
+      risks: risks.map((r: any) => ({
+        id: r.id,
+        agent: r.agente ?? '',
+        riskFactor: r.fator_risco ?? '',
+        possibleHealthEffect: r.efeito_saude ?? '',
+        foundSituation: r.situacao_encontrada ?? '',
+        existingControl: r.controle_existente ?? '',
+        improvementProposal: r.proposta_melhoria ?? '',
+        probability: r.probabilidade ?? 1,
+        severity: r.gravidade ?? 1,
+        score: r.pontuacao ?? 1,
+        riskLevel: r.nivel_risco ?? '',
+        normativeReference: r.referencia_normativa ?? '',
+        evidenceImageDataUrl: r.imagem_evidencia_url ?? '',
+        responsible: r.responsavel ?? '',
+        deadline: r.prazo ?? '',
+        status: r.status ?? '',
+      })),
+      aep: null,
+    });
+  }
+
+  return {
+    id: p.id,
+    reportType: 'AET',
+    empresaId: p.empresa_id ?? null,
+    unidadeId: p.unidade_id ?? null,
+    consultoriaLogoDataUrl: p.logo_consultoria ?? '',
+    companyLogoDataUrl:     p.logo_empresa_resolved ?? '',
+    responsibleLogoDataUrl: p.logo_responsavel ?? '',
+    companyName:  p.nome_empresa ?? '',
+    fantasyName:  p.nome_fantasia ?? '',
+    cnpj:         p.cnpj ?? '',
+    address:      p.endereco ?? '',
+    unit:         p.unidade ?? '',
+    product:      p.produto ?? '',
+    riskDegree:   p.grau_risco ?? '',
+    location:     p.localizacao ?? '',
+    introErgonomia:   p.intro_ergonomia ?? '',
+    introObjetivo:    p.intro_objetivo ?? '',
+    introMetodologia: p.intro_metodologia ?? '',
+    evaluatorName:             p.nome_avaliador ?? '',
+    evaluatorFormation:        p.formacao_avaliador ?? '',
+    evaluatorCrefito:          p.crefito_avaliador ?? '',
+    evaluatorCompany:          p.empresa_avaliador ?? '',
+    evaluatorSignatureDataUrl: p.assinatura_avaliador ?? '',
+    date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
+    functions,
+  };
 }
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
@@ -636,5 +752,5 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-export { saveAET, loadAllAET };
+export { saveAET, loadAllAET, loadSingleAET };
 export default router;
