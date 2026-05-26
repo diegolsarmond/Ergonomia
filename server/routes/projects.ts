@@ -5,8 +5,8 @@
 import { Router } from 'express';
 import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
-import { saveAEP, loadAllAEP } from './aep.js';
-import { saveAET, loadAllAET } from './aet.js';
+import { saveAEP, loadAllAEP, loadSingleAEP } from './aep.js';
+import { saveAET, loadAllAET, loadSingleAET } from './aet.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
 
 const router = Router();
@@ -117,6 +117,36 @@ router.get('/', async (_req, res) => {
     client.release();
   }
 });
+
+// ─── GET /api/projects/:id — busca detalhes completos de um projeto AEP ou AET ─
+
+router.get('/:id', async (req, res) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(req.params.id)) {
+    res.status(400).json({ error: 'ID de projeto inválido' });
+    return;
+  }
+  const client = await pool.connect();
+  try {
+    const aepProject = await loadSingleAEP(client, req.params.id);
+    if (aepProject) {
+      res.json(aepProject);
+      return;
+    }
+    const aetProject = await loadSingleAET(client, req.params.id);
+    if (aetProject) {
+      res.json(aetProject);
+      return;
+    }
+    res.status(404).json({ error: 'Projeto não encontrado' });
+  } catch (err) {
+    console.error('GET /api/projects/:id error:', err);
+    res.status(500).json({ error: String(err) });
+  } finally {
+    client.release();
+  }
+});
+
 
 // ─── POST /api/projects — cria em AEP ou AET conforme reportType ─────────────
 

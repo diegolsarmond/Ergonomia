@@ -254,6 +254,7 @@ export const illuminanceParamsApi = {
 // ── Projetos ─────────────────────────────────────────────────────────────────
 export const projectsApi = {
   list:   ()                          => get<any[]>('/projects'),
+  get:    (id: string)                => get<any>(`/projects/${id}`),
   save:   (project: any)              => post<any>('/projects', project),
   update: (id: string, project: any)  => put<any>(`/projects/${id}`, project),
   delete: (id: string)                => del(`/projects/${id}`),

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AETProject, AETFunction, ChecklistQuestion, ScientificMethodTemplate,
@@ -19,6 +19,8 @@ import {
 interface AETContextType {
   projects: AETProject[];
   loading: boolean;
+  refetch: (silent?: boolean) => Promise<void>;
+  fetchProjectDetails: (id: string) => Promise<AETProject>;
   addProject: (project: Omit<AETProject, 'id' | 'functions'>) => Promise<string>;
   updateProject: (id: string, project: Partial<AETProject>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
@@ -118,65 +120,90 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [biomechanicalRiskFactors, setBiomechanicalRiskFactors] = useState<BiomechanicalRiskFactor[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const refetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const [
+        rawProjects, rawClients, rawChecklist, rawMethods,
+        rawCompanies, rawUnits, rawSectors, rawJobRoles,
+        rawEpis, rawEquipment, rawSurvey, rawPauses,
+        rawShifts, rawRisks, rawTexts, rawBiomech,
+        rawIllum,
+      ] = await Promise.all([
+        projectsApi.list(),
+        clientsApi.list(),
+        checklistQuestionsApi.list(),
+        scientificMethodsApi.list(),
+        companiesApi.list(),
+        unitsApi.list(),
+        sectorsApi.list(),
+        jobRolesApi.list(),
+        episApi.list(),
+        equipmentApi.list(),
+        surveyQuestionsApi.list(),
+        pausesApi.list(),
+        shiftsApi.list(),
+        riskClassificationsApi.list(),
+        reportTextsApi.list(),
+        biomechanicalFactorsApi.list(),
+        illuminanceParamsApi.list(),
+      ]);
+
+      // Normaliza projetos (garante campos obrigatórios e arrays)
+      const { projects: normalized } = normalizeProjectsOnLoad(rawProjects as AETProject[]);
+      setProjects(normalized as AETProject[]);
+
+      setClients(rawClients as Client[]);
+      setChecklistQuestions(rawChecklist as ChecklistQuestion[]);
+      setScientificMethodTemplates(rawMethods as ScientificMethodTemplate[]);
+      setCompanies(rawCompanies as Company[]);
+      setUnits(rawUnits as Unit[]);
+      setSectors(rawSectors as Sector[]);
+      setJobRoles(rawJobRoles as StandardJobRole[]);
+      setEPIs(rawEpis as EPI[]);
+      setEquipment(rawEquipment as StandardEquipment[]);
+      setSurveyQuestions(rawSurvey as SurveyQuestion[]);
+      setPauses(rawPauses as StandardPause[]);
+      setShifts(rawShifts as Shift[]);
+      setRiskClassifications(rawRisks as RiskClassification[]);
+      setReportTexts(rawTexts as ReportTextTemplate[]);
+      setBiomechanicalRiskFactors(rawBiomech as BiomechanicalRiskFactor[]);
+      setIlluminanceNormativeParams(rawIllum as IlluminanceNormativeParameter[]);
+    } catch (err) {
+      console.error('Erro ao recarregar dados do servidor:', err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [
-          rawProjects, rawClients, rawChecklist, rawMethods,
-          rawCompanies, rawUnits, rawSectors, rawJobRoles,
-          rawEpis, rawEquipment, rawSurvey, rawPauses,
-          rawShifts, rawRisks, rawTexts, rawBiomech,
-          rawIllum,
-        ] = await Promise.all([
-          projectsApi.list(),
-          clientsApi.list(),
-          checklistQuestionsApi.list(),
-          scientificMethodsApi.list(),
-          companiesApi.list(),
-          unitsApi.list(),
-          sectorsApi.list(),
-          jobRolesApi.list(),
-          episApi.list(),
-          equipmentApi.list(),
-          surveyQuestionsApi.list(),
-          pausesApi.list(),
-          shiftsApi.list(),
-          riskClassificationsApi.list(),
-          reportTextsApi.list(),
-          biomechanicalFactorsApi.list(),
-          illuminanceParamsApi.list(),
-        ]);
+    refetch();
+  }, [refetch]);
 
-        // Normaliza projetos (garante campos obrigatórios e arrays)
-        const { projects: normalized } = normalizeProjectsOnLoad(rawProjects as AETProject[]);
-        setProjects(normalized as AETProject[]);
-
-        setClients(rawClients as Client[]);
-        setChecklistQuestions(rawChecklist as ChecklistQuestion[]);
-        setScientificMethodTemplates(rawMethods as ScientificMethodTemplate[]);
-        setCompanies(rawCompanies as Company[]);
-        setUnits(rawUnits as Unit[]);
-        setSectors(rawSectors as Sector[]);
-        setJobRoles(rawJobRoles as StandardJobRole[]);
-        setEPIs(rawEpis as EPI[]);
-        setEquipment(rawEquipment as StandardEquipment[]);
-        setSurveyQuestions(rawSurvey as SurveyQuestion[]);
-        setPauses(rawPauses as StandardPause[]);
-        setShifts(rawShifts as Shift[]);
-        setRiskClassifications(rawRisks as RiskClassification[]);
-        setReportTexts(rawTexts as ReportTextTemplate[]);
-        setBiomechanicalRiskFactors(rawBiomech as BiomechanicalRiskFactor[]);
-        setIlluminanceNormativeParams(rawIllum as IlluminanceNormativeParameter[]);
-      } catch (err) {
-        console.error('Erro ao carregar dados do servidor:', err);
-      } finally {
-        setLoading(false);
-      }
+  useEffect(() => {
+    const handleFocus = () => {
+      // Recarrega silenciosamente quando a aba do navegador ganha foco
+      refetch(true);
     };
-    loadData();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   // ── Projetos ───────────────────────────────────────────────────────────────
+
+  const fetchProjectDetails = async (id: string) => {
+    const rawProject = await projectsApi.get(id);
+    const normalized = normalizeProject(rawProject as AETProject);
+    setProjects(prev => {
+      const exists = prev.some(p => p.id === id);
+      if (exists) {
+        return prev.map(p => p.id === id ? normalized : p);
+      } else {
+        return [...prev, normalized];
+      }
+    });
+    return normalized;
+  };
 
   const saveProject = async (project: AETProject) => {
     await projectsApi.update(project.id, project);
@@ -392,7 +419,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AETContext.Provider value={{
-      projects, loading, addProject, updateProject, deleteProject, getProject,
+      projects, loading, refetch, fetchProjectDetails, addProject, updateProject, deleteProject, getProject,
       addFunction, updateFunction, deleteFunction, duplicateFunction,
       exportProjectJSON, importProjectJSON, resetDevelopmentData,
       clients, addClient, updateClient, deleteClient,

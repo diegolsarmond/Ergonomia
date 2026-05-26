@@ -82,24 +82,51 @@ export const FunctionForm = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('PROJECTS_EDIT');
   const {
-    getProject, addFunction, updateFunction, checklistQuestions,
+    getProject, fetchProjectDetails, addFunction, updateFunction, checklistQuestions,
     scientificMethodTemplates, equipment, epis, surveyQuestions,
     shifts, addShift, pauses, companies, units, sectors, jobRoles
   } = useAET();
   const navigate = useNavigate();
 
+  const [loadingProject, setLoadingProject] = useState(true);
+  const [isDataInitialized, setIsDataInitialized] = useState(false);
+
+  React.useEffect(() => {
+    if (id) {
+      setLoadingProject(true);
+      fetchProjectDetails(id)
+        .catch(err => console.error(err))
+        .finally(() => setLoadingProject(false));
+    }
+  }, [id, fetchProjectDetails]);
+
   const project = getProject(id!);
   const [activeTab, setActiveTab] = useState(0);
 
   const isNew = funcId === 'new';
-  const initialData = isNew 
-    ? { ...EMPTY_FUNCTION } 
-    : project?.functions.find((f) => f.id === funcId) || ({} as AETFunction);
-  
-  const [formData, setFormData] = useState<AETFunction>(initialData);
+  const [formData, setFormData] = useState<AETFunction>(EMPTY_FUNCTION);
   const [error, setError] = useState<string | null>(null);
 
-  if (!project || (!isNew && !initialData.id)) return <div className="p-8">Função não encontrada.</div>;
+  React.useEffect(() => {
+    if (!loadingProject && project && !isDataInitialized) {
+      const initialData = isNew 
+        ? { ...EMPTY_FUNCTION } 
+        : project.functions.find((f) => f.id === funcId) || ({} as AETFunction);
+      setFormData(initialData);
+      setIsDataInitialized(true);
+    }
+  }, [loadingProject, project, isNew, funcId, isDataInitialized]);
+
+  if (loadingProject || !isDataInitialized) return (
+    <div className="flex items-center justify-center h-full min-h-[50vh] p-8">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-3 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+        <p className="text-slate-400 text-sm font-medium">Carregando detalhes do projeto...</p>
+      </div>
+    </div>
+  );
+
+  if (!project || (!isNew && !formData.id)) return <div className="p-8">Função não encontrada.</div>;
 
   // ── AEP: delegate to dedicated form ────────────────────────────────────────
   if (project.reportType === 'AEP') {
@@ -126,7 +153,7 @@ export const FunctionForm = () => {
       <AEPFunctionForm
         project={project}
         funcId={funcId!}
-        initialData={initialData}
+        initialData={formData}
         onSave={handleAEPSave}
         onSaveAndBack={handleAEPSaveAndBack}
       />

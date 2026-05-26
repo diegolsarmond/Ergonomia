@@ -27,7 +27,12 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'Empresa' | 'Responsável' | 'Textos de Introdução'>('Empresa');
+  const [currentPage, setCurrentPage] = useState(1);
   const importRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [reportType, searchQuery]);
 
   const quillModules = {
     toolbar: [
@@ -126,40 +131,68 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
     if (importRef.current) importRef.current.value = '';
   };
 
-  const renderProjectCard = (project: typeof projects[number]) => (
-    <Card key={project.id} className="card-interactive group" onClick={() => navigate(`/project/${project.id}`)}>
-      <CardContent className="!p-5">
-        <div className="flex items-start justify-between mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-sm shadow-teal-500/20">
+  const itemsPerPage = 20;
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const renderProjectRow = (project: typeof projects[number]) => (
+    <tr 
+      key={project.id} 
+      onClick={() => navigate(`/project/${project.id}`)}
+      className="group border-b border-slate-100 hover:bg-slate-50/70 transition-colors cursor-pointer"
+    >
+      <td className="py-4 pl-4 pr-3 text-sm font-medium text-slate-900 max-w-[200px] truncate">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm shadow-teal-500/10">
             {project.companyName?.charAt(0)?.toUpperCase() || 'P'}
           </div>
+          <div>
+            <div className="font-semibold text-slate-800 text-[14px] truncate">{project.companyName}</div>
+            {project.fantasyName && <div className="text-[11px] text-teal-600 font-medium truncate">{project.fantasyName}</div>}
+          </div>
+        </div>
+      </td>
+      <td className="py-4 px-3 text-sm text-slate-500 hidden sm:table-cell">
+        <span className="text-slate-600">{project.cnpj || '-'}</span>
+      </td>
+      <td className="py-4 px-3 text-sm text-slate-500 hidden md:table-cell">
+        <div className="flex items-center gap-1.5">
+          <MapPin className="w-3.5 h-3.5 text-slate-400 animate-pulse" />
+          <span className="truncate">{project.location || 'Local não definido'}</span>
+        </div>
+      </td>
+      <td className="py-4 px-3 text-sm text-slate-500 hidden lg:table-cell">
+        <div className="flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+          <span>{project.date ? new Date(project.date).toLocaleDateString('pt-BR') : '-'}</span>
+        </div>
+      </td>
+      <td className="py-4 px-3 text-sm text-slate-500">
+        <span className="stat-badge">{project.functions.length} funções</span>
+      </td>
+      <td className="py-4 pl-3 pr-4 text-right text-sm font-medium">
+        <div className="flex items-center justify-end gap-2">
           <PermissionGuard permission="PROJECTS_DELETE">
-            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}>
-              <Trash2 className="w-4 h-4 text-red-400" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="opacity-0 group-hover:opacity-100 transition-opacity !p-1.5 hover:!bg-red-50" 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (confirm('Deseja realmente excluir este projeto?')) {
+                  deleteProject(project.id); 
+                }
+              }}
+            >
+              <Trash2 className="w-4 h-4 text-red-400 hover:text-red-600" />
             </Button>
           </PermissionGuard>
         </div>
-
-        <h3 className="font-semibold text-slate-800 text-[15px] mb-1 truncate">{project.companyName}</h3>
-        {project.fantasyName && <p className="text-xs text-teal-600 font-medium mb-3">{project.fantasyName}</p>}
-
-        <div className="space-y-1.5 mb-4">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <MapPin className="w-3.5 h-3.5 text-slate-400" />
-            <span className="truncate">{project.location || 'Local não definido'}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <span>{project.date ? new Date(project.date).toLocaleDateString('pt-BR') : '-'}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <span className="stat-badge">{project.functions.length} funções</span>
-          <span className="text-[11px] text-slate-400">CNPJ: {project.cnpj || '-'}</span>
-        </div>
-      </CardContent>
-    </Card>
+      </td>
+    </tr>
   );
 
   return (
@@ -215,7 +248,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
         </div>
       )}
 
-      {/* ── Projects Grid ────────────────────────────────────────── */}
+      {/* ── Projects List ────────────────────────────────────────── */}
       {typeProjects.length === 0 ? (
         <div className="empty-state">
           <Building2 className="w-14 h-14 mx-auto text-slate-300 mb-4" />
@@ -233,9 +266,95 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
           <p className="text-slate-500 text-sm font-medium">Nenhuma empresa encontrada para "{searchQuery}"</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-          {filteredProjects.map(renderProjectCard)}
-        </div>
+        <>
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/75 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <th className="py-3.5 pl-4 pr-3">Empresa</th>
+                    <th className="py-3.5 px-3 hidden sm:table-cell">CNPJ</th>
+                    <th className="py-3.5 px-3 hidden md:table-cell">Localização</th>
+                    <th className="py-3.5 px-3 hidden lg:table-cell">Data da Análise</th>
+                    <th className="py-3.5 px-3">Funções</th>
+                    <th className="py-3.5 pl-3 pr-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {paginatedProjects.map(renderProjectRow)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 mt-4 rounded-xl shadow-sm border">
+              <div className="flex flex-1 justify-between sm:hidden">
+                <Button
+                  variant="outline"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                >
+                  Próximo
+                </Button>
+              </div>
+              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-slate-700">
+                    Exibindo <span className="font-semibold">{Math.min((currentPage - 1) * itemsPerPage + 1, filteredProjects.length)}</span> a{' '}
+                    <span className="font-semibold">{Math.min(currentPage * itemsPerPage, filteredProjects.length)}</span> de{' '}
+                    <span className="font-semibold">{filteredProjects.length}</span> resultados
+                  </p>
+                </div>
+                <div>
+                  <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+                    >
+                      <span className="sr-only">Anterior</span>
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        aria-current={currentPage === page ? 'page' : undefined}
+                        className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 ${
+                          currentPage === page
+                            ? 'z-10 bg-teal-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600'
+                            : 'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:outline-offset-0 bg-white'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+                    >
+                      <span className="sr-only">Próximo</span>
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {isModalOpen && (
