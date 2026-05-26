@@ -267,12 +267,15 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProject = async (id: string, projectData: Partial<AETProject>) => {
+    let updatedProject: AETProject | null = null;
     setProjects(prev => {
       const next = prev.map(p => p.id === id ? { ...p, ...projectData } : p);
-      const updated = next.find(p => p.id === id)!;
-      projectsApi.update(id, updated).catch(console.error);
+      updatedProject = next.find(p => p.id === id)!;
       return next;
     });
+    if (updatedProject) {
+      await projectsApi.update(id, updatedProject);
+    }
   };
 
   const deleteProject = async (id: string) => {
@@ -302,6 +305,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateFunction = async (projectId: string, functionId: string, funcData: Partial<AETFunction>) => {
+    let updatedProject: AETProject | null = null;
     setProjects(prev => {
       const next = prev.map(p =>
         p.id === projectId
@@ -313,25 +317,31 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           : p
       );
-      const updated = next.find(p => p.id === projectId)!;
-      projectsApi.update(projectId, updated).catch(console.error);
+      updatedProject = next.find(p => p.id === projectId)!;
       return next;
     });
+    if (updatedProject) {
+      await projectsApi.update(projectId, updatedProject);
+    }
   };
 
   const deleteFunction = async (projectId: string, functionId: string) => {
+    let updatedProject: AETProject | null = null;
     setProjects(prev => {
       const next = prev.map(p =>
         p.id === projectId ? { ...p, functions: p.functions.filter(f => f.id !== functionId) } : p
       );
-      const updated = next.find(p => p.id === projectId)!;
-      projectsApi.update(projectId, updated).catch(console.error);
+      updatedProject = next.find(p => p.id === projectId)!;
       return next;
     });
+    if (updatedProject) {
+      await projectsApi.update(projectId, updatedProject);
+    }
   };
 
   const duplicateFunction = async (projectId: string, functionId: string) => {
     let finalId = '';
+    let updatedProject: AETProject | null = null;
     setProjects(prev => {
       const project = prev.find(p => p.id === projectId);
       const func = project?.functions.find(f => f.id === functionId);
@@ -343,10 +353,12 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newFunc.illumination.checklist = newFunc.illumination.checklist.map((c: any) => ({ ...c, id: uuidv4() }));
       finalId = newFunc.id;
       const next = prev.map(p => p.id === projectId ? { ...p, functions: [...p.functions, newFunc] } : p);
-      const updated = next.find(p => p.id === projectId)!;
-      projectsApi.update(projectId, updated).catch(console.error);
+      updatedProject = next.find(p => p.id === projectId)!;
       return next;
     });
+    if (updatedProject) {
+      await projectsApi.update(projectId, updatedProject);
+    }
     return finalId;
   };
 
@@ -383,12 +395,15 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateClient = async (id: string, clientData: Partial<Client>) => {
+    let updatedClient: Client | null = null;
     setClients(prev => {
       const next = prev.map(c => c.id === id ? { ...c, ...clientData } : c);
-      const updated = next.find(c => c.id === id)!;
-      clientsApi.update(id, updated).catch(console.error);
+      updatedClient = next.find(c => c.id === id)!;
       return next;
     });
+    if (updatedClient) {
+      await clientsApi.update(id, updatedClient);
+    }
   };
 
   const deleteClient = async (id: string) => {
