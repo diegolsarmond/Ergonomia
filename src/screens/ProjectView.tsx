@@ -34,9 +34,10 @@ export const ProjectView = () => {
 
   const project = getProject(id!);
 
-  // Empresa vinculada ao projeto
+  // Empresa vinculada ao projeto — prioriza o ID salvo no projeto
   const matchedCompany = project
-    ? companies.find(c =>
+    ? companies.find(c => c.id === (project as any).empresaId) ??
+      companies.find(c =>
         (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g, '') === project.cnpj.replace(/\D/g, '')) ||
         c.razaoSocial === project.companyName ||
         c.nomeFantasia === project.companyName
@@ -264,13 +265,17 @@ export const ProjectView = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Group functions by sector name
+  // Group functions by sector — prefer setorId match, fall back to sector name
   const functionsBySector: Record<string, AETFunction[]> = {};
   const matchedFuncIds = new Set<string>();
 
   companySectors.forEach(sector => {
     const sNameLower = sector.name.trim().toLowerCase();
-    const funcs = project.functions.filter(f => (f.sector || '').trim().toLowerCase() === sNameLower);
+    const funcs = project.functions.filter(f => {
+      const fSetorId = (f as any).setorId || f.aep?.identification?.sectorId;
+      if (fSetorId) return fSetorId === sector.id;
+      return (f.sector || '').trim().toLowerCase() === sNameLower;
+    });
     functionsBySector[sector.id] = funcs;
     funcs.forEach(f => matchedFuncIds.add(f.id));
   });

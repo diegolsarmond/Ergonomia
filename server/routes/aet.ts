@@ -324,10 +324,24 @@ async function loadAllAET(client: PoolClient): Promise<any[]> {
   `);
   const result: any[] = [];
 
+  const projectIds = projects.map(p => p.id);
+  const { rows: allFuncoes } = projectIds.length > 0 ? await client.query(
+    'SELECT id, projeto_id, nome_funcao, unidade, setor, data_analise, num_funcionarios FROM aet_funcoes WHERE projeto_id = ANY($1::uuid[]) ORDER BY ordem',
+    [projectIds]
+  ) : { rows: [] };
+
+  const funcoesByProjectMap = new Map<string, any[]>();
+  for (const f of allFuncoes) {
+    let list = funcoesByProjectMap.get(f.projeto_id);
+    if (!list) {
+      list = [];
+      funcoesByProjectMap.set(f.projeto_id, list);
+    }
+    list.push(f);
+  }
+
   for (const p of projects) {
-    const { rows: funcoes } = await client.query(
-      'SELECT id, nome_funcao, unidade, setor, data_analise, num_funcionarios FROM aet_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
-    );
+    const funcoes = funcoesByProjectMap.get(p.id) ?? [];
 
     const functions: any[] = funcoes.map((f: any) => ({
       id: f.id,
@@ -392,35 +406,72 @@ async function loadSingleAET(client: PoolClient, id: string): Promise<any | null
     'SELECT * FROM aet_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
   );
 
+  const funcIds = funcoes.map(f => f.id);
+
+  let allEquipamentos: any[] = [];
+  let allEpis: any[] = [];
+  let allMetodos: any[] = [];
+  let allIlumPontos: any[] = [];
+  let allIlumChecklist: any[] = [];
+  let allImagens: any[] = [];
+  let allRisks: any[] = [];
+  let allMelhorias: any[] = [];
+  let allChecklistResp: any[] = [];
+
+  if (funcIds.length > 0) {
+    allEquipamentos = (await client.query('SELECT * FROM aet_funcao_equipamentos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allEpis = (await client.query('SELECT * FROM aet_funcao_epis WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allMetodos = (await client.query('SELECT * FROM aet_funcao_metodos_cientificos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allIlumPontos = (await client.query('SELECT * FROM aet_funcao_iluminancia_pontos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allIlumChecklist = (await client.query('SELECT * FROM aet_funcao_iluminancia_checklist WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allImagens = (await client.query('SELECT * FROM aet_funcao_imagens WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allRisks = (await client.query('SELECT * FROM aet_funcao_riscos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allMelhorias = (await client.query('SELECT * FROM aet_funcao_melhorias WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allChecklistResp = (await client.query('SELECT * FROM aet_funcao_checklist WHERE funcao_id = ANY($1::uuid[])', [funcIds])).rows;
+  }
+
+  const groupByFuncao = <T extends { funcao_id: string }>(rows: T[]): Map<string, T[]> => {
+    const map = new Map<string, T[]>();
+    for (const row of rows) {
+      let list = map.get(row.funcao_id);
+      if (!list) {
+        list = [];
+        map.set(row.funcao_id, list);
+      }
+      list.push(row);
+    }
+    return map;
+  };
+
+  const equipamentosMap = groupByFuncao(allEquipamentos);
+  const episMap = groupByFuncao(allEpis);
+  const metodosMap = groupByFuncao(allMetodos);
+  const ilumPontosMap = groupByFuncao(allIlumPontos);
+  const ilumChecklistMap = groupByFuncao(allIlumChecklist);
+  const imagensMap = groupByFuncao(allImagens);
+  const risksMap = groupByFuncao(allRisks);
+  const melhoriasMap = groupByFuncao(allMelhorias);
+  const checklistRespMap = groupByFuncao(allChecklistResp);
+
   const functions: any[] = [];
   for (const f of funcoes) {
-    const [
-      { rows: equipamentos },
-      { rows: epis },
-      { rows: metodos },
-      { rows: ilumPontos },
-      { rows: ilumChecklist },
-      { rows: imagens },
-      { rows: risks },
-      { rows: melhorias },
-      { rows: checklistResp },
-    ] = await Promise.all([
-      client.query('SELECT * FROM aet_funcao_equipamentos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_epis WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_metodos_cientificos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_iluminancia_pontos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_iluminancia_checklist WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_imagens WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_riscos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_melhorias WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aet_funcao_checklist WHERE funcao_id=$1', [f.id]),
-    ]);
+    const equipamentos = equipamentosMap.get(f.id) ?? [];
+    const epis = episMap.get(f.id) ?? [];
+    const metodos = metodosMap.get(f.id) ?? [];
+    const ilumPontos = ilumPontosMap.get(f.id) ?? [];
+    const ilumChecklist = ilumChecklistMap.get(f.id) ?? [];
+    const imagens = imagensMap.get(f.id) ?? [];
+    const risks = risksMap.get(f.id) ?? [];
+    const melhorias = melhoriasMap.get(f.id) ?? [];
+    const checklistResp = checklistRespMap.get(f.id) ?? [];
 
     functions.push({
       id: f.id,
       name: f.nome_funcao ?? '',
       unit: f.unidade ?? '',
       sector: f.setor ?? '',
+      setorId: f.setor_id ?? null,
+      unidadeId: f.unidade_id ?? null,
       analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
       numEmployees: f.num_funcionarios ?? '',
       demandOrigin: f.origem_demanda ?? '',

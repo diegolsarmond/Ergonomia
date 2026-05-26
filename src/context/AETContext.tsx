@@ -120,60 +120,81 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [biomechanicalRiskFactors, setBiomechanicalRiskFactors] = useState<BiomechanicalRiskFactor[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const lastRefetchTimeRef = React.useRef<number>(0);
+  const refetchPromiseRef = React.useRef<Promise<void> | null>(null);
+
   const refetch = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const [
-        rawProjects, rawClients, rawChecklist, rawMethods,
-        rawCompanies, rawUnits, rawSectors, rawJobRoles,
-        rawEpis, rawEquipment, rawSurvey, rawPauses,
-        rawShifts, rawRisks, rawTexts, rawBiomech,
-        rawIllum,
-      ] = await Promise.all([
-        projectsApi.list(),
-        clientsApi.list(),
-        checklistQuestionsApi.list(),
-        scientificMethodsApi.list(),
-        companiesApi.list(),
-        unitsApi.list(),
-        sectorsApi.list(),
-        jobRolesApi.list(),
-        episApi.list(),
-        equipmentApi.list(),
-        surveyQuestionsApi.list(),
-        pausesApi.list(),
-        shiftsApi.list(),
-        riskClassificationsApi.list(),
-        reportTextsApi.list(),
-        biomechanicalFactorsApi.list(),
-        illuminanceParamsApi.list(),
-      ]);
-
-      // Normaliza projetos (garante campos obrigatórios e arrays)
-      const { projects: normalized } = normalizeProjectsOnLoad(rawProjects as AETProject[]);
-      setProjects(normalized as AETProject[]);
-
-      setClients(rawClients as Client[]);
-      setChecklistQuestions(rawChecklist as ChecklistQuestion[]);
-      setScientificMethodTemplates(rawMethods as ScientificMethodTemplate[]);
-      setCompanies(rawCompanies as Company[]);
-      setUnits(rawUnits as Unit[]);
-      setSectors(rawSectors as Sector[]);
-      setJobRoles(rawJobRoles as StandardJobRole[]);
-      setEPIs(rawEpis as EPI[]);
-      setEquipment(rawEquipment as StandardEquipment[]);
-      setSurveyQuestions(rawSurvey as SurveyQuestion[]);
-      setPauses(rawPauses as StandardPause[]);
-      setShifts(rawShifts as Shift[]);
-      setRiskClassifications(rawRisks as RiskClassification[]);
-      setReportTexts(rawTexts as ReportTextTemplate[]);
-      setBiomechanicalRiskFactors(rawBiomech as BiomechanicalRiskFactor[]);
-      setIlluminanceNormativeParams(rawIllum as IlluminanceNormativeParameter[]);
-    } catch (err) {
-      console.error('Erro ao recarregar dados do servidor:', err);
-    } finally {
-      if (!silent) setLoading(false);
+    if (refetchPromiseRef.current) {
+      return refetchPromiseRef.current;
     }
+
+    const now = Date.now();
+    if (silent && now - lastRefetchTimeRef.current < 10000) {
+      return;
+    }
+
+    if (!silent) setLoading(true);
+
+    const promise = (async () => {
+      try {
+        const [
+          rawProjects, rawClients, rawChecklist, rawMethods,
+          rawCompanies, rawUnits, rawSectors, rawJobRoles,
+          rawEpis, rawEquipment, rawSurvey, rawPauses,
+          rawShifts, rawRisks, rawTexts, rawBiomech,
+          rawIllum,
+        ] = await Promise.all([
+          projectsApi.list(),
+          clientsApi.list(),
+          checklistQuestionsApi.list(),
+          scientificMethodsApi.list(),
+          companiesApi.list(),
+          unitsApi.list(),
+          sectorsApi.list(),
+          jobRolesApi.list(),
+          episApi.list(),
+          equipmentApi.list(),
+          surveyQuestionsApi.list(),
+          pausesApi.list(),
+          shiftsApi.list(),
+          riskClassificationsApi.list(),
+          reportTextsApi.list(),
+          biomechanicalFactorsApi.list(),
+          illuminanceParamsApi.list(),
+        ]);
+
+        // Normaliza projetos (garante campos obrigatórios e arrays)
+        const { projects: normalized } = normalizeProjectsOnLoad(rawProjects as AETProject[]);
+        setProjects(normalized as AETProject[]);
+
+        setClients(rawClients as Client[]);
+        setChecklistQuestions(rawChecklist as ChecklistQuestion[]);
+        setScientificMethodTemplates(rawMethods as ScientificMethodTemplate[]);
+        setCompanies(rawCompanies as Company[]);
+        setUnits(rawUnits as Unit[]);
+        setSectors(rawSectors as Sector[]);
+        setJobRoles(rawJobRoles as StandardJobRole[]);
+        setEPIs(rawEpis as EPI[]);
+        setEquipment(rawEquipment as StandardEquipment[]);
+        setSurveyQuestions(rawSurvey as SurveyQuestion[]);
+        setPauses(rawPauses as StandardPause[]);
+        setShifts(rawShifts as Shift[]);
+        setRiskClassifications(rawRisks as RiskClassification[]);
+        setReportTexts(rawTexts as ReportTextTemplate[]);
+        setBiomechanicalRiskFactors(rawBiomech as BiomechanicalRiskFactor[]);
+        setIlluminanceNormativeParams(rawIllum as IlluminanceNormativeParameter[]);
+        
+        lastRefetchTimeRef.current = Date.now();
+      } catch (err) {
+        console.error('Erro ao recarregar dados do servidor:', err);
+      } finally {
+        if (!silent) setLoading(false);
+        refetchPromiseRef.current = null;
+      }
+    })();
+
+    refetchPromiseRef.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {

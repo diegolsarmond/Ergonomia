@@ -355,10 +355,24 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
   `);
   const result: any[] = [];
 
+  const projectIds = projects.map(p => p.id);
+  const { rows: allFuncoes } = projectIds.length > 0 ? await client.query(
+    'SELECT id, projeto_id, nome_funcao, unidade_filial, setor_area, data_analise, num_funcionarios FROM aep_funcoes WHERE projeto_id = ANY($1::uuid[]) ORDER BY ordem',
+    [projectIds]
+  ) : { rows: [] };
+
+  const funcoesByProjectMap = new Map<string, any[]>();
+  for (const f of allFuncoes) {
+    let list = funcoesByProjectMap.get(f.projeto_id);
+    if (!list) {
+      list = [];
+      funcoesByProjectMap.set(f.projeto_id, list);
+    }
+    list.push(f);
+  }
+
   for (const p of projects) {
-    const { rows: funcoes } = await client.query(
-      'SELECT id, nome_funcao, unidade_filial, setor_area, data_analise, num_funcionarios FROM aep_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
-    );
+    const funcoes = funcoesByProjectMap.get(p.id) ?? [];
 
     const functions: any[] = funcoes.map((f: any) => ({
       id: f.id,
@@ -414,40 +428,95 @@ async function loadSingleAEP(client: PoolClient, id: string): Promise<any | null
     'SELECT * FROM aep_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
   );
 
+  const funcIds = funcoes.map(f => f.id);
+
+  let allFotos: any[] = [];
+  let allBiomecanica: any[] = [];
+  let allFerramentas: any[] = [];
+  let allIluminancias: any[] = [];
+  let allPsicossocial: any[] = [];
+  let allGatilhos: any[] = [];
+  let allRaci: any[] = [];
+
+  if (funcIds.length > 0) {
+    allFotos = (await client.query('SELECT * FROM aep_funcao_fotos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allBiomecanica = (await client.query('SELECT * FROM aep_funcao_biomecanica WHERE funcao_id = ANY($1::uuid[]) ORDER BY categoria, ordem', [funcIds])).rows;
+    allFerramentas = (await client.query('SELECT * FROM aep_funcao_ferramentas_cientificas WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allIluminancias = (await client.query('SELECT * FROM aep_funcao_iluminancia WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allPsicossocial = (await client.query('SELECT * FROM aep_funcao_psicossocial WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allGatilhos = (await client.query('SELECT * FROM aep_funcao_gatilhos WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+    allRaci = (await client.query('SELECT * FROM aep_funcao_acoes_raci WHERE funcao_id = ANY($1::uuid[]) ORDER BY ordem', [funcIds])).rows;
+  }
+
+  const groupByFuncao = <T extends { funcao_id: string }>(rows: T[]): Map<string, T[]> => {
+    const map = new Map<string, T[]>();
+    for (const row of rows) {
+      let list = map.get(row.funcao_id);
+      if (!list) {
+        list = [];
+        map.set(row.funcao_id, list);
+      }
+      list.push(row);
+    }
+    return map;
+  };
+
+  const fotosMap = groupByFuncao(allFotos);
+  const biomecanicaMap = groupByFuncao(allBiomecanica);
+  const ferramentasMap = groupByFuncao(allFerramentas);
+  const iluminanciasMap = groupByFuncao(allIluminancias);
+  const psicossocialMap = groupByFuncao(allPsicossocial);
+  const gatilhosMap = groupByFuncao(allGatilhos);
+  const raciMap = groupByFuncao(allRaci);
+
+  const ilumIds = allIluminancias.map((ilum: any) => ilum.id);
+  let allLinhas: any[] = [];
+  let allPontos: any[] = [];
+  let allVerificacao: any[] = [];
+  let allInconsistencias: any[] = [];
+
+  if (ilumIds.length > 0) {
+    allLinhas = (await client.query('SELECT * FROM aep_funcao_iluminancia_linhas WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY ordem', [ilumIds])).rows;
+    allPontos = (await client.query('SELECT * FROM aep_funcao_iluminancia_pontos WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY linha, coluna', [ilumIds])).rows;
+    allVerificacao = (await client.query('SELECT * FROM aep_funcao_iluminancia_verificacao WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY ordem', [ilumIds])).rows;
+    allInconsistencias = (await client.query('SELECT * FROM aep_funcao_iluminancia_inconsistencias WHERE iluminancia_id = ANY($1::uuid[]) ORDER BY ordem', [ilumIds])).rows;
+  }
+
+  const groupByIluminancia = <T extends { iluminancia_id: string }>(rows: T[]): Map<string, T[]> => {
+    const map = new Map<string, T[]>();
+    for (const row of rows) {
+      let list = map.get(row.iluminancia_id);
+      if (!list) {
+        list = [];
+        map.set(row.iluminancia_id, list);
+      }
+      list.push(row);
+    }
+    return map;
+  };
+
+  const linhasMap = groupByIluminancia(allLinhas);
+  const pontosMap = groupByIluminancia(allPontos);
+  const verificacaoMap = groupByIluminancia(allVerificacao);
+  const inconsistenciasMap = groupByIluminancia(allInconsistencias);
+
   const functions: any[] = [];
   for (const f of funcoes) {
-    const [
-      { rows: fotos },
-      { rows: biomecanica },
-      { rows: ferramentas },
-      { rows: iluminancias },
-      { rows: psicossocial },
-      { rows: gatilhos },
-      { rows: raci },
-    ] = await Promise.all([
-      client.query('SELECT * FROM aep_funcao_fotos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aep_funcao_biomecanica WHERE funcao_id=$1 ORDER BY categoria,ordem', [f.id]),
-      client.query('SELECT * FROM aep_funcao_ferramentas_cientificas WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aep_funcao_iluminancia WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aep_funcao_psicossocial WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aep_funcao_gatilhos WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-      client.query('SELECT * FROM aep_funcao_acoes_raci WHERE funcao_id=$1 ORDER BY ordem', [f.id]),
-    ]);
+    const fotos = fotosMap.get(f.id) ?? [];
+    const biomecanica = biomecanicaMap.get(f.id) ?? [];
+    const ferramentas = ferramentasMap.get(f.id) ?? [];
+    const iluminancias = iluminanciasMap.get(f.id) ?? [];
+    const psicossocial = psicossocialMap.get(f.id) ?? [];
+    const gatilhos = gatilhosMap.get(f.id) ?? [];
+    const raci = raciMap.get(f.id) ?? [];
 
     // Reassemble illuminance measurements
     const illuminanceMeasurements: any[] = [];
     for (const ilum of iluminancias) {
-      const [
-        { rows: linhas },
-        { rows: pontos },
-        { rows: verificacao },
-        { rows: inconsistencias },
-      ] = await Promise.all([
-        client.query('SELECT * FROM aep_funcao_iluminancia_linhas WHERE iluminancia_id=$1 ORDER BY ordem', [ilum.id]),
-        client.query('SELECT * FROM aep_funcao_iluminancia_pontos WHERE iluminancia_id=$1 ORDER BY linha,coluna', [ilum.id]),
-        client.query('SELECT * FROM aep_funcao_iluminancia_verificacao WHERE iluminancia_id=$1 ORDER BY ordem', [ilum.id]),
-        client.query('SELECT * FROM aep_funcao_iluminancia_inconsistencias WHERE iluminancia_id=$1 ORDER BY ordem', [ilum.id]),
-      ]);
+      const linhas = linhasMap.get(ilum.id) ?? [];
+      const pontos = pontosMap.get(ilum.id) ?? [];
+      const verificacao = verificacaoMap.get(ilum.id) ?? [];
+      const inconsistencias = inconsistenciasMap.get(ilum.id) ?? [];
 
       illuminanceMeasurements.push({
         id: ilum.id,
@@ -651,6 +720,8 @@ async function loadSingleAEP(client: PoolClient, id: string): Promise<any | null
       name: f.nome_funcao ?? '',
       unit: f.unidade_filial ?? '',
       sector: f.setor_area ?? '',
+      setorId: f.setor_id ?? null,
+      unidadeId: f.unidade_id ?? null,
       analysisDate: f.data_analise ? (f.data_analise instanceof Date ? f.data_analise.toISOString().split('T')[0] : String(f.data_analise)) : '',
       numEmployees: f.num_funcionarios ?? '',
       // AET scalar fields (empty for AEP functions)
