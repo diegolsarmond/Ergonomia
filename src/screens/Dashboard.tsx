@@ -87,12 +87,17 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
   };
 
   const typeProjects = projects.filter(p => (p.reportType || 'AET') === reportType);
+  const sortedTypeProjects = [...typeProjects].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
   const filteredProjects = searchQuery.trim()
-    ? typeProjects.filter(p =>
+    ? sortedTypeProjects.filter(p =>
         p.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.fantasyName?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : typeProjects;
+    : sortedTypeProjects;
 
   const isAEP = reportType === 'AEP';
   const title    = isAEP ? 'Projetos AEP' : 'Projetos AET';
@@ -103,7 +108,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
   const emptyLabel = isAEP ? 'Nenhum projeto AEP encontrado' : 'Nenhum projeto AET encontrado';
 
   if (loading) return (
-    <div className="flex items-center justify-center h-full">
+    <div className="flex items-center justify-center min-h-[60vh] w-full">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-3 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
         <p className="text-slate-400 text-sm font-medium">Carregando projetos...</p>
@@ -177,6 +182,9 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
           <span>{project.date ? new Date(project.date).toLocaleDateString('pt-BR') : '-'}</span>
         </div>
+      </td>
+      <td className="py-4 px-3 text-sm text-slate-500 hidden md:table-cell">
+        <span>{project.evaluatorName || '-'}</span>
       </td>
       <td className="py-4 px-3 text-sm text-slate-500">
         <span className="stat-badge">{project.functions.length} funções</span>
@@ -296,6 +304,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
                     <th className="py-3.5 px-3 hidden sm:table-cell">CNPJ</th>
                     <th className="py-3.5 px-3 hidden md:table-cell">Localização</th>
                     <th className="py-3.5 px-3 hidden lg:table-cell">Data da Análise</th>
+                    <th className="py-3.5 px-3 hidden md:table-cell">Responsável</th>
                     <th className="py-3.5 px-3">Funções</th>
                     <th className="py-3.5 pl-3 pr-4 text-right">Ações</th>
                   </tr>

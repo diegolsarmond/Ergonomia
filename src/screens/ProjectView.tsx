@@ -166,7 +166,7 @@ export const ProjectView = () => {
         introMetodologia: project.introMetodologia || '',
       });
       setCompanyData({
-        empresaId: project.empresaId || '',
+        empresaId: project.empresaId || matchedCompany?.id || '',
         unidadeId: project.unidadeId || '',
         companyName: project.companyName || '',
         fantasyName: project.fantasyName || '',
@@ -185,7 +185,7 @@ export const ProjectView = () => {
         date: project.date || '',
       });
     }
-  }, [project]);
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveIntro = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -860,58 +860,17 @@ export const ProjectView = () => {
             <CardContent>
               <form onSubmit={handleSaveCompany} className="space-y-4">
                 <FormGroup label="Empresa cadastrada">
-                  <Select
-                    value={companyData.empresaId}
-                    onChange={e => {
-                      const co = companies.find(c => c.id === e.target.value);
-                      if (co) {
-                        const addr = [co.logradouro, co.numero, co.bairro, co.municipio, co.uf].filter(Boolean).join(', ');
-                        setCompanyData(p => ({
-                          ...p,
-                          empresaId: co.id,
-                          unidadeId: '',
-                          companyName: co.razaoSocial,
-                          fantasyName: co.nomeFantasia,
-                          cnpj: co.cnpj,
-                          address: addr,
-                          product: co.product || p.product,
-                          riskDegree: co.riskDegree || p.riskDegree,
-                          location: co.productionLocation || p.location,
-                        }));
-                      } else {
-                        setCompanyData(p => ({ ...p, empresaId: '', unidadeId: '' }));
-                      }
-                    }}
-                  >
-                    <option value="">— digitar manualmente —</option>
-                    {companies.filter(c => c.active).map(c => (
-                      <option key={c.id} value={c.id}>{c.razaoSocial}{c.nomeFantasia ? ` (${c.nomeFantasia})` : ''}</option>
-                    ))}
-                  </Select>
+                  {companyData.empresaId ? (
+                    <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium">
+                      {companies.find(c => c.id === companyData.empresaId)?.razaoSocial || companyData.companyName}
+                    </div>
+                  ) : (
+                    <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-400 italic">
+                      Nenhuma empresa vinculada
+                    </div>
+                  )}
                 </FormGroup>
 
-                {companyData.empresaId && (
-                  <FormGroup label="Unidade">
-                    <Select
-                      value={companyData.unidadeId}
-                      onChange={e => {
-                        const un = units.find(u => u.id === e.target.value);
-                        setCompanyData(p => ({
-                          ...p,
-                          unidadeId: e.target.value,
-                          unit: un?.name || p.unit,
-                          address: un?.address || p.address,
-                          location: un?.productionLocation || p.location,
-                        }));
-                      }}
-                    >
-                      <option value="">— sem unidade específica —</option>
-                      {units.filter(u => u.companyId === companyData.empresaId).map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </Select>
-                  </FormGroup>
-                )}
 
                 <div className="border-t border-slate-100 pt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -941,7 +900,31 @@ export const ProjectView = () => {
                   </FormGroup>
                   <div className="grid grid-cols-2 gap-4">
                     <FormGroup label="Unidade / Filial">
-                      <Input value={companyData.unit} onChange={e => setCompanyData(p => ({ ...p, unit: e.target.value }))} />
+                      {units.filter(u => u.companyId === companyData.empresaId).length > 0 ? (
+                        <Select
+                          value={companyData.unidadeId || ''}
+                          onChange={e => {
+                            const un = units.find(u => u.id === e.target.value);
+                            const builtAddr = un
+                              ? (un.address || [un.logradouro, un.numero, un.bairro, un.city, un.uf].filter(Boolean).join(', '))
+                              : '';
+                            setCompanyData(p => ({
+                              ...p,
+                              unidadeId: e.target.value,
+                              unit: un?.name || p.unit,
+                              address: builtAddr || p.address,
+                              location: un?.productionLocation || p.location,
+                            }));
+                          }}
+                        >
+                          <option value="">— sem unidade específica —</option>
+                          {units.filter(u => u.companyId === companyData.empresaId).map(u => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </Select>
+                      ) : (
+                        <Input value={companyData.unit} onChange={e => setCompanyData(p => ({ ...p, unit: e.target.value }))} />
+                      )}
                     </FormGroup>
                     <FormGroup label="Localização">
                       <Input value={companyData.location} onChange={e => setCompanyData(p => ({ ...p, location: e.target.value }))} />

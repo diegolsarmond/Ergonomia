@@ -211,7 +211,7 @@ export const AETProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addProject = async (projectData: Omit<AETProject, 'id' | 'functions'>) => {
-    const newProject = normalizeProject({ ...projectData, id: uuidv4(), functions: [] });
+    const newProject = normalizeProject({ ...projectData, id: uuidv4(), functions: [], createdAt: new Date().toISOString() });
     await projectsApi.save(newProject);
     setProjects(prev => [...prev, newProject]);
     return newProject.id;

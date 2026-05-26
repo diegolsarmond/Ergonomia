@@ -340,7 +340,7 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
 
 async function loadAllAEP(client: PoolClient): Promise<any[]> {
   const { rows: projects } = await client.query(`
-    SELECT p.id, p.empresa_id, p.unidade_id, p.data, p.localizacao, p.criado_em,
+    SELECT p.id, p.empresa_id, p.unidade_id, p.data, p.localizacao, p.criado_em, p.nome_avaliador,
       COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)   AS nome_empresa,
       COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
       COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
@@ -382,7 +382,9 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       riskDegree:           p.grau_risco ?? '',
       location:             p.localizacao ?? '',
       companyLogoDataUrl:   p.logo_empresa_resolved ?? '',
+      evaluatorName:        p.nome_avaliador ?? '',
       date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
+      createdAt: p.criado_em ? (p.criado_em instanceof Date ? p.criado_em.toISOString() : String(p.criado_em)) : '',
       functions,
     });
   }
