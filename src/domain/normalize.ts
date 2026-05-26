@@ -128,6 +128,7 @@ export function normalizeProject(raw: any): AETProject {
     evaluatorCompany:          p.evaluatorCompany          ?? '',
     date:                      p.date                      ?? '',
     functions: Array.isArray(p.functions) ? p.functions.map(normalizeFunction) : [],
+    sectorIlluminance: Array.isArray(p.sectorIlluminance) ? p.sectorIlluminance : [],
   };
 }
 

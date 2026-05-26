@@ -43,15 +43,16 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
         intro_ergonomia, intro_objetivo, intro_metodologia,
         nome_avaliador, formacao_avaliador, crefito_avaliador, empresa_avaliador, assinatura_avaliador,
         data, logo_consultoria, logo_empresa, logo_responsavel,
-        empresa_id, unidade_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::date,$19,$20,$21,$22,$23)
+        empresa_id, unidade_id, setor_iluminancia_json)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::date,$19,$20,$21,$22,$23,$24)
      ON CONFLICT (id) DO UPDATE SET
        nome_empresa=$2, nome_fantasia=$3, cnpj=$4, endereco=$5, unidade=$6, produto=$7,
        grau_risco=$8, localizacao=$9,
        intro_ergonomia=$10, intro_objetivo=$11, intro_metodologia=$12,
        nome_avaliador=$13, formacao_avaliador=$14, crefito_avaliador=$15, empresa_avaliador=$16,
        assinatura_avaliador=$17, data=$18::date, logo_consultoria=$19, logo_empresa=$20,
-       logo_responsavel=$21, empresa_id=$22, unidade_id=$23, atualizado_em=NOW()`,
+       logo_responsavel=$21, empresa_id=$22, unidade_id=$23, setor_iluminancia_json=$24,
+       atualizado_em=NOW()`,
     [
       uuid(project.id),
       str(project.companyName), str(project.fantasyName), str(project.cnpj),
@@ -63,6 +64,7 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
       dt(project.date), str(project.consultoriaLogoDataUrl), str(project.companyLogoDataUrl),
       str(project.responsibleLogoDataUrl),
       uuid(project.empresaId), uuid(project.unidadeId),
+      JSON.stringify(project.sectorIlluminance ?? []),
     ]
   );
 
@@ -654,6 +656,13 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       evaluatorSignatureDataUrl: p.assinatura_avaliador ?? '',
       date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
       functions,
+      sectorIlluminance: (() => {
+        try {
+          const raw = p.setor_iluminancia_json;
+          if (!raw) return [];
+          return typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch { return []; }
+      })(),
     });
   }
 

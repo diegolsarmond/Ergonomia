@@ -6,17 +6,19 @@ import { useAET } from '../context/AETContext';
 import { auditoriaApi } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X, AlignLeft } from 'lucide-react';
+import { Plus, Eye, ArrowLeft, Trash2, Edit2, Copy, Download, Building2, User, ChevronRight, Printer, AlertTriangle, XCircle, X, AlignLeft, Layers } from 'lucide-react';
 import { FormGroup, Input, Select, Textarea } from '../components/ui/Forms';
 import { validateReport } from '../domain/reports/reportValidation';
 import type { ReportValidationResult } from '../domain/reports/reportValidationTypes';
 import { useAuth } from '../context/AuthContext';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
+import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
+import type { SectorIlluminance, IlluminanceMeasurement } from '../types';
 
 export const ProjectView = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProject, updateProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON, companies, units } = useAET();
+  const { getProject, updateProject, addFunction, deleteFunction, duplicateFunction, exportProjectJSON, companies, units, sectors } = useAET();
   const { hasPermission } = useAuth();
   const project = getProject(id!);
 
@@ -25,6 +27,11 @@ export const ProjectView = () => {
     result: ReportValidationResult;
     mode: 'errors' | 'warnings';
   } | null>(null);
+
+  // ── Modal de setores / iluminância ─────────────────────────────────────────
+  const [sectorModalOpen, setSectorModalOpen] = useState(false);
+  const [selectedSectorId, setSelectedSectorId] = useState<string>('');
+  const [sectorIlluminance, setSectorIlluminance] = useState<SectorIlluminance[]>([]);
 
   const [funcSelectionModal, setFuncSelectionModal] = useState(false);
   const [selectedFuncIds, setSelectedFuncIds] = useState<string[]>([]);
@@ -69,6 +76,12 @@ export const ProjectView = () => {
       ['clean']
     ]
   };
+
+  React.useEffect(() => {
+    if (project) {
+      setSectorIlluminance(project.sectorIlluminance ?? []);
+    }
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (project) {
@@ -211,6 +224,18 @@ export const ProjectView = () => {
                 <AlignLeft className="w-4 h-4" /> Textos
               </Button>
             </PermissionGuard>
+            {project.reportType === 'AEP' && (
+              <PermissionGuard permission="PROJECTS_EDIT">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSectorModalOpen(true)}
+                  className="!bg-white/10 !border-white/20 !text-white hover:!bg-white/20 flex-1 sm:flex-none"
+                >
+                  <Layers className="w-4 h-4" />Setores
+                </Button>
+              </PermissionGuard>
+            )}
             <PermissionGuard permission="PROJECTS_EDIT">
               <Button onClick={handleAddFunction} size="sm" className="flex-1 sm:flex-none">
                 <Plus className="w-4 h-4" />Função
@@ -329,6 +354,122 @@ export const ProjectView = () => {
         )}
       </div>
 
+
+      {/* ── Modal de Setores / Iluminância ─────────────────────────────────── */}
+      {sectorModalOpen && (() => {
+        // Empresa vinculada ao projeto
+        const matchedCompany = companies.find(c =>
+          (c.cnpj && project.cnpj && c.cnpj.replace(/\D/g,'') === project.cnpj.replace(/\D/g,'')) ||
+          c.razaoSocial === project.companyName ||
+          c.nomeFantasia === project.companyName
+        );
+        const companySectors = matchedCompany
+          ? sectors.filter(s => s.companyId === matchedCompany.id && s.active)
+          : [];
+
+        const selectedSector = companySectors.find(s => s.id === selectedSectorId);
+
+        const getMeasurements = (sectorId: string) =>
+          sectorIlluminance.find(si => si.sectorId === sectorId)?.measurements ?? [];
+
+        const setMeasurements = (sectorId: string, sectorName: string, measurements: IlluminanceMeasurement[]) => {
+          setSectorIlluminance(prev => {
+            const idx = prev.findIndex(si => si.sectorId === sectorId);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = { sectorId, sectorName, measurements };
+              return updated;
+            }
+            return [...prev, { sectorId, sectorName, measurements }];
+          });
+        };
+
+        const handleSave = async () => {
+          await updateProject(project!.id, { sectorIlluminance });
+          setSectorModalOpen(false);
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
+                <Layers className="w-5 h-5 text-teal-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-800">Setores — Medições de Iluminância</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Selecione um setor para registrar as medições de iluminância</p>
+                </div>
+                <button onClick={() => setSectorModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-1 overflow-hidden">
+                {/* Lista de setores */}
+                <div className="w-56 shrink-0 border-r border-slate-100 overflow-y-auto p-3 space-y-1">
+                  {companySectors.length === 0 ? (
+                    <p className="text-xs text-slate-400 p-2">Nenhum setor cadastrado para esta empresa.</p>
+                  ) : (
+                    companySectors.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedSectorId(s.id)}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all ${
+                          selectedSectorId === s.id
+                            ? 'bg-teal-600 text-white font-medium'
+                            : 'text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="block truncate">{s.name}</span>
+                        {getMeasurements(s.id).length > 0 && (
+                          <span className={`text-[10px] ${selectedSectorId === s.id ? 'text-teal-200' : 'text-teal-500'}`}>
+                            {getMeasurements(s.id).length} medição(ões)
+                          </span>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {/* Painel de iluminância do setor selecionado */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  {!selectedSector ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                      <Layers className="w-10 h-10 opacity-30" />
+                      <p className="text-sm">Selecione um setor à esquerda</p>
+                    </div>
+                  ) : getMeasurements(selectedSector.id).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <div className="flex flex-col items-center gap-3 p-6 bg-amber-50 border border-amber-200 rounded-2xl max-w-sm text-center">
+                        <AlertTriangle className="w-8 h-8 text-amber-500" />
+                        <p className="text-sm font-semibold text-amber-800">Nenhuma medição de iluminância cadastrada</p>
+                        <p className="text-xs text-amber-700">
+                          O setor <strong>{selectedSector.name}</strong> ainda não possui medições de iluminância registradas.
+                        </p>
+                      </div>
+                      <IlluminanceMeasurementPanel
+                        measurements={[]}
+                        onChange={measurements => setMeasurements(selectedSector.id, selectedSector.name, measurements)}
+                      />
+                    </div>
+                  ) : (
+                    <IlluminanceMeasurementPanel
+                      measurements={getMeasurements(selectedSector.id)}
+                      onChange={measurements => setMeasurements(selectedSector.id, selectedSector.name, measurements)}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+                <Button variant="outline" onClick={() => setSectorModalOpen(false)}>Cancelar</Button>
+                <Button onClick={handleSave}>Salvar Iluminância</Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Seleção de funções para impressão ───────────────────────────────── */}
       {funcSelectionModal && (

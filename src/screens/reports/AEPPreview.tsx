@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { AETProject, AETFunction, ErgonomicRisk, BiomechanicalItem, IlluminanceMeasurement } from '../../types';
 import { DEFAULT_AEP_INTRO_ERGONOMIA, DEFAULT_AEP_INTRO_OBJETIVO, DEFAULT_AEP_INTRO_METODOLOGIA } from '../../types';
-import { Field, TocLine, riskLevelColor, ReportToolbar, PDF_STYLES, CoverPage, PageFooter, useSectionPages, PALETTE, noBreakHyphen } from './components/ReportCommon';
+import { Field, TocLine, riskLevelColor, ReportToolbar, getPdfStyles, PDF_CLASS_STYLES, CoverPage, PageFooter, useSectionPages, PALETTE, noBreakHyphen } from './components/ReportCommon';
 import { useAET } from '../../context/AETContext';
 import { auditoriaApi } from '../../services/api';
 
@@ -590,30 +590,12 @@ const AEPFunctionSection: React.FC<{
           </tbody>
         </table>
 
-        {/* 5. Ferramentas Científicas */}
-        {(aep.scientificTools.length > 0 || (aep.illuminanceMeasurements?.length ?? 0) > 0) && (
-          <h3 style={{ marginTop: '32px' }}>5. Ferramentas Científicas</h3>
-        )}
-        {aep.scientificTools.map((tool, i) => (
-          <div key={tool.id} style={{ marginBottom: '12px' }}>
-            <p style={{ fontWeight: 600, fontSize: '0.85rem', color: PALETTE.dark }}>{i + 1}. {tool.toolName}</p>
-            <Field label="Resultado" value={tool.result} />
-            <Field label="Interpretação" value={tool.interpretation} />
-            <Field label="Recomendação" value={tool.recommendation} />
-            {tool.imageDataUrl && (
-              <img src={tool.imageDataUrl} alt={tool.toolName}
-                style={{ maxWidth: '280px', marginTop: '6px', borderRadius: '4px', border: `1px solid ${PALETTE.border}` }} />
-            )}
-          </div>
-        ))}
-        <IlluminanceSection measurements={aep.illuminanceMeasurements ?? []} />
-
-        {/* 6. Psicossocial */}
+        {/* 5. Psicossocial */}
         {psy.some((q: any) => q.score !== '') && (() => {
           const psyGroups = Array.from(new Set(psy.map((q: any) => q.group)));
           return (
             <>
-              <h3 style={{ marginTop: '32px' }}>6. Avaliação Psicossocial</h3>
+              <h3 style={{ marginTop: '32px' }}>5. Avaliação Psicossocial</h3>
 
               {/* Legenda */}
               <p style={{ fontSize: '0.68rem', color: '#6b7280', marginBottom: '10px', fontStyle: 'italic' }}>
@@ -668,10 +650,10 @@ const AEPFunctionSection: React.FC<{
           );
         })()}
 
-        {/* 7. Classificação de Risco / Gatilhos AET */}
+        {/* 6. Classificação de Risco / Gatilhos AET */}
         {trigs.some(t => t.answer !== '') && (
           <>
-            <h3 style={{ marginTop: '32px' }}>7. Classificação de Risco — Gatilhos para AET</h3>
+            <h3 style={{ marginTop: '32px' }}>6. Classificação de Risco — Gatilhos para AET</h3>
             <table style={{ fontSize: '0.72rem' }}>
               <thead><tr><th style={{ width: '5%' }}>#</th><th>Gatilho</th><th style={{ width: '10%' }}>Resposta</th></tr></thead>
               <tbody>
@@ -711,10 +693,10 @@ const AEPFunctionSection: React.FC<{
           </>
         )}
 
-        {/* 8. Plano de Ação RACI */}
+        {/* 7. Plano de Ação RACI */}
         {raci.length > 0 && (
           <>
-            <h3 style={{ marginTop: '32px' }}>8. Plano de Ação RACI</h3>
+            <h3 style={{ marginTop: '32px' }}>7. Plano de Ação RACI</h3>
             <table style={{ fontSize: '0.66rem' }}>
               <thead>
                 <tr>
@@ -940,14 +922,43 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
     : project.functions;
 
   const hasAnnexes = filteredFunctions.some(f => f.images?.length > 0);
-  const funcCount  = filteredFunctions.length;
-  const respNum    = funcCount > 0 ? `${funcCount + 2}` : '3';
-  const anexosNum  = funcCount > 0 ? `${funcCount + 3}` : '4';
+
+  // Seção 1=Intro, 2=Funções, 3=Iluminância por Setor (quando há setores), 4=Resp, 5=Anexos
+  // Usa nome normalizado como chave para evitar duplicatas (sectorId pode ser null em funções antigas)
+  const normKey = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
+
+  const sectorGroupMap = new Map<string, { sectorName: string; sectorId?: string | null; funcs: AETFunction[] }>();
+
+  // 1. Adiciona setores de sectorIlluminance (fonte primária com medições)
+  (project.sectorIlluminance ?? []).forEach(si => {
+    const key = normKey(si.sectorName);
+    if (!key) return;
+    if (!sectorGroupMap.has(key)) sectorGroupMap.set(key, { sectorName: si.sectorName, sectorId: si.sectorId, funcs: [] });
+  });
+
+  // 2. Vincula funções a seus setores (por nome normalizado)
+  filteredFunctions.forEach(f => {
+    const name = (f.aep?.identification?.sectorArea || f.sector || '').trim();
+    if (!name) return;
+    const key = normKey(name);
+    if (sectorGroupMap.has(key)) {
+      sectorGroupMap.get(key)!.funcs.push(f);
+    } else {
+      // Setor presente nas funções mas sem medições ainda
+      sectorGroupMap.set(key, { sectorName: name, sectorId: f.aep?.identification?.sectorId, funcs: [f] });
+    }
+  });
+
+  const sectorGroups = Array.from(sectorGroupMap.values());
+  const hasSectors = sectorGroups.length > 0;
+  const respNum   = hasSectors ? '4' : '3';
+  const anexosNum = hasSectors ? '5' : '4';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionIds = [
     'aep-intro',
     ...filteredFunctions.map(f => `aep-func-${f.id}`),
+    ...(hasSectors ? ['aep-illuminance'] : []),
     'aep-resp',
     'aep-anexos',
   ];
@@ -1010,6 +1021,10 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       {filteredFunctions.map((func, idx) => (
                         <TocLine key={func.id} num={`2.${idx + 1}`} title={func.name || 'Função sem nome'} indent page={pages[`aep-func-${func.id}`]} />
                       ))}
+                      {hasSectors && <TocLine num="3" title="Medições de Iluminância por Setor" page={pages['aep-illuminance']} />}
+                      {hasSectors && sectorGroups.map((sg, idx) => (
+                        <TocLine key={sg.sectorId || sg.sectorName} num={`3.${idx + 1}`} title={sg.sectorName} indent page={pages['aep-illuminance']} />
+                      ))}
                       <TocLine num={respNum}    title="Responsabilidade Técnica" page={pages['aep-resp']} />
                       {hasAnnexes && <TocLine num={anexosNum} title="Anexos – Registros Fotográficos" page={pages['aep-anexos']} />}
                     </div>
@@ -1055,6 +1070,36 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
                       <AEPFunctionSection func={func} sectionNum={`2.${fIdx + 1}`} riskFactorsCatalog={biomechanicalRiskFactors} />
                     </div>
                   ))}
+
+                  {/* ── 3. Medições de Iluminância por Setor ── */}
+                  {hasSectors && (
+                    <section id="aep-illuminance" className="px-12 py-10 print:break-before-page">
+                      <h2>3. Medições de Iluminância por Setor</h2>
+                      {sectorGroups.map(({ sectorName, funcs: sectorFuncs }, idx) => {
+                        const si = (project.sectorIlluminance ?? []).find(s =>
+                          normKey(s.sectorName) === normKey(sectorName)
+                        );
+                        const measurements = si?.measurements ?? [];
+                        return (
+                          <div key={sectorName} style={{ marginBottom: '32px', borderTop: idx > 0 ? `2px solid #e5e7eb` : undefined, paddingTop: idx > 0 ? '20px' : undefined }}>
+                            <h3 style={{ marginTop: '24px' }}>3.{idx + 1} {sectorName}</h3>
+                            {sectorFuncs.length > 0 && (
+                              <p style={{ fontSize: '0.82rem', color: '#4b5563', marginBottom: '8px' }}>
+                                <strong>Funções do setor:</strong>{' '}
+                                {sectorFuncs.map(f => f.name).join(' • ')}
+                              </p>
+                            )}
+                            {measurements.length > 0
+                              ? <IlluminanceSection measurements={measurements} />
+                              : <p style={{ fontSize: '0.82rem', color: '#9ca3af', fontStyle: 'italic', marginTop: '8px' }}>
+                                  Nenhuma medição de iluminância cadastrada para este setor.
+                                </p>
+                            }
+                          </div>
+                        );
+                      })}
+                    </section>
+                  )}
 
                   {/* ── Responsabilidade Técnica ── */}
                   <section id="aep-resp" className="pdf-page px-12 py-14 print:break-before-page">
@@ -1114,7 +1159,7 @@ export const AEPPreview: React.FC<{ project: AETProject }> = ({ project }) => {
         </div>
       </div>
 
-      <style>{PDF_STYLES}</style>
+      <style>{getPdfStyles(project.consultoriaLogoDataUrl) + PDF_CLASS_STYLES}</style>
     </>
   );
 };

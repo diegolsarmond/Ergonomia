@@ -651,6 +651,13 @@ export function createEmptyAEPFunctionAssessment(): AEPFunctionAssessment {
 
 export type ReportType = 'AEP' | 'AET';
 
+// Iluminância associada a um setor dentro de um projeto AEP
+export interface SectorIlluminance {
+  sectorId: string;    // UUID do setor no catálogo (pode ser '' se digitado manualmente)
+  sectorName: string;  // Nome do setor (desnormalizado para exibição no PDF)
+  measurements: IlluminanceMeasurement[];
+}
+
 export interface AETProject {
   id: string;
   reportType: ReportType;
@@ -682,6 +689,8 @@ export interface AETProject {
   evaluatorSignatureDataUrl: string;
   date: string;
   functions: AETFunction[];
+  // Medições de iluminância agrupadas por setor (AEP)
+  sectorIlluminance?: SectorIlluminance[];
 }
 
 // ── Default values ──────────────────────────────────────────────────────────

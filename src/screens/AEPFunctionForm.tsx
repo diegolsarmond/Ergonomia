@@ -10,7 +10,6 @@ import { UnitModalForm, SectorModalForm, JobRoleModalForm, EMPTY_UNIT, EMPTY_SEC
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, Camera } from 'lucide-react';
 import { SingleImageUpload } from '../components/SingleImageUpload';
 import { ImageEditor } from '../components/ImageEditor';
-import { IlluminanceMeasurementPanel } from '../components/IlluminanceMeasurementPanel';
 import type {
   AETFunction,
   AETProject,
@@ -31,10 +30,9 @@ const AEP_TABS = [
   '2. Caracterização',
   '3. Reg. Fotográfico',
   '4. Biomecânica',
-  '5. Ferramentas',
-  '6. Psicossocial',
-  '7. Classif. de Risco',
-  '8. Plano RACI',
+  '5. Psicossocial',
+  '6. Classif. de Risco',
+  '7. Plano RACI',
 ];
 
 const ASSESSMENT_OPTIONS: { value: BiomechanicalAssessment; label: string; color: string }[] = [
@@ -419,6 +417,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   const [unitForm, setUnitForm] = useState({ ...EMPTY_UNIT, companyId: matchedCompany?.id || '' });
   const [sectorForm, setSectorForm] = useState({ ...EMPTY_SECTOR, companyId: matchedCompany?.id || '' });
   const [roleForm, setRoleForm] = useState({ ...EMPTY_ROLE, companyId: matchedCompany?.id || '' });
+  const [modalSaving, setModalSaving] = useState(false);
 
   const handleOpenCreateModal = (type: 'role' | 'unit' | 'sector') => {
     if (type === 'unit') setUnitForm({ ...EMPTY_UNIT, companyId: matchedCompany?.id || '' });
@@ -428,24 +427,39 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
   };
 
   const handleSaveUnit = async () => {
-    if (!unitForm.name.trim()) return;
-    await addUnit({ ...unitForm, companyId: matchedCompany?.id || '' });
-    setIdent('unitBranch', unitForm.name);
-    setCreateModal({ ...createModal, open: false });
+    if (!unitForm.name.trim() || modalSaving) return;
+    setModalSaving(true);
+    try {
+      await addUnit({ ...unitForm, companyId: matchedCompany?.id || '' });
+      setIdent('unitBranch', unitForm.name);
+      setCreateModal({ ...createModal, open: false });
+    } finally {
+      setModalSaving(false);
+    }
   };
 
   const handleSaveSector = async () => {
-    if (!sectorForm.name.trim()) return;
-    await addSector({ ...sectorForm, companyId: matchedCompany?.id || '' });
-    setIdent('sectorArea', sectorForm.name);
-    setCreateModal({ ...createModal, open: false });
+    if (!sectorForm.name.trim() || modalSaving) return;
+    setModalSaving(true);
+    try {
+      await addSector({ ...sectorForm, companyId: matchedCompany?.id || '' });
+      setIdent('sectorArea', sectorForm.name);
+      setCreateModal({ ...createModal, open: false });
+    } finally {
+      setModalSaving(false);
+    }
   };
 
   const handleSaveRole = async () => {
-    if (!roleForm.name.trim()) return;
-    await addJobRole({ ...roleForm, companyId: matchedCompany?.id || '' });
-    setFormData(prev => ({ ...prev, name: roleForm.name }));
-    setCreateModal({ ...createModal, open: false });
+    if (!roleForm.name.trim() || modalSaving) return;
+    setModalSaving(true);
+    try {
+      await addJobRole({ ...roleForm, companyId: matchedCompany?.id || '' });
+      setFormData(prev => ({ ...prev, name: roleForm.name }));
+      setCreateModal({ ...createModal, open: false });
+    } finally {
+      setModalSaving(false);
+    }
   };
 
   // ── setters ──────────────────────────────────────────────────────────────
@@ -1408,67 +1422,12 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
             </div>
           )}
 
-          {/* ── Tab 5: Ferramentas Científicas ── */}
-          {activeTab === 4 && (
-            <div className="space-y-4">
-              <SectionTitle>5. Ferramentas Científicas</SectionTitle>
-
-
-              {aep.scientificTools.map((tool, idx) => (
-                <div key={tool.id} className="border border-slate-200 rounded-xl p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-slate-700">Ferramenta {idx + 1}</span>
-                    <Button variant="ghost" size="sm" onClick={() => removeTool(idx)}>
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </Button>
-                  </div>
-                  <FormGroup label="Nome da Ferramenta / Método">
-                    <datalist id={`methods-list-${idx}`}>
-                      {scientificMethodTemplates.map(m => <option key={m.id} value={m.name} />)}
-                    </datalist>
-                    <input
-                      list={`methods-list-${idx}`}
-                      value={tool.toolName}
-                      onChange={e => {
-                        updateTool(idx, 'toolName', e.target.value);
-                        const tpl = scientificMethodTemplates.find(m => m.name === e.target.value);
-                        if (tpl) updateTool(idx, 'interpretation', tpl.description);
-                      }}
-                      placeholder="Ex: RULA, REBA, NIOSH..."
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-none"
-                    />
-                  </FormGroup>
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormGroup label="Resultado">
-                      <Input value={tool.result} onChange={e => updateTool(idx, 'result', e.target.value)} />
-                    </FormGroup>
-                    <FormGroup label="Interpretação">
-                      <Input value={tool.interpretation} onChange={e => updateTool(idx, 'interpretation', e.target.value)} />
-                    </FormGroup>
-                  </div>
-                  <FormGroup label="Recomendação">
-                    <Textarea value={tool.recommendation} onChange={e => updateTool(idx, 'recommendation', e.target.value)} rows={2} />
-                  </FormGroup>
-                  <SingleImageUpload value={tool.imageDataUrl || ''} onChange={url => updateTool(idx, 'imageDataUrl', url)} label="Imagem do resultado" />
-                </div>
-              ))}
-
-              {/* ── 5b. Medições de Iluminância ── */}
-              <div className="mt-8 pt-6 border-t border-slate-200">
-                <IlluminanceMeasurementPanel
-                  measurements={aep.illuminanceMeasurements || []}
-                  onChange={(measurements) => setAep(a => ({ ...a, illuminanceMeasurements: measurements }))}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ── Tab 6: Psicossocial ── */}
-          {activeTab === 5 && (() => {
+          {/* ── Tab 5: Psicossocial ── */}
+          {activeTab === 4 && (() => {
             const groups = Array.from(new Set(aep.psychosocialAnswers.map(q => q.group)));
             return (
               <div className="space-y-4">
-                <SectionTitle>6. Avaliação Psicossocial</SectionTitle>
+                <SectionTitle>5. Avaliação Psicossocial</SectionTitle>
                 <div className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 mb-6">
                   <p>
                     Esta seção visa identificar fatores de risco psicossociais no ambiente de trabalho, conforme as diretrizes mais recentes da NR-17. As perguntas são baseadas em escalas de percepção. O objetivo é uma triagem para direcionamento de ações de gestão e saúde ocupacional, não um diagnóstico clínico.
@@ -1581,10 +1540,10 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
             );
           })()}
 
-          {/* ── Tab 7: Classificação de Risco / Gatilhos AET ── */}
-          {activeTab === 6 && (
+          {/* ── Tab 6: Classificação de Risco / Gatilhos AET ── */}
+          {activeTab === 5 && (
             <div className="space-y-4">
-              <SectionTitle>7. Classificação de Risco — Gatilhos para AET</SectionTitle>
+              <SectionTitle>6. Classificação de Risco — Gatilhos para AET</SectionTitle>
               <p className="text-xs text-slate-500">Responda "Sim" para qualquer gatilho identificado. A presença de pelo menos um "Sim" sugere indicação de AET.</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
@@ -1645,10 +1604,10 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
             </div>
           )}
 
-          {/* ── Tab 8: Plano de Ação RACI ── */}
-          {activeTab === 7 && (
+          {/* ── Tab 7: Plano de Ação RACI ── */}
+          {activeTab === 6 && (
             <div className="space-y-4">
-              <SectionTitle>8. Plano de Ação RACI</SectionTitle>
+              <SectionTitle>7. Plano de Ação RACI</SectionTitle>
               <Button variant="ghost" onClick={addRaci} className="border border-dashed border-teal-400 text-teal-600 hover:bg-teal-50">
                 <Plus className="w-4 h-4" /> Adicionar Ação
               </Button>
@@ -1767,6 +1726,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         form={unitForm}
         setForm={setUnitForm}
         onSave={handleSaveUnit}
+        isSaving={modalSaving}
         companyAddress={matchedCompany ? {
           cep: matchedCompany.cep,
           logradouro: matchedCompany.logradouro,
@@ -1785,6 +1745,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         form={sectorForm}
         setForm={setSectorForm}
         onSave={handleSaveSector}
+        isSaving={modalSaving}
         companyUnits={companyUnits}
       />
 
@@ -1795,6 +1756,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
         form={roleForm}
         setForm={setRoleForm}
         onSave={handleSaveRole}
+        isSaving={modalSaving}
         companySectors={companySectors}
         companyRoles={companyJobRoles}
       />
