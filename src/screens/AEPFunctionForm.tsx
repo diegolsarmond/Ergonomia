@@ -960,7 +960,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                 <FormGroup label="Unidade / Filial">
                   <Select
                     className="w-full"
-                    value={companyUnits.find(u => u.name === aep.identification.unitBranch)?.id || (aep.identification.unitBranch ? 'custom' : '')}
+                    value={companyUnits.find(u => u.id === aep.identification.unitId || u.name === aep.identification.unitBranch)?.id || (aep.identification.unitBranch ? 'custom' : '')}
                     onChange={e => {
                       if (e.target.value === '__NEW__') {
                         handleOpenCreateModal('unit');
@@ -982,7 +982,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                   >
                     <option value="">Selecione a unidade...</option>
                     {companyUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    {aep.identification.unitBranch && !companyUnits.find(u => u.name === aep.identification.unitBranch) && (
+                    {aep.identification.unitBranch && !companyUnits.find(u => u.id === aep.identification.unitId || u.name === aep.identification.unitBranch) && (
                       <option value="custom">{aep.identification.unitBranch}</option>
                     )}
                     <option value="__NEW__" className="font-semibold text-teal-600">+ Criar novo...</option>
@@ -997,7 +997,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                     return (
                       <Select
                         className="w-full"
-                        value={unitSectors.find(s => s.name === aep.identification.sectorArea)?.id || (aep.identification.sectorArea ? 'custom' : '')}
+                        value={unitSectors.find(s => s.id === aep.identification.sectorId || s.name === aep.identification.sectorArea)?.id || (aep.identification.sectorArea ? 'custom' : '')}
                         onChange={e => {
                           if (e.target.value === '__NEW__') {
                             handleOpenCreateModal('sector');
@@ -1015,7 +1015,7 @@ export const AEPFunctionForm: React.FC<Props> = ({ project, funcId, initialData,
                       >
                         <option value="">Selecione o setor...</option>
                         {unitSectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        {aep.identification.sectorArea && !unitSectors.find(s => s.name === aep.identification.sectorArea) && (
+                        {aep.identification.sectorArea && !unitSectors.find(s => s.id === aep.identification.sectorId || s.name === aep.identification.sectorArea) && (
                           <option value="custom">{aep.identification.sectorArea}</option>
                         )}
                         <option value="__NEW__" className="font-semibold text-teal-600">+ Criar novo...</option>

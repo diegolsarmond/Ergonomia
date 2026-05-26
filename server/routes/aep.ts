@@ -341,6 +341,11 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
 async function loadAllAEP(client: PoolClient): Promise<any[]> {
   const { rows: projects } = await client.query(`
     SELECT p.id, p.empresa_id, p.unidade_id, p.data, p.localizacao, p.criado_em, p.nome_avaliador,
+      p.endereco, p.produto,
+      p.formacao_avaliador, p.crefito_avaliador, p.empresa_avaliador, p.assinatura_avaliador,
+      p.intro_ergonomia, p.intro_objetivo, p.intro_metodologia,
+      p.logo_consultoria, p.logo_responsavel,
+      p.setor_iluminancia_json,
       COALESCE(NULLIF(p.nome_empresa,''), e.razao_social)   AS nome_empresa,
       COALESCE(NULLIF(p.nome_fantasia,''), e.nome_fantasia) AS nome_fantasia,
       COALESCE(NULLIF(p.cnpj,''), e.cnpj)                  AS cnpj,
@@ -389,17 +394,35 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       reportType: 'AEP',
       empresaId: p.empresa_id ?? null,
       unidadeId: p.unidade_id ?? null,
-      companyName:          p.nome_empresa ?? '',
-      fantasyName:          p.nome_fantasia ?? '',
-      cnpj:                 p.cnpj ?? '',
-      unit:                 p.unidade ?? '',
-      riskDegree:           p.grau_risco ?? '',
-      location:             p.localizacao ?? '',
-      companyLogoDataUrl:   p.logo_empresa_resolved ?? '',
-      evaluatorName:        p.nome_avaliador ?? '',
+      consultoriaLogoDataUrl: p.logo_consultoria ?? '',
+      companyLogoDataUrl:     p.logo_empresa_resolved ?? '',
+      responsibleLogoDataUrl: p.logo_responsavel ?? '',
+      companyName:  p.nome_empresa ?? '',
+      fantasyName:  p.nome_fantasia ?? '',
+      cnpj:         p.cnpj ?? '',
+      address:      p.endereco ?? '',
+      unit:         p.unidade ?? '',
+      product:      p.produto ?? '',
+      riskDegree:   p.grau_risco ?? '',
+      location:     p.localizacao ?? '',
+      introErgonomia:   p.intro_ergonomia ?? '',
+      introObjetivo:    p.intro_objetivo ?? '',
+      introMetodologia: p.intro_metodologia ?? '',
+      evaluatorName:             p.nome_avaliador ?? '',
+      evaluatorFormation:        p.formacao_avaliador ?? '',
+      evaluatorCrefito:          p.crefito_avaliador ?? '',
+      evaluatorCompany:          p.empresa_avaliador ?? '',
+      evaluatorSignatureDataUrl: p.assinatura_avaliador ?? '',
       date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
       createdAt: p.criado_em ? (p.criado_em instanceof Date ? p.criado_em.toISOString() : String(p.criado_em)) : '',
       functions,
+      sectorIlluminance: (() => {
+        try {
+          const raw = p.setor_iluminancia_json;
+          if (!raw) return [];
+          return typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch { return []; }
+      })(),
     });
   }
 
