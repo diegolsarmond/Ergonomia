@@ -6,7 +6,7 @@ import { useAET } from '../context/AETContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { FormGroup, Input, Textarea } from '../components/ui/Forms';
-import { Plus, Trash2, Building2, FolderOpen, Calendar, MapPin, Hash, Search, Printer } from 'lucide-react';
+import { Plus, Trash2, Building2, FolderOpen, Calendar, MapPin, Hash, Search, Printer, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
 import {
@@ -51,6 +51,10 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
     introMetodologia: type === 'AEP' ? DEFAULT_AEP_INTRO_METODOLOGIA  : DEFAULT_AET_INTRO_METODOLOGIA,
   });
 
+  const emptyNewResp = () => ({ name: '', formation: '', crefito: '', company: '' });
+  const [newResp, setNewResp] = useState(emptyNewResp());
+  const [showAddResp, setShowAddResp] = useState(false);
+
   const [formData, setFormData] = useState(() => ({
     reportType,
     empresaId: '', unidadeId: '',
@@ -59,6 +63,7 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
     evaluatorName: currentUser?.name ?? '', evaluatorFormation: currentUser?.formation ?? '', evaluatorCrefito: currentUser?.crefito ?? '', evaluatorCompany: 'Ergominas',
     date: new Date().toISOString().split('T')[0],
     consultoriaLogoDataUrl: '', companyLogoDataUrl: '', responsibleLogoDataUrl: '', evaluatorSignatureDataUrl: '',
+    additionalResponsibles: [] as { id: string; name: string; formation: string; crefito: string; company: string }[],
     ...introDefaults(reportType),
   }));
 
@@ -83,6 +88,9 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
     }));
     setSelectedCompanyId('');
     setActiveTab('Empresa');
+    setNewResp(emptyNewResp());
+    setShowAddResp(false);
+    setFormData(prev => ({ ...prev, additionalResponsibles: [] }));
     setIsModalOpen(true);
   };
 
@@ -522,6 +530,8 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
 
                 {activeTab === 'Responsável' && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    {/* ── Responsável principal ── */}
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Responsável Principal</p>
                     <div className="grid grid-cols-2 gap-4">
                       <FormGroup label="Nome" required>
                         <Input value={formData.evaluatorName} onChange={e => f('evaluatorName', e.target.value)} required />
@@ -539,6 +549,100 @@ export const Dashboard: React.FC<Props> = ({ reportType }) => {
                     <FormGroup label="Data da Análise">
                       <Input type="date" value={formData.date} onChange={e => f('date', e.target.value)} />
                     </FormGroup>
+
+                    {/* ── Responsáveis adicionais ── */}
+                    <div className="border-t border-slate-100 pt-4 mt-2">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Responsáveis Adicionais</p>
+                        {!showAddResp && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAddResp(true)}
+                            className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 font-medium transition-colors"
+                          >
+                            <UserPlus className="w-3.5 h-3.5" /> Adicionar
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Lista de adicionais */}
+                      {formData.additionalResponsibles.length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {formData.additionalResponsibles.map((r, idx) => (
+                            <div key={r.id} className="flex items-start justify-between bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-200">
+                              <div className="text-sm">
+                                <p className="font-medium text-slate-800">{r.name}</p>
+                                <p className="text-slate-500 text-xs mt-0.5">
+                                  {[r.crefito, r.formation, r.company].filter(Boolean).join(' · ')}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({
+                                  ...prev,
+                                  additionalResponsibles: prev.additionalResponsibles.filter((_, i) => i !== idx),
+                                }))}
+                                className="text-slate-400 hover:text-red-500 transition-colors ml-2 mt-0.5"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Formulário de adição inline */}
+                      {showAddResp && (
+                        <div className="border border-teal-200 bg-teal-50/40 rounded-xl p-3 space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <FormGroup label="Nome">
+                              <Input value={newResp.name} onChange={e => setNewResp(p => ({ ...p, name: e.target.value }))} placeholder="Nome completo" />
+                            </FormGroup>
+                            <FormGroup label="Registro (CREFITO/CRP/etc.)">
+                              <Input value={newResp.crefito} onChange={e => setNewResp(p => ({ ...p, crefito: e.target.value }))} />
+                            </FormGroup>
+                            <FormGroup label="Formação">
+                              <Input value={newResp.formation} onChange={e => setNewResp(p => ({ ...p, formation: e.target.value }))} placeholder="Ex: Fisioterapeuta" />
+                            </FormGroup>
+                            <FormGroup label="Empresa / Consultoria">
+                              <Input value={newResp.company} onChange={e => setNewResp(p => ({ ...p, company: e.target.value }))} />
+                            </FormGroup>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => { setShowAddResp(false); setNewResp(emptyNewResp()); }}
+                              className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!newResp.name.trim()}
+                              onClick={() => {
+                                if (!newResp.name.trim()) return;
+                                setFormData(prev => ({
+                                  ...prev,
+                                  additionalResponsibles: [
+                                    ...prev.additionalResponsibles,
+                                    { id: crypto.randomUUID(), ...newResp },
+                                  ],
+                                }));
+                                setNewResp(emptyNewResp());
+                                setShowAddResp(false);
+                              }}
+                              className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                            >
+                              <Plus className="w-3 h-3" /> Adicionar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {formData.additionalResponsibles.length === 0 && !showAddResp && (
+                        <p className="text-xs text-slate-400 italic">Nenhum responsável adicional.</p>
+                      )}
+                    </div>
                   </div>
                 )}
 

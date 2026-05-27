@@ -658,6 +658,18 @@ export interface SectorIlluminance {
   measurements: IlluminanceMeasurement[];
 }
 
+// ── Responsável técnico adicional ───────────────────────────────────────────
+
+export interface TechnicalResponsibleItem {
+  id: string;
+  usuarioId?: string;   // UUID do usuário no sistema (opcional)
+  name: string;
+  formation: string;
+  crefito: string;
+  company: string;
+  signatureDataUrl: string;
+}
+
 export interface AETProject {
   id: string;
   reportType: ReportType;
@@ -681,13 +693,15 @@ export interface AETProject {
   introErgonomia: string;
   introObjetivo: string;
   introMetodologia: string;
-  // Responsável técnico (seção 9)
+  // Responsável técnico principal (seção 9)
   evaluatorName: string;
   evaluatorFormation: string;
   evaluatorCrefito: string;
   evaluatorCompany: string;
   evaluatorSignatureDataUrl: string;
   date: string;
+  // Responsáveis técnicos adicionais
+  additionalResponsibles?: TechnicalResponsibleItem[];
   functions: AETFunction[];
   // Medições de iluminância agrupadas por setor (AEP)
   sectorIlluminance?: SectorIlluminance[];

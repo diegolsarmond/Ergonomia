@@ -4,6 +4,40 @@ import type { PoolClient } from 'pg';
 import { pool } from '../db.js';
 import { registrarAuditoria } from '../lib/auditoria.js';
 
+// ─── Helper: salva e carrega responsáveis técnicos adicionais ────────────────
+
+async function saveResponsaveisAdicionais(client: PoolClient, projectId: string, tipo: 'AEP' | 'AET', responsaveis: any[]): Promise<void> {
+  await client.query(
+    'DELETE FROM projeto_responsaveis_tecnicos WHERE projeto_id=$1 AND projeto_tipo=$2',
+    [projectId, tipo]
+  );
+  for (let i = 0; i < responsaveis.length; i++) {
+    const r = responsaveis[i];
+    await client.query(
+      `INSERT INTO projeto_responsaveis_tecnicos
+         (id, projeto_id, projeto_tipo, usuario_id, nome, formacao, crefito, empresa, assinatura_url, ordem)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [r.id || randomUUID(), projectId, tipo, r.usuarioId || null, r.name ?? '', r.formation ?? '', r.crefito ?? '', r.company ?? '', r.signatureDataUrl || null, i]
+    );
+  }
+}
+
+async function loadResponsaveisAdicionais(client: PoolClient, projectId: string, tipo: 'AEP' | 'AET'): Promise<any[]> {
+  const { rows } = await client.query(
+    'SELECT * FROM projeto_responsaveis_tecnicos WHERE projeto_id=$1 AND projeto_tipo=$2 ORDER BY ordem',
+    [projectId, tipo]
+  );
+  return rows.map(r => ({
+    id:               r.id,
+    usuarioId:        r.usuario_id ?? undefined,
+    name:             r.nome ?? '',
+    formation:        r.formacao ?? '',
+    crefito:          r.crefito ?? '',
+    company:          r.empresa ?? '',
+    signatureDataUrl: r.assinatura_url ?? '',
+  }));
+}
+
 const router = Router();
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -69,7 +103,10 @@ async function saveAEP(client: PoolClient, project: any): Promise<void> {
     ]
   );
 
-  // 2. Determine functions to delete (present in DB but not in payload)
+  // 2. Responsáveis técnicos adicionais
+  await saveResponsaveisAdicionais(client, uuid(project.id) as string, 'AEP', project.additionalResponsibles ?? []);
+
+  // 3. Determine functions to delete (present in DB but not in payload)
   const { rows: dbFuncs } = await client.query(
     'SELECT id FROM aep_funcoes WHERE projeto_id=$1', [project.id]
   );
@@ -416,6 +453,7 @@ async function loadAllAEP(client: PoolClient): Promise<any[]> {
       date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
       createdAt: p.criado_em ? (p.criado_em instanceof Date ? p.criado_em.toISOString() : String(p.criado_em)) : '',
       functions,
+      additionalResponsibles: [],
       sectorIlluminance: (() => {
         try {
           const raw = p.setor_iluminancia_json;
@@ -447,9 +485,10 @@ async function loadSingleAEP(client: PoolClient, id: string): Promise<any | null
   if (projects.length === 0) return null;
   const p = projects[0];
 
-  const { rows: funcoes } = await client.query(
-    'SELECT * FROM aep_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]
-  );
+  const [{ rows: funcoes }, additionalResponsibles] = await Promise.all([
+    client.query('SELECT * FROM aep_funcoes WHERE projeto_id=$1 ORDER BY ordem', [p.id]),
+    loadResponsaveisAdicionais(client, p.id, 'AEP'),
+  ]);
 
   const funcIds = funcoes.map(f => f.id);
 
@@ -805,6 +844,7 @@ async function loadSingleAEP(client: PoolClient, id: string): Promise<any | null
     evaluatorSignatureDataUrl: p.assinatura_avaliador ?? '',
     date: p.data ? (p.data instanceof Date ? p.data.toISOString().split('T')[0] : String(p.data)) : '',
     functions,
+    additionalResponsibles,
     sectorIlluminance: (() => {
       try {
         const raw = p.setor_iluminancia_json;
